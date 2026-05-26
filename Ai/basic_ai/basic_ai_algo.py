@@ -5,8 +5,12 @@
 ## ai_test
 ##
 
+#we pick random from a range
+from random import randrange
 import sys
 import socket
+
+from utils import move_forward, turn_left, turn_right, look, take_object
 
 
 
@@ -75,8 +79,24 @@ def run_ai(socket_client: socket.socket):
     this will be our very basic ai that will attempt to collect as much food as possible to stay alive as long as possible
 
     now how can we do this?
+    we look (tile 2 is the one in front of us (that means the 3 item in the list we receive from look))
+    if there is food in front of us, we advance and take it
+    if not we turn right and advance
     """
-    pass
+    working = True
+    while working:
+        look_result = look(socket_client)
+        if "food" in look_result[2]:
+            working = move_forward(socket_client)
+            working = take_object(socket_client, "food")
+        else:
+            working = turn_right(socket_client)
+            random_number = randrange(1, 4)
+            for _ in range(random_number):
+                working = move_forward(socket_client)
+
+    print("found food")
+
 
 
 
@@ -104,6 +124,7 @@ def connect_to_server(port: int, team_name: str, machine: str) -> None:
     print("Connected to server")
 
     handshake_protocol(socket_client, team_name)
+    run_ai(socket_client)
 
 
 

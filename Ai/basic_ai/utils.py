@@ -19,10 +19,10 @@ def move_forward(socket_client: socket.socket) -> bool:
     or
     - <--ko\n
     """
-    print("Moving forward")
+    #print("Moving forward")
     move_forward_message = "Forward\n"
     socket_client.send(move_forward_message.encode())
-    print(f"Sent message to server: {move_forward_message}")
+    #print(f"Sent message to server: {move_forward_message}")
     # then we should receive the OK or KO message from the server
     message = socket_client.recv(1024).decode()
     if not message:
@@ -41,10 +41,10 @@ def turn_left(socket_client: socket.socket) -> bool:
     or
     - <--ko\n
     """
-    print("Turning left")
+    #print("Turning left")
     turn_left_message = "Left\n"
     socket_client.send(turn_left_message.encode())
-    print(f"Sent message to server: {turn_left_message}")
+    #print(f"Sent message to server: {turn_left_message}")
     # then we should receive the OK or KO message from the server
     message = socket_client.recv(1024).decode()
     if not message:
@@ -63,10 +63,10 @@ def turn_right(socket_client: socket.socket) -> bool:
     or
     - <--ko\n
     """
-    print("Turning right")
+    #print("Turning right")
     turn_right_message = "Right\n"
     socket_client.send(turn_right_message.encode())
-    print(f"Sent message to server: {turn_right_message}")
+    #print(f"Sent message to server: {turn_right_message}")
     # then we should receive the OK or KO message from the server
     message = socket_client.recv(1024).decode()
     if not message:
@@ -86,10 +86,10 @@ def take_object(socket_client: socket.socket, object_name: str) -> bool:
     or
     - <--ko\n
     """
-    print(f"Taking object: {object_name}")
+    #print(f"Taking object: {object_name}")
     take_object_message = f"Take {object_name}\n"
     socket_client.send(take_object_message.encode())
-    print(f"Sent message to server: {take_object_message}")
+    #print(f"Sent message to server: {take_object_message}")
     # then we should receive the OK or KO message from the server
     message = socket_client.recv(1024).decode()
     if not message:
@@ -112,10 +112,10 @@ def look(socket_client: socket.socket) -> list[list[str]]:
     - <--[object1, object2, object3]\n
     where object1, object2, and object3 are the names of the objects in the cell in front of us
     """
-    print("Looking")
+    #print("Looking")
     look_message = "Look\n"
     socket_client.send(look_message.encode())
-    print(f"Sent message to server: {look_message}")
+    #print(f"Sent message to server: {look_message}")
     # then we should receive the OK or KO message from the server
     message = socket_client.recv(2048).decode()
     if not message:
