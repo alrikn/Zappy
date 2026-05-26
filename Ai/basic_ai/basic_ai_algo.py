@@ -70,6 +70,14 @@ def handshake_protocol(socket_client: socket.socket, team_name: str) -> None:
 
 
 
+def run_ai(socket_client: socket.socket):
+    """
+    this will be our very basic ai that will attempt to collect as much food as possible to stay alive as long as possible
+
+    now how can we do this?
+    """
+    pass
+
 
 
 def connect_to_server(port: int, team_name: str, machine: str) -> None:
