@@ -10,20 +10,10 @@
 
 
 #include "Client.hpp"
+#include "Struct.hpp"
 
 #include <string>
 #include <vector>
-
-typedef struct inventory
-{
-    int food; //food also represents lifespan of the player, if it reaches 0 the player dies
-    int linemate;
-    int deraumere;
-    int sibur;
-    int mendiane;
-    int phiras;
-    int thystame;
-} inventory_t;
 
 class Player : public Client
 {
