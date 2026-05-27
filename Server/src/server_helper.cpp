@@ -7,6 +7,8 @@
 
 #include "Server.hpp"
 #include <cstring>
+#include <memory>
+#include <string>
 
 
 /**
@@ -82,3 +84,77 @@ void Server::add_fd(int fd)
     p.revents = 0;
     _fds.push_back(p);
 }
+
+std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_name)
+{
+    //first we check if team name is valid and if there is still a spot left in that team
+    bool team_found = false;
+    for (const std::shared_ptr<Team> &team : teams)
+        if (team->name == team_name) {
+            team_found = true;
+            if (team->spots_left <= 0)
+                return nullptr;
+        }
+    if (!team_found)
+        return nullptr;
+    //now we create the player. we give him a random non occupied position
+
+    std::vector<int> position; //= random_unncoupied_position(team_name);
+
+    std::shared_ptr<Player> player = std::make_shared<Player>();
+
+    player->set_orientation(NORTH)
+    .set_team_name(team_name)
+    .set_position(position[0], position[1]);
+
+    return player;
+}
+
+
+void Server::accept_new_client()
+{
+    //whats going on:
+    //Takes the first waiting client from the queue
+    //Creates a new socket dedicated to that client
+    //Returns a new file descriptor
+    sockaddr_in client_addr;
+    socklen_t client_len = sizeof(client_addr);
+
+    //accept removes the request(client) from the queue
+    //and a new socket is created, and from all this we got a  new file descriptor
+    int client_fd = accept(_server_fd, (struct sockaddr*)&client_addr, &client_len);
+
+    add_fd(client_fd);
+
+    //we now need to check if they are a gui or a player
+    write(client_fd, "WELCOME\n", 8); //we send them the welcome message
+    //now we wait for reply:
+    char buffer[1024];
+    ssize_t bytes_read = read(client_fd, buffer, sizeof(buffer) - 1);
+    if (bytes_read < 0) {
+        perror("read");
+        close(client_fd);
+        return;
+    }
+    buffer[bytes_read] = '\0'; //null terminate the buffer to make it a
+    if (strcmp(buffer, "GRAPHIC\n") == 0) {
+        //they are a gui
+        //std::shared_ptr<Client> client = std::make_shared<Client>();
+        //client->control_fd = client_fd;
+        //add_client(client);
+    } else {
+        //they are a player, we need to check if the team they want is a valid one, and if there is still a spot left in that team
+        std::string team_name(buffer);
+        team_name.pop_back(); //remove the newline character
+        std::shared_ptr<Player> player = create_player(client_fd, team_name);
+        if (player) {
+            add_client(player);
+        } else {
+            //invalid team or no spot left, we disconnect the client
+            write(client_fd, "ko\n", 3);
+            close(client_fd);
+        }
+    }
+
+}
+
