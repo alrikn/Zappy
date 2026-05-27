@@ -1,2 +1,14 @@
 zappy_ref-v3.0.1
 __pycache__/
+zappy_server
+zappy_gui
+zappy_ai
+.vscode
+.cache
+*.o
+*.out
+*.a
+*.so
+*.tmp
+*.txt
+*.log

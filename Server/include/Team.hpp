@@ -15,7 +15,11 @@ class Team
     private:
     protected:
     public:
-        Team();
+        Team(std::string name, int num_client_per_team)
+        {
+            this->name = name;
+            this->spots_left = num_client_per_team;
+        }
         ~Team() = default;
 
         int spots_left; //the number of players that can still join the team, if it reaches 0 no more players can join the team
