@@ -8,8 +8,9 @@
 
 NAME = zappy_server
 SRC = main.cpp \
-	src/Server.cpp \
+	src/Polling.cpp \
 	src/server_helper.cpp \
+	src/game_loop.cpp \
 
 
 OBJ = $(SRC:.cpp=.o)

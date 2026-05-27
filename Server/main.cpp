@@ -17,8 +17,16 @@ void signal_handler(int signal)
     }
 }
 
+Server handle_arguments(int argc, char **argv)
+{
+    // TODO: Implement argument handling
+    return Server(4242, 10, 10, {"Team1", "Team2"}, 5);
+}
+
 int main(int argc, char **argv)
 {
     std::signal(SIGINT, signal_handler);
+    Server server = handle_arguments(argc, argv);
+    server.run();
     return 0;
 }

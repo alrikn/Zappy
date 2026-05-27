@@ -38,6 +38,7 @@ class Server
         void add_fd(int fd);
 
         /*game functions*/
+        void poll_clients(int timeout);
         std::shared_ptr<Player> create_player(int client_fd, std::string team_name);
 
 
@@ -70,6 +71,7 @@ class Server
         int _server_fd;
         std::vector<pollfd> _fds; //list of all fd (including the server) that we can loop through
 
+        bool running = true;
         /*server functions*/
         void run();
 

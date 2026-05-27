@@ -10,7 +10,6 @@
 #include <cstring>
 #include <memory>
 
-extern volatile sig_atomic_t g_shutdown_requested;
 
 Server::Server(int port_number,
             int map_width,
@@ -70,15 +69,16 @@ void Server::handle_event()
     }
 }
 
-void Server::run()
+void Server::poll_clients(int timeout)
 {
-    while (!g_shutdown_requested) {
-        if (poll(_fds.data(), _fds.size(), -1) < 0) {
-            if (errno == EINTR && g_shutdown_requested)
-                break;
-            perror("poll");
-            break;
+    if (poll(_fds.data(), _fds.size(), timeout) < 0) {
+        if (errno == EINTR) {
+            // Interrupted by signal, likely shutdown request
+            return;
         }
-        handle_event();
+        perror("poll");
+        return;
     }
+    handle_event(); //handle events gets called if poll detected smth
 }
+
