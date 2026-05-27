@@ -9,6 +9,7 @@
 NAME = zappy_server
 SRC = main.cpp \
 	src/Server.cpp \
+	src/server_helper.cpp \
 
 
 OBJ = $(SRC:.cpp=.o)

@@ -9,6 +9,7 @@
     #define INCLUDED_CLIENT_HPP
 
 
+#include <string>
 class Client
 {
     private:
@@ -20,6 +21,13 @@ class Client
 
         /*todo make it do communication between server and client*/
         /*this will be the parent class of both the gui and the player (ai)*/ //(unless decided otherwise)
+
+        int fd;
+
+
+        /* client functions*/
+        void send_message(std::string message);
+        std::string receive_message();
 
 };
 

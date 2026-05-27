@@ -12,11 +12,28 @@
 #include "Struct.hpp"
 #include "Team.hpp"
 #include <memory>
+#include <unordered_map>
 #include <vector>
+#include <netinet/in.h>
+#include <sys/poll.h>
+#include <memory>
 
 class Server
 {
     private:
+        /*client facing functions*/
+        void accept_new_client();
+        void add_client(std::shared_ptr<Client> client);
+        void remove_client(int client_fd);
+        void handle_client_event(int client_fd);
+        void handle_event();
+        /*server setup functions*/
+        int create_server_socket();
+        sockaddr_in bind_socket(int port, int server_fd);
+        void socket_listen(int server_fd);
+        int set_up_server_socket(int port);
+        void add_fd(int fd);
+
     protected:
     public:
         Server(int port_number,
@@ -31,13 +48,16 @@ class Server
         /*server variables*/
         //TODO: there might be a need to make its a shared ptr
         std::vector<std::vector<inventory_t>> map; //map of the game, each cell is like an inventory since it coins resources on that cell
-        std::vector<std::shared_ptr<Client>> clients; //we will most likely need to seprate the clients into players and gui clients when processing, but for the interest of polling everything at once, we keep it together for now
+        std::unordered_map<int, std::shared_ptr<Client>> clients; //map of all connected clients, keyed by client fd
         long long time_unit = 1000; //time unit in milliseconds (how long between each tick)
         long long tick = 0; //the current tick of the game, starts at 0 and increments by 1 every time_unit milliseconds
 
         std::vector<std::shared_ptr<Team>> teams; //the teams of the game.
 
-        int port_number;
+        /*more technical variables*/
+        int _port;
+        int _server_fd;
+        std::vector<pollfd> _fds; //list of all fd (including the server) that we can loop through
 
         /*server functions*/
         void run();
