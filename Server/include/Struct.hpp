@@ -9,16 +9,16 @@
     #define INCLUDED_STRUCT_HPP
 
 
-typedef struct inventory
+typedef struct resources
 {
-    int food; //food also represents lifespan of the player, if it reaches 0 the player dies
-    int linemate;
-    int deraumere;
-    int sibur;
-    int mendiane;
-    int phiras;
-    int thystame;
-} inventory_t;
+    int food = 0; //food also represents lifespan of the player, if it reaches 0 the player dies
+    int linemate = 0;
+    int deraumere = 0;
+    int sibur = 0;
+    int mendiane = 0;
+    int phiras = 0;
+    int thystame = 0;
+} resources_t;
 
 
 #endif

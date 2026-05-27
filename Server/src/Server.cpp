@@ -24,7 +24,7 @@ Server::Server(int port_number,
     this->tick = 0;
     this->_port = port_number;
     //we intialise the map with no resources.
-    this->_map = std::vector<std::vector<inventory_t>>(map_height, std::vector<inventory_t>(map_width, {0, 0, 0, 0, 0, 0, 0}));
+    this->_map = std::vector<std::vector<Tiles>>(map_height, std::vector<Tiles>(map_width, Tiles()));
     //initialsie teams
     for (const std::string &team_name : team_names) {
         this->teams.push_back(std::make_shared<Team>(team_name, num_client_per_team));

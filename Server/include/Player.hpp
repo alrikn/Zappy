@@ -37,14 +37,14 @@ class Player : public Client
     orientation_t orientation; //the direction the player is facing (0 = north, 1 = east, 2 = south, 3 = west)
     int level = 0; //the level of the player
     std::string team_name; //the name of the team the player belongs to
-    inventory_t inventory = {10, 0, 0, 0, 0, 0, 0}; //the inventory of the player, it contains the number of each resource the player has
+    resources_t inventory = {10, 0, 0, 0, 0, 0, 0}; //the inventory of the player, it contains the number of each resource the player has
 
 
     Player& set_position(int x, int y) {position[0] = x;position[1] = y; return *this;}
     Player& set_orientation(orientation_t orientation){this->orientation = orientation; return *this;}
     Player& set_level(int level){this->level = level; return *this;}
     Player& set_team_name(std::string team_name){this->team_name = team_name; return *this;}
-    Player& set_inventory(inventory_t inventory){this->inventory = inventory; return *this;}
+    Player& set_inventory(resources_t inventory){this->inventory = inventory; return *this;}
 
 };
 
