@@ -8,6 +8,7 @@
 #include "Server.hpp"
 #include <csignal>
 #include <cstring>
+#include <memory>
 
 extern volatile sig_atomic_t g_shutdown_requested;
 
@@ -30,6 +31,29 @@ Server::Server(int port_number,
     }
     _server_fd = set_up_server_socket(_port);
     add_fd(_server_fd);
+}
+
+void Server::handle_client_event(int client_fd)
+{
+    char buf[4096];
+    ssize_t n = read(client_fd, buf, sizeof(buf));
+    size_t pos;
+
+    if (n <= 0) {
+        //remove_client(client_fd); TODO implement
+        return;
+    }
+
+    std::shared_ptr<Client> client = _clients[client_fd];
+    client->ctrl_buffer.append(buf, n);
+    pos = client->ctrl_buffer.find('\n');
+    while (pos != std::string::npos) {
+        std::string command = client->ctrl_buffer.substr(0, pos);
+        client->ctrl_buffer.erase(0, pos + 1);
+        // Process the command
+        //TODO: implement logic to process command
+        pos = client->ctrl_buffer.find('\n');
+    }
 }
 
 void Server::handle_event()

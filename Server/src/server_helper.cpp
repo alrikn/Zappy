@@ -9,6 +9,7 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <unistd.h>
 
 
 /**
@@ -101,15 +102,24 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
 
     std::vector<int> position; //= random_unncoupied_position(team_name);
 
-    std::shared_ptr<Player> player = std::make_shared<Player>();
+    std::shared_ptr<Player> player = std::make_shared<Player>(client_fd);
 
     player->set_orientation(NORTH)
     .set_team_name(team_name)
     .set_position(position[0], position[1]);
 
+    //now we write to the client that it has been succesful
+    std::string valid_message = std::to_string(client_num) + "\n" + std::to_string(position[0]) + " " + std::to_string(position[1]) + "\n";
+
+    write(client_fd, valid_message.c_str(), valid_message.length());
     return player;
 }
 
+void Server::add_client(std::shared_ptr<Client> client)
+{
+    _clients[client->control_fd] = client;
+    client_num++;
+}
 
 void Server::accept_new_client()
 {
@@ -151,7 +161,7 @@ void Server::accept_new_client()
             add_client(player);
         } else {
             //invalid team or no spot left, we disconnect the client
-            write(client_fd, "ko\n", 3);
+            //write(client_fd, "ko\n", 3);
             close(client_fd);
         }
     }

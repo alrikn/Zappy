@@ -58,6 +58,7 @@ class Server
 
         std::vector<std::shared_ptr<Team>> teams; //the teams of the game.
 
+        long long client_num = 0; //increments every time a new client gets added
         /*more technical variables*/
         int _port;
         int _server_fd;
