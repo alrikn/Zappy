@@ -19,16 +19,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get install -y libconfig++-dev
-
       - name: Compile project
         run: make
         timeout-minutes: 2
 
       - name: Verify executable
         run: |
+          ls
           if [ ! -f "${{ vars.EXECUTABLE }}" ]; then
             echo "Executable not found!"
             exit 1
