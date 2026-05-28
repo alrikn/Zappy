@@ -26,10 +26,14 @@ jobs:
       - name: Verify executable
         run: |
           ls
-          if [ ! -f "${{ vars.EXECUTABLE }}" ]; then
-            echo "Executable not found!"
-            exit 1
-          fi
+          #we need to loop throgh the executables. they are separated by newlines, so we can use a for loop to check each one.
+          for exe in ${{ vars.EXECUTABLE }}; do
+              #now we check if that file exists
+              if [ ! -f "$exe" ]; then
+                  echo "Executable $exe not found!"
+                  exit 1
+              fi
+          done
           echo "Executable found."
 
       #- name: Run tests
