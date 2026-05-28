@@ -121,9 +121,7 @@ def run_ai(socket_client: socket.socket):
         if new_level is not None:
             print(f"Leveled up to level {new_level}!")
             current_level = new_level
-            broadcast_text(socket_client, f"Just leveled up to level {current_level}!")
-            while True:
-                pass
+            broadcast_text(socket_client, f"I_am_level_{current_level}")
 
     print("found food")
 

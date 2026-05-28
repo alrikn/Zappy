@@ -156,7 +156,7 @@ Current level: k\n
         print("Server closed connection, exiting")
         exit(1)
     if message == "ko\n":
-        print(f"incantaion failed")
+        print(f"incantation failed")
         return None
     #if it not ko, we check if it starts with "Elevation underway"
     if not message.startswith("Elevation underway"):
@@ -172,7 +172,8 @@ Current level: k\n
             exit(1)
         if message.startswith("Current level"):
             break
-    print(f"Received succesful message from server: {message}")
+    #print(f"Received succesful message from server: {message}")
+    current_level = int(message.split()[-1])
 
     return current_level
 
