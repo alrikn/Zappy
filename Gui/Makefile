@@ -6,11 +6,9 @@
 ##
 
 
-NAME = zappy_server
+NAME = zappy_gui
 SRC = main.cpp \
-	src/Polling.cpp \
-	src/server_helper.cpp \
-	src/game_loop.cpp \
+
 
 
 OBJ = $(SRC:.cpp=.o)
