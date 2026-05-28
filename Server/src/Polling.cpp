@@ -7,6 +7,7 @@
 
 #include "Server.hpp"
 #include <csignal>
+#include <cstdlib>
 #include <cstring>
 #include <memory>
 
@@ -18,8 +19,9 @@ Server::Server(int port_number,
             int num_client_per_team,
             long long trantorian_time_unit)
 {
-    this->time_unit = (7 / trantorian_time_unit) / 1000; //that just how the pdf want it, divide by 1000 to make milliseconds
+    this->time_unit = (7.0 / trantorian_time_unit) * 1000; //that just how the pdf want it, divide by 1000 to make milliseconds
 
+    std::cout << "time unit: " << time_unit << std::endl;
     this->tick = 0;
     this->_port = port_number;
     //we intialise the map with no resources.
