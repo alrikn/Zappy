@@ -137,7 +137,7 @@ def look(socket_client: socket.socket) -> list[list[str]]:
     return return_values
 
 
-def start_incantation(socket_client: socket.socket) -> int:
+def start_incantation(socket_client: socket.socket) -> int | None:
     """
     this is the start incantation command that the client will send to the server
     - -->Incantation\n
