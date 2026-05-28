@@ -10,7 +10,7 @@ from random import randrange
 import sys
 import socket
 
-from utils import move_forward, turn_left, turn_right, look, take_object
+from utils import move_forward, turn_left, turn_right, look, get_inventory, take_object, start_incantation, broadcast_text
 
 
 
@@ -72,6 +72,12 @@ def handshake_protocol(socket_client: socket.socket, team_name: str) -> None:
     print(f"number of open slots remaining for team {team_name}: {messages[0]}")
     print(f"world dimensions: {messages[1]}")
 
+def get_crystals(socket_client: socket.socket, look_result: list):
+    crystals = ["linemate", "deraumere", "sibur", "mendiane", "phiras", "thystame"]
+
+    for crystal in crystals:
+            if crystal in look_result[2]:
+                take_object(socket_client, crystal)
 
 
 def run_ai(socket_client: socket.socket):
@@ -82,18 +88,39 @@ def run_ai(socket_client: socket.socket):
     we look (tile 2 is the one in front of us (that means the 3 item in the list we receive from look))
     if there is food in front of us, we advance and take it
     if not we turn right and advance
+
+    we do this logic if we have under 30 food,
+    othwreise we will find crystals and take tem. when we have enough, we will start a ritual (and first broadcast stuff to test)
     """
     working = True
+    current_level = 1
+    inventory = {}
     while working:
+        inventory = get_inventory(socket_client)
+        print(f"current inventory: {inventory}\n")
         look_result = look(socket_client)
-        if "food" in look_result[2]:
-            working = move_forward(socket_client)
-            working = take_object(socket_client, "food")
-        else:
-            working = turn_right(socket_client)
-            random_number = randrange(1, 4)
-            for _ in range(random_number):
-                working = move_forward(socket_client)
+        working = move_forward(socket_client) # so that we are on the spot we ar looking at
+
+        #try to get grubby mitts on some crystals
+        get_crystals(socket_client, look_result)
+        if (inventory["food"] < 15): #always go looking for food
+            if "food" in look_result[2]:
+                working = take_object(socket_client, "food")
+            else:
+                working = turn_right(socket_client)
+                random_number = randrange(1, 4)
+                for _ in range(random_number):
+                    working = move_forward(socket_client)
+            continue
+        #otherwise we try to level up
+
+        new_level = start_incantation(socket_client)
+        if new_level is not None and new_level > current_level:
+            print(f"Leveled up to level {new_level}!")
+            current_level = new_level
+            broadcast_text(socket_client, f"Just leveled up to level {current_level}!")
+            while True:
+                pass
 
     print("found food")
 

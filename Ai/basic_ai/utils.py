@@ -135,3 +135,99 @@ def look(socket_client: socket.socket) -> list[list[str]]:
         objects = tile.split()
         return_values.append(objects)
     return return_values
+
+
+def start_incantation(socket_client: socket.socket) -> int:
+    """
+    this is the start incantation command that the client will send to the server
+    - -->Incantation\n
+    - <--Elevation underway
+Current level: k\n
+    or
+    - <--ko\n
+    """
+    #print("Starting incantation")
+    incantation_message = "Incantation\n"
+    socket_client.send(incantation_message.encode())
+    #print(f"Sent message to server: {incantation_message}")
+    # then we should receive the OK or KO message from the server
+    message = socket_client.recv(1024).decode()
+    if not message:
+        print("Server closed connection, exiting")
+        exit(1)
+    if message == "ko\n":
+        print(f"incantaion failed")
+        return None
+    #if it not ko, we check if it starts with "Elevation underway"
+    if not message.startswith("Elevation underway"):
+        print(f"incantation failed, received message from server: {message}")
+        return None
+    #if it does, we split by newline and get the second line, then we split by space and get the last element which is the current level
+    lines = message.split("\n")
+    current_level = lines[1].split()[-1]
+    return current_level
+
+def broadcast_text(socket_client: socket.socket, text: str) -> bool:
+    """
+    this is the brodcast text command that the client will send to the server
+    - -->Broadcast text\n
+    - <--ok\n
+    or
+    - <--ko\n
+    """
+    #print(f"Brodcating text: {text}")
+    brodcast_text_message = f"Broadcast {text}\n"
+    socket_client.send(brodcast_text_message.encode())
+    #print(f"Sent message to server: {brodcast_text_message}")
+    # then we should receive the OK or KO message from the server
+    message = socket_client.recv(1024).decode()
+    if not message:
+        print("Server closed connection, exiting")
+        exit(1)
+    if message != "ok\n":
+        print(f"brodcasting text failed, received message from server: {message}")
+        return False
+    return True
+
+def get_inventory(socket_client: socket.socket) -> dict[str, int]:
+    """
+    this is the get inventory command that the client will send to the server
+    - -->Inventory\n
+    - <--[object1 num1, object2 num2, object3 num3]\n
+    or
+    - <--ko\n
+    """
+    #print("Getting inventory")
+    get_inventory_message = "Inventory\n"
+    socket_client.send(get_inventory_message.encode())
+    #print(f"Sent message to server: {get_inventory_message}")
+    # then we should receive the OK or KO message from the server
+    message = socket_client.recv(2048).decode()
+    if not message:
+        print("Server closed connection, exiting")
+        exit(1)
+    if message == "ko\n":
+        print(f"getting inventory failed, received message from server: {message}")
+        return {}
+    #if it not ko, we check if it starts with "["
+    if not message.startswith("["):
+        print(f"getting inventory failed, received message from server: {message}")
+        return {}
+    #if it does, we remove the first [ and last ] and then we split by comma to get the individual objects and their counts
+    message = message[1:-2]
+    inventory = {}
+    items = message.split(",")
+    for item in items:
+        # Split each item by space to get the object name and count
+        parts = item.split()
+        if len(parts) != 2:
+            print(f"getting inventory failed, received message from server: {message}")
+            return {}
+        object_name = parts[0]
+        try:
+            object_count = int(parts[1])
+        except ValueError:
+            print(f"getting inventory failed, received message from server: {message}")
+            return {}
+        inventory[object_name] = object_count
+    return inventory
