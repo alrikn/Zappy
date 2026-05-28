@@ -17,8 +17,8 @@ all:
 	cp Gui/zappy_gui .
 
 
-clean:	$(MAKE) -C Server clean
-	$(MAKE) -C Ai clean
+clean:
+	$(MAKE) -C Server clean
 	$(MAKE) -C Gui clean
 
 fclean:	clean

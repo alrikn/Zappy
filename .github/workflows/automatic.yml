@@ -25,7 +25,7 @@ jobs:
 
       - name: Verify executable
         run: |
-          echo "${{ vars.EXECUTABLE }}" | while read -r exe; do
+          echo "${{ vars.EXECUTABLE }}" | tr -d '\r' | while read -r exe; do
               #now we check if that file exists
               if [ ! -f "$exe" ]; then
                   echo "Executable $exe not found!"
