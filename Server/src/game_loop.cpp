@@ -62,7 +62,7 @@ void Server::populate_map_resources()
 
 void Server::game_tick()
 {
-    if (tick % 20 == 0) { //every 20 ticks we populate the map with resources
+    if (tick % 20 == 0 || tick == 0) { //every 20 ticks we populate the map with resources
         populate_map_resources();
     }
     tick++;
