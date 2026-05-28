@@ -25,16 +25,14 @@ jobs:
 
       - name: Verify executable
         run: |
-          ls
-          #we need to loop throgh the executables. they are separated by newlines, so we can use a for loop to check each one.
-          for exe in ${{ vars.EXECUTABLE }}; do
+          echo "${{ vars.EXECUTABLE }}" | while read -r exe; do
               #now we check if that file exists
               if [ ! -f "$exe" ]; then
                   echo "Executable $exe not found!"
                   exit 1
               fi
           done
-          echo "Executable found."
+          echo "all executables found."
 
       #- name: Run tests
       #  run: ./raytracer scene_config.cfg -o output.ppm
