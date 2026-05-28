@@ -163,8 +163,17 @@ Current level: k\n
         print(f"incantation failed, received message from server: {message}")
         return None
     #if it does, we split by newline and get the second line, then we split by space and get the last element which is the current level
-    lines = message.split("\n")
-    current_level = lines[1].split()[-1]
+    #the incantaion might take very long, so we need to wait for the server to send us the message with the current level, we can do this by looping until we receive a message that starts with "Current level"
+    current_level = 0
+    while True:
+        message = socket_client.recv(1024).decode()
+        if not message:
+            print("Server closed connection, exiting")
+            exit(1)
+        if message.startswith("Current level"):
+            break
+    print(f"Received succesful message from server: {message}")
+
     return current_level
 
 def broadcast_text(socket_client: socket.socket, text: str) -> bool:

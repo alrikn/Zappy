@@ -110,12 +110,15 @@ def run_ai(socket_client: socket.socket):
                 working = turn_right(socket_client)
                 random_number = randrange(1, 4)
                 for _ in range(random_number):
+                    looking_result = look(socket_client)
+                    if "food" in looking_result[2]: #avoids skipping food
+                        break
                     working = move_forward(socket_client)
             continue
         #otherwise we try to level up
 
         new_level = start_incantation(socket_client)
-        if new_level is not None and new_level > current_level:
+        if new_level is not None:
             print(f"Leveled up to level {new_level}!")
             current_level = new_level
             broadcast_text(socket_client, f"Just leveled up to level {current_level}!")
