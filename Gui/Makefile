@@ -2,34 +2,27 @@
 ## EPITECH PROJECT, 2026
 ## Zappy
 ## File description:
-## Makefile : TODO cmake
+## Makefile — thin wrapper; all build logic lives in CMakeLists.txt
 ##
 
+NAME   := zappy_gui
+PRESET := debug
+BUILD  := build/debug
 
-NAME = zappy_gui
-SRC = main.cpp \
-
-
-
-OBJ = $(SRC:.cpp=.o)
-CXX = clang++
-CXXFLAGS = -std=c++20 -Wall -Wextra -g -O2 -fno-omit-frame-pointer
-CPPFLAGS = -I include
+.PHONY: all $(NAME) clean fclean re
 
 all: $(NAME)
 
-$(NAME): $(OBJ)
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o $(NAME) $(OBJ)
-
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
+$(NAME):
+	cmake --preset $(PRESET)
+	cmake --build $(BUILD) --target $(NAME)
+	cp $(BUILD)/$(NAME) .
 
 clean:
-	rm -f $(OBJ) $(CONVERT_OBJ)
+	rm -rf $(BUILD)/CMakeFiles
 
-fclean: clean
+fclean:
+	rm -rf build/
 	rm -f $(NAME)
 
 re: fclean all
-
-.PHONY: all clean fclean re

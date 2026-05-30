@@ -1,0 +1,19 @@
+zappy_gui
+.vscode
+.cache
+*.o
+*.out
+*.a
+*.so
+*.tmp
+*.log
+
+# cmake
+build/
+.cache/
+
+# Doxygen output
+docs/doxygen/
+
+# SPIR-V compiled shaders
+*.spv

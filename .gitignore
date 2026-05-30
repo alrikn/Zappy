@@ -12,3 +12,7 @@ zappy_ai
 *.tmp
 *.txt
 *.log
+
+#cmake
+build/
+.cache/
