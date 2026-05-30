@@ -9,7 +9,7 @@ NAME   := zappy_gui
 PRESET := debug
 BUILD  := build/debug
 
-.PHONY: all $(NAME) clean fclean re
+.PHONY: all $(NAME) clean fclean re docs
 
 all: $(NAME)
 
@@ -26,3 +26,7 @@ fclean:
 	rm -f $(NAME)
 
 re: fclean all
+
+docs:
+	cmake --preset $(PRESET)
+	cmake --build $(BUILD) --target docs
