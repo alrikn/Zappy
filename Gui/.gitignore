@@ -1,13 +1,3 @@
-zappy_gui
-.vscode
-.cache
-*.o
-*.out
-*.a
-*.so
-*.tmp
-*.log
-
 # cmake
 build/
 .cache/

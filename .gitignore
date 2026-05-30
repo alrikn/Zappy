@@ -11,6 +11,7 @@ zappy_ai
 *.so
 *.tmp
 *.txt
+!CMakeLists.txt
 *.log
 
 #cmake
