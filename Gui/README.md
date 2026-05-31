@@ -28,3 +28,14 @@ make
 
 
 See `docs/architecture.md` for the three-component architecture and design rationale.
+
+## Documentation
+
+  Generate the full API reference with:
+
+  ```bash
+  make docs
+  ```
+
+  Output lands in docs/doxygen/html/index.html — open it in a browser.
+  Requires doxygen to be installed (sudo apt-get install -y doxygen).
