@@ -5,8 +5,8 @@
  *          all player positions and inventories, all eggs, and the current time unit.
  *          This data is updated by the network thread and read by the renderer thread.
  *
- *          HARD RULE: this file and every file under world/ must have ZERO Vulkan
- *          includes. World state is pure game data — it knows nothing about rendering.
+ *          This file and every file under world/ must have zero Vulkan includes.
+ *          World state is pure game data — it knows nothing about rendering.
  *
  *          Placeholder until the world feature is implemented. The class exists so
  *          main.cpp compiles; tiles, players, eggs and the mutex are added in the world feature.
