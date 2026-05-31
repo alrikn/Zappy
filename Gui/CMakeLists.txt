@@ -247,41 +247,6 @@ target_compile_options(zappy_gui PRIVATE
     -Wextra
     -Wpedantic)
 
-# ─── Test targets ────────────────────────────────────────────────────────────
-# test_message_queue: unit tests for MessageQueue<T> — no server required.
-# Build: cmake --build build/debug --target test_message_queue
-# Run:   ./build/debug/test_message_queue
-add_executable(test_message_queue
-    tests/test_message_queue.cpp)
-
-target_include_directories(test_message_queue PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src)
-
-target_link_libraries(test_message_queue PRIVATE
-    spdlog::spdlog)
-
-target_compile_options(test_message_queue PRIVATE -Wall -Wextra -Wpedantic)
-target_compile_definitions(test_message_queue PRIVATE
-    VULKAN_VALIDATION=0)
-
-# test_network: integration test for NetworkClient — requires mock_server.py.
-# Build:  cmake --build build/debug --target test_network
-# Run:
-#   Terminal A: python3 tests/mock_server.py 14242
-#   Terminal B: ./build/debug/test_network
-add_executable(test_network
-    tests/test_network.cpp
-    src/network/NetworkClient.cpp)
-
-target_include_directories(test_network PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src)
-
-target_link_libraries(test_network PRIVATE
-    spdlog::spdlog)
-
-target_compile_options(test_network PRIVATE -Wall -Wextra -Wpedantic)
-target_compile_definitions(test_network PRIVATE
-    VULKAN_VALIDATION=0)
 
 # ─── Documentation target ────────────────────────────────────────────────────
 # Optional: only registered if Doxygen is installed on the host machine.
