@@ -101,10 +101,10 @@ NetworkClient::NetworkClient(std::string host, uint16_t port)
  * @brief Destructor: signal the recv thread, shut down the socket, then join.
  * @details The shutdown sequence must be:
  *          1. Set _stop = true so recvLoop() knows the recv failure is intentional.
- *          2. %shutdown(SHUT_RDWR) to interrupt any blocked %recv() call inside
+ *          2. shutdown(SHUT_RDWR) to interrupt any blocked recv() call inside
  *             recvLoop(). Without this, join() would block forever on a server that
  *             has stopped sending.
- *          3. %close(_sockfd) to release the fd.
+ *          3. close(_sockfd) to release the fd.
  *          4. join() to wait for the recv thread to exit cleanly.
  */
 NetworkClient::~NetworkClient()
