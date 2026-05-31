@@ -10,18 +10,6 @@
  *          sees raw POSIX types. All errors are converted into ZappyException subclasses
  *          before leaving this file.
  *
- *          Key patterns used:
- *          - Sink constructor parameter: std::string host passed by value, moved into
- *            _host — no unnecessary copy.
- *          - RAII addrinfo wrapper: addrinfo* from getaddrinfo() is immediately wrapped
- *            in std::unique_ptr with a custom deleter so freeaddrinfo() is called even
- *            if an exception is thrown mid-connect.
- *          - std::atomic<bool> for cross-thread flags: _stop and _hadError are shared
- *            between the main thread and the recv thread; atomic ensures writes in one
- *            thread are immediately visible in the other with correct memory ordering.
- *          - std::istringstream for parsing: each protocol line is parsed by extracting
- *            tokens with >>, which handles whitespace separation and basic type
- *            conversion with clear failure detection via stream state flags.
  */
 
 #include "network/NetworkClient.hpp"
@@ -151,9 +139,6 @@ void NetworkClient::connect()
     // string into a linked list of addrinfo structs, each representing one way to
     // reach that address (IPv4, IPv6, different interfaces). We iterate the list
     // until a socket() + connect() pair succeeds.
-    //
-    // This is the POSIX-standard way to do hostname resolution; it handles IPv4,
-    // IPv6, and numeric IP strings uniformly without us needing to know which.
     addrinfo hints{};
     hints.ai_family   = AF_UNSPEC;     // Accept IPv4 or IPv6.
     hints.ai_socktype = SOCK_STREAM;   // We want a reliable, ordered byte stream (TCP).
@@ -161,8 +146,6 @@ void NetworkClient::connect()
     const std::string portStr = std::to_string(_port);
     addrinfo* rawResult = nullptr;
 
-    // getaddrinfo() allocates the result list. We immediately take ownership via
-    // unique_ptr so the memory is freed on any exit path (exception or return).
     const int gaiRet = ::getaddrinfo(_host.c_str(), portStr.c_str(), &hints, &rawResult);
     // RAII wrapper: freeaddrinfo() is called when addrResult goes out of scope.
     std::unique_ptr<addrinfo, AddrInfoDeleter> addrResult(rawResult);
@@ -195,7 +178,7 @@ void NetworkClient::connect()
             break;
         }
 
-        // connect() failed — close this fd before trying the next address to avoid fd leaks.
+        // connect() failed — close this fd and try the next address.
         ::close(fd);
     }
 
@@ -210,9 +193,7 @@ void NetworkClient::connect()
     // ── Step 3: Read "WELCOME\n" ──────────────────────────────────────────────
     //
     // The server sends "WELCOME\n" as the first thing after the TCP handshake.
-    // We read it byte-by-byte until we see '\n'. Byte-by-byte reading is intentional:
-    // it avoids accidentally reading part of the next server message into our buffer,
-    // which would cause the first parseLine() call to receive corrupted data.
+    // Read byte-by-byte until '\n'.
     std::string welcome;
     while (true) {
         char ch = 0;
@@ -242,8 +223,6 @@ void NetworkClient::connect()
     // ── Step 4: Send "GRAPHIC\n" ──────────────────────────────────────────────
     //
     // The protocol requires the GUI client to identify itself by sending "GRAPHIC\n".
-    // After this the server will send map size, tile contents, etc. in response to
-    // the bootstrap queries we send next.
     sendRaw("GRAPHIC\n");
     spdlog::info("NetworkClient: sent GRAPHIC");
 
@@ -279,17 +258,14 @@ void NetworkClient::sendBootstrap()
  */
 void NetworkClient::sendRaw(std::string_view cmd)
 {
-    // Acquire the send mutex so concurrent calls from the main thread (GUI commands)
-    // and internal calls (sendBootstrap) do not interleave partial writes on the socket.
-    // std::lock_guard is RAII: the mutex is released when lock goes out of scope.
+    // Acquire the send mutex; std::lock_guard releases it when lock goes out of scope.
     std::lock_guard<std::mutex> lock(_sendMutex);
 
     const char*  data      = cmd.data();
     std::size_t  remaining = cmd.size();
 
     while (remaining > 0) {
-        // MSG_NOSIGNAL suppresses SIGPIPE: instead of killing the process when the server
-        // closes the connection, send() returns -1 with errno=EPIPE, which we handle below.
+        // MSG_NOSIGNAL suppresses SIGPIPE: send() returns -1 with errno=EPIPE on disconnect.
         const ssize_t sent = ::send(_sockfd, data, remaining, MSG_NOSIGNAL);
         if (sent < 0) {
             throw NetworkConnectException(
@@ -305,8 +281,6 @@ void NetworkClient::sendRaw(std::string_view cmd)
  */
 void NetworkClient::recvLoop()
 {
-    // 4096 bytes is a typical network MTU multiple. Large enough to receive several
-    // protocol lines in one recv() call, small enough to sit on the stack.
     constexpr std::size_t BUF_SIZE = 4096;
     char buf[BUF_SIZE];
 
@@ -314,9 +288,7 @@ void NetworkClient::recvLoop()
         const ssize_t n = ::recv(_sockfd, buf, BUF_SIZE, 0);
 
         if (n < 0) {
-            // EINTR means a signal interrupted the recv call — not a real error.
-            // This can happen e.g. when the process receives SIGWINCH (terminal resize).
-            // We simply retry rather than reporting a disconnect.
+            // EINTR: signal interrupted recv(); retry.
             if (errno == EINTR) {
                 continue;
             }
@@ -394,11 +366,6 @@ bool NetworkClient::hasError() const noexcept
  */
 std::optional<ServerMessage> NetworkClient::parseLine(std::string_view line)
 {
-    // std::istringstream provides >> extraction for whitespace-separated tokens,
-    // with clean failure detection via !ss. We construct it from a named std::string
-    // rather than a temporary to avoid the "most vexing parse": the compiler would
-    // misread `ss(std::string(line))` as a function declaration if the argument is
-    // an unnamed temporary of a type whose name looks like a parameter list.
     std::string        lineStr(line);
     std::istringstream ss(lineStr);
     std::string        cmd;
@@ -407,8 +374,7 @@ std::optional<ServerMessage> NetworkClient::parseLine(std::string_view line)
         return std::nullopt;
     }
 
-    // Helper lambda: read a '#'-prefixed ID from the stream.
-    // Defined here so it captures ss by reference without polluting the namespace.
+    // Local lambda: read a '#'-prefixed ID token from the stream.
     auto readIdFromStream = [&](uint32_t& out) {
         std::string tok;
         if (!(ss >> tok)) {
@@ -655,8 +621,7 @@ std::optional<ServerMessage> NetworkClient::parseLine(std::string_view line)
         return MsgBadParameter{};
     }
 
-    // Unknown command prefix — the protocol may evolve. Log a warning and return
-    // nullopt so the caller silently skips this line without crashing.
+    // Unknown command prefix: log a warning and return nullopt.
     spdlog::warn("NetworkClient: unknown protocol command: '{}'", cmd);
     return std::nullopt;
 }

@@ -60,10 +60,8 @@ public:
      *
      *          1. Set `_stop = true` so recvLoop() knows any subsequent recv failure
      *             is intentional (not a real disconnect).
-     *          2. Call `shutdown(SHUT_RDWR)` on the socket. This tells the kernel to
-     *             immediately unblock any `recv()` call that is waiting inside
-     *             recvLoop(). Without this step, join() would block forever on a
-     *             server that has stopped sending.
+     *          2. Call `shutdown(SHUT_RDWR)` on the socket to unblock any pending `recv()`
+     *             call inside recvLoop().
      *          3. Call `close()` to release the file descriptor.
      *          4. Call `join()` to wait for the recv thread to exit cleanly.
      */
@@ -82,8 +80,8 @@ public:
      *          `getaddrinfo()` translates the hostname string (e.g. "localhost") into
      *          a linked list of `addrinfo` structs representing every way to reach
      *          that address (IPv4, IPv6, different interfaces). The returned list is
-     *          immediately wrapped in a `std::unique_ptr` with a custom deleter so
-     *          `freeaddrinfo()` is called automatically on every exit path.
+     *          immediately wrapped in a `std::unique_ptr` with a custom deleter that
+     *          calls `freeaddrinfo()` on destruction.
      *
      *          **Step 2 — Socket creation and TCP connect:**
      *          `socket()` allocates a new socket in the kernel and returns an integer
@@ -107,7 +105,6 @@ public:
      *
      *          **Step 6 — Receive thread:**
      *          `std::thread` is constructed with a lambda `[this]{ recvLoop(); }`.
-     *          The lambda captures `this` so recvLoop() can access private members.
      *          The thread starts executing immediately.
      *
      * @throws NetworkConnectException if name resolution, socket creation, TCP connect,
@@ -134,16 +131,13 @@ public:
 
     /**
      * @brief Send a newline-terminated command to the server.
-     * @details Protected by `_sendMutex` so calls from the main thread and internal
-     *          calls from sendBootstrap() cannot interleave partial writes on the socket.
-     *          `std::lock_guard` is RAII: the mutex is released automatically when
-     *          `lock` goes out of scope, even if an exception is thrown.
+     * @details Protected by `_sendMutex`. `std::lock_guard` is RAII: the mutex is
+     *          released automatically when `lock` goes out of scope, even if an exception is thrown.
      *
      *          Loops calling `::send()` until all bytes are written. `::send()` copies
      *          bytes into the kernel's TCP send buffer; the kernel handles fragmentation
-     *          and retransmission. `MSG_NOSIGNAL` suppresses `SIGPIPE`: if the server
-     *          closes the connection, `send()` returns -1 with `errno = EPIPE` instead
-     *          of killing the process with a signal.
+     *          and retransmission. `MSG_NOSIGNAL` suppresses `SIGPIPE` — `send()` returns
+     *          -1 with `errno = EPIPE` instead of raising a signal.
      *
      * @param cmd String view of the command including the trailing '\n'.
      * @throws NetworkConnectException if `::send()` returns a fatal error.
@@ -165,25 +159,6 @@ private:
      * @details Calls `recv()` in a blocking loop into a 4096-byte stack buffer.
      *          4096 bytes is a typical network MTU multiple — large enough to receive
      *          several protocol lines per call, small enough to live on the stack.
-     *
-     *          **Why recv() can return a partial line:**
-     *          TCP is a byte-stream protocol, not a message protocol. A single `recv()`
-     *          call can return anywhere from 1 byte to 4096 bytes regardless of how
-     *          many complete lines the server sent. Each new chunk is appended to
-     *          `_recvBuf`; complete lines are extracted whenever a `'\n'` is found.
-     *          Any incomplete tail stays in `_recvBuf` for the next iteration.
-     *
-     *          **EINTR handling:**
-     *          If a Unix signal (e.g., `SIGWINCH` from a terminal resize) interrupts
-     *          `recv()`, it returns -1 with `errno == EINTR`. This is not a real error
-     *          — we simply retry the call.
-     *
-     *          **Error vs. clean shutdown:**
-     *          `recv()` returning 0 means the server closed the connection gracefully.
-     *          `recv()` returning -1 (non-EINTR) means a socket error. In both cases
-     *          we set `_hadError = true` so the main thread is notified via poll().
-     *          If `_stop` is already true (destructor in progress), we set no flag —
-     *          the shutdown is intentional.
      */
     void recvLoop();
 
@@ -207,20 +182,12 @@ private:
      * @details Dispatches on the first whitespace-delimited token of the line
      *          (e.g., `"msz"`, `"bct"`, `"pnw"`…) and fills the corresponding struct.
      *
-     *          **Why std::istringstream:**
-     *          `operator>>` on a stream extracts whitespace-separated tokens and
-     *          performs type conversion (string → uint32_t, etc.) in one step. Stream
-     *          failure is detected by testing the stream state with `if (!(ss >> x))`,
-     *          which is cleaner than manual pointer arithmetic or sscanf.
-     *
      *          **Player and egg IDs:**
      *          The protocol prefixes numeric IDs with `#` (e.g., `#5`). A local lambda
      *          `readIdFromStream` strips the `#` and calls `std::stoul` to convert.
      *
      *          **Messages with free-form text (pbc, smg):**
-     *          After extracting the structured tokens, `std::getline(ss >> std::ws, text)`
-     *          reads the rest of the line including any spaces, giving us the full
-     *          broadcast or server message text.
+     *          `std::getline(ss >> std::ws, text)` reads the rest of the line including spaces.
      *
      * @param line One complete line from the server, WITHOUT the trailing '\n'.
      * @return A ServerMessage variant on success, or std::nullopt for unknown command

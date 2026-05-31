@@ -11,16 +11,6 @@
  *          the queue ensures these two concurrent accesses do not corrupt the internal
  *          std::queue.
  *
- *          Why a template instead of a concrete ServerMessage queue?
- *          The template costs nothing at runtime (it is instantiated at compile time)
- *          and makes the queue reusable if other subsystems (e.g., a command queue
- *          from the UI to the network thread) need the same pattern. Copying the
- *          locking logic by hand each time would be an error-prone alternative.
- *
- *          Why std::mutex + std::lock_guard instead of a lock-free queue?
- *          Lock-free queues require careful memory-order reasoning and are rarely faster
- *          for the message rates this application sees (a few hundred messages per second
- *          at most). std::mutex is correct, readable, and auditable.
  */
 
 #pragma once
@@ -52,8 +42,7 @@ public:
 
     /**
      * @brief Push an item to the back of the queue.
-     * @details Thread-safe. Acquires the internal mutex, then move-constructs T into
-     *          the queue. Moving avoids a copy of potentially large message structs.
+     * @details Thread-safe. Acquires the internal mutex, then move-constructs T into the queue.
      * @param item Value to enqueue. Moved into the queue's internal storage.
      */
     void push(T item)
@@ -70,12 +59,6 @@ public:
      *          while (auto msg = queue.tryPop()) { handle(*msg); }
      *          @endcode
      *          This drains all available messages without blocking the caller's thread.
-     *
-     *          Why std::optional<T> instead of bool + out-parameter?
-     *          std::optional<T> cleanly expresses "a value that may be absent". The
-     *          caller checks the presence and accesses the value in one expression
-     *          without needing a separate flag or a sentinel T value.
-     *
      * @return The front element wrapped in std::optional, or std::nullopt if empty.
      */
     std::optional<T> tryPop()

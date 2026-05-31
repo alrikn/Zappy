@@ -101,17 +101,7 @@ static Args parseArgs(int argc, char* argv[])
 
 /**
  * @brief RAII guard that calls glfwTerminate() on destruction.
- * @details glfwTerminate() must be called after all windows are destroyed and before
- *          the process exits. Without a guard, any exception thrown after glfwInit()
- *          succeeds would skip the glfwTerminate() call and leak GLFW's internal
- *          resources (X11 connection, event queues).
- *
- *          Why a local struct instead of std::unique_ptr?
- *          glfwTerminate() takes no arguments and operates on global GLFW state, not
- *          a pointer. There is no handle to store in a unique_ptr. A destructor-only
- *          guard struct is the cleanest expression of this pattern.
- *
- *          Lifetime: created immediately after glfwInit() succeeds; destroyed when
+ * @details Lifetime: created immediately after glfwInit() succeeds; destroyed when
  *          it goes out of scope (either normally or via exception unwinding).
  */
 struct GlfwTerminateGuard {
@@ -163,18 +153,13 @@ int main(int argc, char* argv[])
             throw GlfwInitException("glfwInit failed — is a display available?");
         }
 
-        // GlfwTerminateGuard: calls glfwTerminate() automatically when it goes out
-        // of scope (including on exception). Placed immediately after glfwInit() so
-        // the guard is always active when GLFW is initialised.
+        // GlfwTerminateGuard: calls glfwTerminate() automatically when it goes out of scope.
         GlfwTerminateGuard glfwGuard;
 
-        // GLFW_NO_API: tell GLFW we are NOT using OpenGL. Without this hint,
-        // GLFW would call wglCreateContext / glXCreateContext to make an OpenGL
-        // context, which wastes driver memory and prevents Vulkan surface creation.
+        // GLFW_NO_API: tell GLFW we are not using OpenGL.
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-        // GLFW_RESIZABLE OFF for now — the swapchain resize path is non-trivial
-        // and will be handled in the renderer feature to avoid crashing on resize.
+        // GLFW_RESIZABLE OFF for now — swapchain resize is handled in the renderer feature.
         glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
         // The raw GLFWwindow* from glfwCreateWindow is passed directly to the
@@ -219,10 +204,6 @@ int main(int argc, char* argv[])
             // frame. Each message is logged here until WorldState::apply() exists
             // to consume it properly.
             while (auto msg = network->poll()) {
-                // std::visit dispatches to the correct lambda overload based on which
-                // type is currently active in the ServerMessage variant. The [](auto&&)
-                // wildcard matches all alternatives. Later this will route each message
-                // type to the appropriate WorldState update method.
                 std::visit([](auto&& m) {
                     // Suppress unused-variable warnings for types that have no fields.
                     (void)m;

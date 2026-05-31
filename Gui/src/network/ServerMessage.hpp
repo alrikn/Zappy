@@ -10,12 +10,6 @@
  *          via NetworkClient::poll() and dispatches it to WorldState::apply() using
  *          std::visit.
  *
- *          Why std::variant instead of a base class + virtual dispatch?
- *          std::variant is a closed, type-safe discriminated union. The compiler rejects
- *          any std::visit call that fails to handle every alternative — there is no silent
- *          "forgot to override a virtual method" failure. It also avoids heap allocation
- *          (no `new` needed) and eliminates vtable pointer overhead. For a fixed, known
- *          set of message types (as given by the protocol spec) this is the right choice.
  */
 
 #pragma once
