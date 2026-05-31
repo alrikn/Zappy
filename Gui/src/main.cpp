@@ -201,14 +201,10 @@ int main(int argc, char* argv[])
             //
             // poll() returns one ServerMessage per call and std::nullopt when
             // the queue is empty. We drain everything accumulated since the last
-            // frame. Each message is logged here until WorldState::apply() exists
-            // to consume it properly.
+            // frame. Each message is applied to WorldState which updates all
+            // game-state fields (tiles, players, eggs, time unit, game over).
             while (auto msg = network->poll()) {
-                std::visit([](auto&& m) {
-                    // Suppress unused-variable warnings for types that have no fields.
-                    (void)m;
-                    spdlog::debug("NetworkClient: received message");
-                }, *msg);
+                world->apply(*msg);
             }
 
             // If the recv thread set the error flag, convert it to an exception

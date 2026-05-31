@@ -205,7 +205,8 @@ add_custom_target(shaders ALL DEPENDS ${SPIRV_OUTPUTS})
 # ─── zappy_gui executable ────────────────────────────────────────────────────
 add_executable(zappy_gui
     src/main.cpp
-    src/network/NetworkClient.cpp)
+    src/network/NetworkClient.cpp
+    src/world/WorldState.cpp)
 
 # shaders is a build-order dependency: the .spv files must exist before the
 # game runs, but they don't affect the link step. add_dependencies (not

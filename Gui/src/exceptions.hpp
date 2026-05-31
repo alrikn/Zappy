@@ -133,3 +133,26 @@ public:
     explicit GlfwWindowException(std::string message)
         : ZappyException(std::move(message)) {}
 };
+
+/**
+ * @brief Thrown when WorldState encounters an irrecoverable structural inconsistency.
+ * @details This exception signals programming errors rather than normal network noise.
+ *          Example: calling snapshot() before any msz message has been received in a
+ *          context where the caller requires a non-empty grid.
+ *
+ *          Note: WorldState::apply() never throws this — it uses log-and-ignore for
+ *          invalid protocol messages. This class exists for callers that explicitly
+ *          validate world state before using it.
+ *
+ *          Lifetime: thrown from world-state validation code, caught by the caller or
+ *          the top-level try/catch in main().
+ */
+class WorldStateException : public ZappyException {
+public:
+    /**
+     * @brief Construct with a description of the inconsistency.
+     * @param message Human-readable explanation of why the state is invalid.
+     */
+    explicit WorldStateException(std::string message)
+        : ZappyException(std::move(message)) {}
+};

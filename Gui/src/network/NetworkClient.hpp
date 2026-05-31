@@ -9,14 +9,14 @@
  *            main() constructs one NetworkClient and calls connect().
  *            connect() opens the socket, completes the WELCOME/GRAPHIC handshake,
  *            sends bootstrap queries, and spawns the recv thread.
- *            recvLoop() (recv thread): calls %recv(), accumulates bytes in _recvBuf,
+ *            recvLoop() (recv thread): calls recv(), accumulates bytes in _recvBuf,
  *            splits on '\n', parses each line with parseLine(), and pushes the result
  *            to _queue.
  *            poll() (main thread): drains one item from _queue per call; throws
  *            NetworkRecvException if the recv thread set _hadError.
  *
  *          Thread model: two threads share _sockfd and _queue.
- *            - _sendMutex serialises all %send() calls.
+ *            - _sendMutex serialises all send() calls.
  *            - _queue (MessageQueue) is internally mutex-protected.
  *            - _stop and _hadError are std::atomic<bool>: written by one thread,
  *              read by another, with no lock required.
@@ -134,13 +134,13 @@ public:
      * @details Protected by `_sendMutex`. `std::lock_guard` is RAII: the mutex is
      *          released automatically when `lock` goes out of scope, even if an exception is thrown.
      *
-     *          Loops calling `::send()` until all bytes are written. `::send()` copies
+     *          Loops calling `send()` until all bytes are written. `send()` copies
      *          bytes into the kernel's TCP send buffer; the kernel handles fragmentation
      *          and retransmission. `MSG_NOSIGNAL` suppresses `SIGPIPE` — `send()` returns
      *          -1 with `errno = EPIPE` instead of raising a signal.
      *
      * @param cmd String view of the command including the trailing '\n'.
-     * @throws NetworkConnectException if `::send()` returns a fatal error.
+     * @throws NetworkConnectException if `send()` returns a fatal error.
      */
     void sendRaw(std::string_view cmd);
 
@@ -202,12 +202,12 @@ private:
 
     std::atomic<bool> _stop{false};    ///< Set by the destructor to signal the recv thread to exit cleanly.
 
-    /// Set by the recv thread when %recv() returns 0 or a fatal error code.
+    /// Set by the recv thread when recv() returns 0 or a fatal error code.
     /// The main thread reads this flag in poll() and converts it to a NetworkRecvException.
     std::atomic<bool> _hadError{false};
 
     std::thread _recvThread; ///< Background thread running recvLoop().
-    std::mutex  _sendMutex;  ///< Serialises all %send() calls on _sockfd.
+    std::mutex  _sendMutex;  ///< Serialises all send() calls on _sockfd.
 
     MessageQueue<ServerMessage> _queue;   ///< Parsed messages waiting for the main thread.
     std::string                 _recvBuf; ///< Partial-line accumulator for the recv thread.
