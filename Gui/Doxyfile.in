@@ -28,6 +28,9 @@ FULL_PATH_NAMES        = NO
 EXTRACT_ALL            = YES
 EXTRACT_PRIVATE        = YES
 EXTRACT_STATIC         = YES
+# Anonymous namespaces (e.g. internal helpers in .cpp files) are invisible
+# to Doxygen by default. YES makes them appear on the owning file's page.
+EXTRACT_ANON_NSPACES   = YES
 
 #---------------------------------------------------------------------------
 # Warnings — catch missing @param / @return tags during development
@@ -57,6 +60,15 @@ GENERATE_LATEX         = NO
 GENERATE_MAN           = NO
 GENERATE_RTF           = NO
 GENERATE_XML           = NO
+
+#---------------------------------------------------------------------------
+# Source browsing — lets readers click any symbol and see the source line.
+# Very useful for a learning project where understanding the implementation
+# is as important as the API documentation.
+#---------------------------------------------------------------------------
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = NO
+STRIP_CODE_COMMENTS    = NO
 
 #---------------------------------------------------------------------------
 # C++20 parsing

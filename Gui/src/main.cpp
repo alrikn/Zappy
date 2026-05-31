@@ -4,45 +4,39 @@
  * @details Responsibility:
  *   1. Parse the mandatory -p \<port\> and -h \<host\> arguments from argv.
  *   2. Construct the three top-level subsystems (NetworkClient, WorldState, Renderer).
- *   3. Open a GLFW window and run the event loop until the user presses ESC
- *      or closes the window.
+ *   3. Connect to the server (NetworkClient::connect()).
+ *   4. Open a GLFW window and run the event loop until the user presses ESC
+ *      or closes the window, draining the network message queue each frame.
  *
- *   What is not here yet:
- *   - Vulkan initialisation (renderer bootstrap feature).
- *   - TCP connection (network feature).
- *   - World state parsing (world feature).
- *   The three subsystem objects are stubs that compile but do nothing.
+ *   Error handling: every ZappyException is caught at the top level and logged
+ *   via spdlog before returning EXIT_FAILURE. This ensures the user always sees
+ *   a human-readable error message rather than an uncaught-exception crash.
  */
 
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 
-// GLFW_NO_API is set via glfwWindowHint before window creation so GLFW does
-// NOT try to create an OpenGL context. We are Vulkan-only; an OpenGL context
-// would conflict with later Vulkan surface creation and waste driver resources.
 #include <GLFW/glfw3.h>
 
 #include <spdlog/spdlog.h>
 
-// Forward-declaration headers for the three top-level subsystems.
-// These are stubs for now — they compile but contain no logic.
+#include "exceptions.hpp"
 #include "network/NetworkClient.hpp"
 #include "renderer/Renderer.hpp"
 #include "world/WorldState.hpp"
 
-// ─── CLI argument parsing ─────────────────────────────────────────────────────
-
 /**
  * @brief Parsed command-line arguments.
+ * @details Plain data struct — no invariants, no methods. Filled by parseArgs()
+ *          and passed to the NetworkClient constructor.
  */
 struct Args {
-    std::string host;  ///< Hostname or IP of the zappy_server
-    uint16_t    port;  ///< TCP port the server is listening on
+    std::string host; ///< Hostname or IP of the zappy_server.
+    uint16_t    port; ///< TCP port the server is listening on.
 };
 
 /**
@@ -62,10 +56,8 @@ static void printUsage(std::string_view prog)
  * @details Exits with a usage message if either flag is missing or if -p is not a
  *          valid integer in [1, 65535].
  *
- *          Why std::string_view for comparisons: argv[i] is a char* (C API). Wrapping
- *          it in string_view avoids a heap allocation while allowing == comparison
- *          against string literals. string_view is non-owning — it is safe here because
- *          argv outlives the function call.
+ *          argv[i] is a raw C string; string_view is non-owning — it is safe here
+ *          because argv outlives the function call.
  * @param argc Argument count from main().
  * @param argv Argument vector from main().
  * @return Filled Args struct with host and port.
@@ -107,87 +99,140 @@ static Args parseArgs(int argc, char* argv[])
     };
 }
 
-// ─── Entry point ──────────────────────────────────────────────────────────────
+/**
+ * @brief RAII guard that calls glfwTerminate() on destruction.
+ * @details Lifetime: created immediately after glfwInit() succeeds; destroyed when
+ *          it goes out of scope (either normally or via exception unwinding).
+ */
+struct GlfwTerminateGuard {
+    /**
+     * @brief Default constructor — no action needed on creation.
+     */
+    GlfwTerminateGuard()  = default;
+
+    /**
+     * @brief Calls glfwTerminate() to release all GLFW resources.
+     */
+    ~GlfwTerminateGuard() { glfwTerminate(); }
+
+    GlfwTerminateGuard(const GlfwTerminateGuard&)            = delete; ///< Non-copyable.
+    GlfwTerminateGuard& operator=(const GlfwTerminateGuard&) = delete; ///< Non-copyable.
+    GlfwTerminateGuard(GlfwTerminateGuard&&)                 = delete; ///< Non-movable.
+    GlfwTerminateGuard& operator=(GlfwTerminateGuard&&)      = delete; ///< Non-movable.
+};
 
 /**
  * @brief Application entry point. Parses arguments, creates subsystems, and runs the event loop.
  * @param argc Argument count.
  * @param argv Argument vector.
- * @return EXIT_SUCCESS on clean exit.
+ * @return EXIT_SUCCESS on clean exit, EXIT_FAILURE on any error.
  */
 int main(int argc, char* argv[])
 {
-    // ── Parse arguments ────────────────────────────────────────────────────
-    const Args args = parseArgs(argc, argv);
-    spdlog::info("zappy_gui starting — server: {}:{}", args.host, args.port);
+    try {
+        // ── Parse arguments ────────────────────────────────────────────────
+        const Args args = parseArgs(argc, argv);
+        spdlog::info("zappy_gui starting — server: {}:{}", args.host, args.port);
 
-    auto world    = std::make_unique<WorldState>();
-    auto network  = std::make_unique<NetworkClient>(args.host, args.port);
-    auto renderer = std::make_unique<Renderer>();
+        // ── Construct subsystems ───────────────────────────────────────────
+        auto world    = std::make_unique<WorldState>();
+        auto network  = std::make_unique<NetworkClient>(args.host, args.port);
+        auto renderer = std::make_unique<Renderer>();
 
-    // ── GLFW window setup ──────────────────────────────────────────────────
-    if (!glfwInit()) {
-        throw std::runtime_error("glfwInit failed — no display available?");
-    }
+        // ── Connect to server ─────────────────────────────────────────────
+        //
+        // connect() opens the TCP socket, completes the WELCOME/GRAPHIC handshake,
+        // sends bootstrap queries (msz, mct, tna, sgt), and starts the recv thread.
+        // If any step fails it throws NetworkConnectException, which propagates to
+        // the top-level catch below.
+        network->connect();
+        spdlog::info("NetworkClient connected and recv thread running.");
 
-    // GLFW_NO_API: tell GLFW we are NOT using OpenGL. Without this hint,
-    // GLFW would call wglCreateContext / glXCreateContext to make an OpenGL
-    // context, which wastes driver memory and prevents Vulkan surface creation.
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-    // GLFW_RESIZABLE OFF for now — the swapchain resize path is non-trivial
-    // and will be handled in the renderer feature to avoid crashing on resize.
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-
-    // Raw GLFWwindow* — GLFW is a C library that manages window lifetime
-    // through glfwCreateWindow / glfwDestroyWindow. We must call these
-    // manually.
-    GLFWwindow* window = glfwCreateWindow(
-        1280, 720,
-        "Zappy GUI",
-        nullptr,   // monitor = nullptr → windowed mode
-        nullptr);  // share = nullptr → no OpenGL context sharing
-    if (!window) {
-        glfwTerminate();
-        throw std::runtime_error("glfwCreateWindow failed");
-    }
-
-    spdlog::info("Window created (1280x720). Press ESC to exit.");
-
-    // ── Event loop ────────────────────────────────────────────────────────
-    //
-    // glfwWindowShouldClose returns true when:
-    //   a) the user clicks the OS close button, or
-    //   b) we call glfwSetWindowShouldClose(window, GLFW_TRUE).
-    //
-    // glfwPollEvents processes all pending OS events (keyboard, mouse, resize,
-    // close button) and fires the registered callbacks. Without this call the
-    // window would appear frozen to the OS.
-    while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
-
-        // ESC closes the window cleanly — sets the should-close flag so the
-        // loop exits on the next iteration rather than breaking out directly.
-        // This lets any registered close callbacks run normally.
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-            glfwSetWindowShouldClose(window, GLFW_TRUE);
+        // ── GLFW window setup ──────────────────────────────────────────────
+        if (!glfwInit()) {
+            throw GlfwInitException("glfwInit failed — is a display available?");
         }
 
-        // Renderer stub: no-op until Vulkan rendering is implemented.
-        renderer->drawFrame();
+        // GlfwTerminateGuard: calls glfwTerminate() automatically when it goes out of scope.
+        GlfwTerminateGuard glfwGuard;
+
+        // GLFW_NO_API: tell GLFW we are not using OpenGL.
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+
+        // GLFW_RESIZABLE OFF for now — swapchain resize is handled in the renderer feature.
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+        // The raw GLFWwindow* from glfwCreateWindow is passed directly to the
+        // unique_ptr constructor — it is never stored in a member or returned.
+        std::unique_ptr<GLFWwindow, decltype(&glfwDestroyWindow)> window(
+            glfwCreateWindow(
+                1280, 720,
+                "Zappy GUI",
+                nullptr,   // monitor = nullptr → windowed mode
+                nullptr),  // share = nullptr → no OpenGL context sharing
+            glfwDestroyWindow);
+
+        if (!window) {
+            throw GlfwWindowException("glfwCreateWindow failed — check display / driver");
+        }
+
+        spdlog::info("Window created (1280x720). Press ESC to exit.");
+
+        // ── Event loop ────────────────────────────────────────────────────
+        //
+        // glfwWindowShouldClose returns true when:
+        //   a) the user clicks the OS close button, or
+        //   b) we call glfwSetWindowShouldClose(window.get(), GLFW_TRUE).
+        //
+        // glfwPollEvents processes all pending OS events (keyboard, mouse, resize,
+        // close button) and fires the registered callbacks. Without this call the
+        // window would appear frozen to the OS.
+        while (!glfwWindowShouldClose(window.get())) {
+            glfwPollEvents();
+
+            // ESC closes the window cleanly — sets the should-close flag so the
+            // loop exits on the next iteration rather than breaking out directly.
+            // This lets any registered close callbacks run normally.
+            if (glfwGetKey(window.get(), GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+                glfwSetWindowShouldClose(window.get(), GLFW_TRUE);
+            }
+
+            // ── Drain the network message queue ───────────────────────────
+            //
+            // poll() returns one ServerMessage per call and std::nullopt when
+            // the queue is empty. We drain everything accumulated since the last
+            // frame. Each message is logged here until WorldState::apply() exists
+            // to consume it properly.
+            while (auto msg = network->poll()) {
+                std::visit([](auto&& m) {
+                    // Suppress unused-variable warnings for types that have no fields.
+                    (void)m;
+                    spdlog::debug("NetworkClient: received message");
+                }, *msg);
+            }
+
+            // If the recv thread set the error flag, convert it to an exception
+            // here on the main thread (exceptions cannot cross thread boundaries).
+            if (network->hasError()) {
+                throw NetworkRecvException("server disconnected unexpectedly during run");
+            }
+
+            // Renderer stub: no-op until Vulkan rendering is implemented.
+            renderer->drawFrame();
+        }
+
+        spdlog::info("zappy_gui exiting cleanly.");
+        return EXIT_SUCCESS;
+
+    } catch (const ZappyException& e) {
+        // All expected application errors arrive here as ZappyException subclasses.
+        // spdlog::error writes to stderr with the ERROR level prefix.
+        spdlog::error("Fatal error: {}", e.what());
+        return EXIT_FAILURE;
+    } catch (const std::exception& e) {
+        // Catch anything unexpected (e.g. std::bad_alloc) to prevent a bare
+        // terminate() with no message.
+        spdlog::error("Unexpected error: {}", e.what());
+        return EXIT_FAILURE;
     }
-
-    // ── Cleanup ───────────────────────────────────────────────────────────
-    //
-    // Destroy the window before glfwTerminate — the window must be destroyed
-    // while the GLFW library is still active.
-    glfwDestroyWindow(window);
-
-    // glfwTerminate releases all GLFW resources (event queues, display
-    // connections on Linux/X11 or Wayland). Must be called after all windows
-    // are destroyed.
-    glfwTerminate();
-
-    spdlog::info("zappy_gui exiting cleanly.");
-    return EXIT_SUCCESS;
 }
