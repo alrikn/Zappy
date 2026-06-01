@@ -6,10 +6,24 @@
 */
 
 #include "Server.hpp"
+#include <algorithm>
 #include <cstring>
 #include <memory>
 #include <string>
 #include <unistd.h>
+
+static void free_team_slot(std::vector<std::shared_ptr<Team>> &teams, std::shared_ptr<Client> client)
+{
+    std::shared_ptr<Player> player = std::dynamic_pointer_cast<Player>(client);
+    if (!player)
+        return;
+    for (auto &team : teams) {
+        if (team->name == player->team_name) {
+            team->spots_left++;
+            return;
+        }
+    }
+}
 
 
 /**
@@ -113,6 +127,22 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
 
     write(client_fd, valid_message.c_str(), valid_message.length());
     return player;
+}
+
+void Server::remove_client(int client_fd)
+{
+    auto it = _clients.find(client_fd);
+    if (it == _clients.end())
+        return;
+
+    it->second->RemoveMeFromList();
+    free_team_slot(teams, it->second);
+    _clients.erase(it);
+
+    _fds.erase(std::remove_if(_fds.begin(), _fds.end(),
+        [client_fd](const pollfd &p) { return p.fd == client_fd; }), _fds.end());
+
+    close(client_fd);
 }
 
 void Server::add_client(std::shared_ptr<Client> client)
