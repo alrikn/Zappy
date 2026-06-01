@@ -26,7 +26,7 @@ class Client
     protected:
     public:
         Client(client_type_t type, Subject &subject, int control_fd = -1) : _subject(subject), control_fd(control_fd), type(type) {};
-        ~Client() = default;
+        virtual ~Client() = default;
 
 
         /*todo make it do communication between server and client*/

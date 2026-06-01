@@ -5,6 +5,7 @@
 ** server_helper
 */
 
+#include "Player.hpp"
 #include "Server.hpp"
 #include <algorithm>
 #include <cstring>
@@ -12,7 +13,7 @@
 #include <string>
 #include <unistd.h>
 
-static void free_team_slot(std::vector<std::shared_ptr<Team>> &teams, std::shared_ptr<Client> client)
+void Server::free_team_slot(std::shared_ptr<Client> client)
 {
     std::shared_ptr<Player> player = std::dynamic_pointer_cast<Player>(client);
     if (!player)
@@ -129,6 +130,13 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
     return player;
 }
 
+std::shared_ptr<Gui> Server::create_gui(int client_fd)
+{
+    std::shared_ptr<Gui> gui = std::make_shared<Gui>(_gui_subject, client_fd);
+    _gui_subject.Attach(gui.get());
+    return gui;
+}
+
 void Server::remove_client(int client_fd)
 {
     auto it = _clients.find(client_fd);
@@ -136,7 +144,7 @@ void Server::remove_client(int client_fd)
         return;
 
     it->second->RemoveMeFromList();
-    free_team_slot(teams, it->second);
+    free_team_slot(it->second);
     _clients.erase(it);
 
     _fds.erase(std::remove_if(_fds.begin(), _fds.end(),
@@ -178,10 +186,8 @@ void Server::accept_new_client()
     }
     buffer[bytes_read] = '\0'; //null terminate the buffer to make it a
     if (strcmp(buffer, "GRAPHIC\n") == 0) {
-        //they are a gui
-        //std::shared_ptr<Client> client = std::make_shared<Client>();
-        //client->control_fd = client_fd;
-        //add_client(client);
+        std::shared_ptr<Gui> gui = create_gui(client_fd);
+        add_client(gui);
     } else {
         //they are a player, we need to check if the team they want is a valid one, and if there is still a spot left in that team
         std::string team_name(buffer);

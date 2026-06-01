@@ -10,6 +10,7 @@
 
 #include "Client.hpp"
 #include "Egg.hpp"
+#include "Gui.hpp"
 #include "Struct.hpp"
 #include "Player.hpp"
 #include "Team.hpp"
@@ -31,6 +32,7 @@ class Server
         void remove_client(int client_fd);
         void handle_client_event(int client_fd);
         void handle_event();
+        void free_team_slot(std::shared_ptr<Client> client);
         /*server setup functions*/
         int create_server_socket();
         sockaddr_in bind_socket(int port, int server_fd);
@@ -41,6 +43,7 @@ class Server
         /*game functions*/
         void poll_clients(int timeout);
         std::shared_ptr<Player> create_player(int client_fd, std::string team_name);
+        std::shared_ptr<Gui> create_gui(int client_fd);
 
 
         void populate_map_resources();
