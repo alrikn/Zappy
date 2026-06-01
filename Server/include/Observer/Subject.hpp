@@ -20,6 +20,8 @@ class Subject : public ISubject
         std::string _message = ""; //the message that will be sent to the observers when they are notified
     protected:
     public:
+        Subject() = default;
+        ~Subject() = default;
 
         void Attach(Client *observer) override {
             _observers.push_back(observer);

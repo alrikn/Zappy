@@ -6,6 +6,7 @@
 */
 
 #include "Client.hpp"
+#include "Subject.hpp"
 #include <unistd.h>
 
 
@@ -30,4 +31,9 @@ std::string Client::receive_message()
 void Client::Update(std::string message)
 {
     send_message(message);
+}
+
+void Client::RemoveMeFromList()
+{
+    _subject.Detach(this);
 }

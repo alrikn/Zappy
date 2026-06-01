@@ -22,12 +22,14 @@ typedef enum orientation{
     WEST = 3
 } orientation_t;
 
+class Subject;
+
 class Player : public Client
 {
     private:
     protected:
     public:
-        Player(int control_fd = -1) : Client(control_fd, PLAYER) {};
+        Player(Subject &subject, int control_fd = -1) : Client(PLAYER, subject, control_fd) {};
         ~Player() = default;
 
 

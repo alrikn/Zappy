@@ -102,7 +102,7 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
 
     std::vector<int> position; //= random_unncoupied_position(team_name);
 
-    std::shared_ptr<Player> player = std::make_shared<Player>(client_fd);
+    std::shared_ptr<Player> player = std::make_shared<Player>(_player_subject, client_fd);
 
     player->set_orientation(NORTH)
     .set_team_name(team_name)
