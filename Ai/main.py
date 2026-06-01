@@ -36,3 +36,17 @@ def parse_args() -> tuple[int, str, str]:
 
     return args.port, args.name, args.machine
 
+
+def main():
+    port, name, machine = parse_args()
+
+    # open connection and do the handshake first, then launch the ai loop
+    conn = Connection(machine, port)
+    world_x, world_y, slots = conn.handshake(name)
+
+    ai = PlayerAI(conn, name, world_x, world_y)
+    ai.run()
+
+
+if __name__ == "__main__":
+    main()
