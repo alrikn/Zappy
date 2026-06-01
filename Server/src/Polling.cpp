@@ -68,7 +68,7 @@ void Server::handle_event()
         } else {
             size_t prev_size = _fds.size();
             handle_client_event(_fds[i].fd);
-            if (_fds.size() < prev_size)
+            if (_fds.size() < prev_size && i > 0)
                 i--; // fd was removed during handling, recheck this index
         }
     }

@@ -51,7 +51,7 @@ class Client
         // (essentially, when some kind of event happens to the server, we want to inform the puplic about it.)
         //this will probably mostly be used for the gui, but it could also be used for the player (for example, to inform the player of the result of a command they sent to the server)
         //we may need to change it up a bit and add some kind of enum to inform the client exactly what kind of command it is.
-        void Update(std::string message);
+        virtual void Update(std::string message);
         void RemoveMeFromList();
 };
 

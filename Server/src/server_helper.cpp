@@ -108,6 +108,7 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
     for (const std::shared_ptr<Team> &team : teams)
         if (team->name == team_name) {
             team_found = true;
+            team->spots_left--;
             if (team->spots_left <= 0)
                 return nullptr;
         }
@@ -116,6 +117,8 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
     //now we create the player. we give him a random non occupied position
 
     std::vector<int> position; //= random_unncoupied_position(team_name);
+    position.push_back(rand() % _map[0].size());
+    position.push_back(rand() % _map.size());
 
     std::shared_ptr<Player> player = std::make_shared<Player>(_player_subject, client_fd);
 
