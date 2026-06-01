@@ -11,6 +11,9 @@ SRC = main.cpp \
 	src/Polling.cpp \
 	src/server_helper.cpp \
 	src/game_loop.cpp \
+	src/Clients/Client.cpp \
+	src/Clients/Player/Player.cpp \
+	src/Clients/Gui/Gui.cpp \
 
 
 OBJ = $(SRC:.cpp=.o)
