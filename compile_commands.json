@@ -10,6 +10,8 @@
       "-fno-omit-frame-pointer",
       "-I",
       "include",
+      "-I",
+      "include/Observer",
       "-c",
       "-o",
       "main.o",
@@ -30,13 +32,37 @@
       "-fno-omit-frame-pointer",
       "-I",
       "include",
+      "-I",
+      "include/Observer",
       "-c",
       "-o",
-      "src/Server.o",
-      "src/Server.cpp"
+      "src/Polling.o",
+      "src/Polling.cpp"
     ],
     "directory": "/home/alrik/personal/Zappy/Server",
-    "file": "/home/alrik/personal/Zappy/Server/src/Server.cpp",
-    "output": "/home/alrik/personal/Zappy/Server/src/Server.o"
+    "file": "/home/alrik/personal/Zappy/Server/src/Polling.cpp",
+    "output": "/home/alrik/personal/Zappy/Server/src/Polling.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/clang++",
+      "-std=c++20",
+      "-Wall",
+      "-Wextra",
+      "-g",
+      "-O2",
+      "-fno-omit-frame-pointer",
+      "-I",
+      "include",
+      "-I",
+      "include/Observer",
+      "-c",
+      "-o",
+      "src/server_helper.o",
+      "src/server_helper.cpp"
+    ],
+    "directory": "/home/alrik/personal/Zappy/Server",
+    "file": "/home/alrik/personal/Zappy/Server/src/server_helper.cpp",
+    "output": "/home/alrik/personal/Zappy/Server/src/server_helper.o"
   }
 ]

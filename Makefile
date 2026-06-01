@@ -22,6 +22,8 @@ clean:
 	$(MAKE) -C Gui clean
 
 fclean:	clean
+	$(MAKE) -C Server fclean
+	$(MAKE) -C Gui fclean
 	rm -f zappy_server zappy_gui
 
 re:	fclean all
