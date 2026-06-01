@@ -14,6 +14,7 @@
 #include "Player.hpp"
 #include "Team.hpp"
 #include "Tiles.hpp"
+#include "Subject.hpp"
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -62,6 +63,9 @@ class Server
 
 
         /*server variables*/
+        //main subject functions from the observer pattern:
+        Subject _gui_subject; //the subject that all gui observe
+        Subject _player_subject; //the subject that all players observe, we may not need this but it could be useful to inform the player of certain events (for example, the result of a command they sent to the server)
         //TODO: there might be a need to make its a shared ptr
         std::vector<std::vector<Tiles>> _map; //map of the game, each cell is like an inventory since it coins resources on that cell
         std::unordered_map<int, std::shared_ptr<Client>> _clients; //map of all connected clients, keyed by client fd

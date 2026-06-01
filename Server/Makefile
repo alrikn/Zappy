@@ -16,7 +16,7 @@ SRC = main.cpp \
 OBJ = $(SRC:.cpp=.o)
 CXX = clang++
 CXXFLAGS = -std=c++20 -Wall -Wextra -g -O2 -fno-omit-frame-pointer
-CPPFLAGS = -I include
+CPPFLAGS = -I include -I include/Observer
 
 all: $(NAME)
 
