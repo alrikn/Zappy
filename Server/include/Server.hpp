@@ -45,6 +45,11 @@ class Server
         void populate_map_resources();
         void game_tick();
 
+        /*observer behavioral pattern functions*/
+        void attach(Client *client);
+        void detach(Client *client);
+        void notify();
+
     protected:
     public:
         Server(int port_number,

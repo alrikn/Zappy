@@ -34,9 +34,21 @@ class Client
 
 
         /* client functions*/
+
         void send_message(std::string message);
         std::string receive_message();
 
+        /*helper funcs*/
+        client_type_t get_type() const { return type; }
+
+
+        /*observer behavioral pattern functions*/
+
+        //this will inform the client of any updates from the server.
+        // (essentially, when some kind of event happens to the server, we want to inform the puplic about it.)
+        //this will probably mostly be used for the gui, but it could also be used for the player (for example, to inform the player of the result of a command they sent to the server)
+        //we may need to change it up a bit and add some kind of enum to inform the client exactly what kind of command it is.
+        virtual void update(std::string message) = 0;
 };
 
 
