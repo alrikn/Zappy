@@ -63,3 +63,36 @@ def inventory(conn: Connection, cb: Callable[[dict[str, int]], None]):
     conn.push("Inventory", parse)
 
 
+def broadcast(conn: Connection, text: str, cb: Callable[[bool], None]):
+    conn.push(f"Broadcast {text}", lambda r: cb(r == "ok"))
+
+
+def connect_nbr(conn: Connection, cb: Callable[[int], None]):
+    """
+    asks how many open slots the team still has,
+    usefull to know if we should fork or not
+    """
+    def parse(raw: str):
+        try:
+            cb(int(raw.strip()))
+        except ValueError:
+            cb(0)
+    conn.push("Connect_nbr", parse)
+
+
+def fork(conn: Connection, cb: Callable[[bool], None]):
+    # takes 42/f time units, pretty slow but necessary to grow the team
+    conn.push("Fork", lambda r: cb(r == "ok"))
+
+
+def eject(conn: Connection, cb: Callable[[bool], None]):
+    conn.push("Eject", lambda r: cb(r == "ok"))
+
+
+def take(conn: Connection, resource: str, cb: Callable[[bool], None]):
+    conn.push(f"Take {resource}", lambda r: cb(r == "ok"))
+
+
+def set_down(conn: Connection, resource: str, cb: Callable[[bool], None]):
+    conn.push(f"Set {resource}", lambda r: cb(r == "ok"))
+
