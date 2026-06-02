@@ -197,3 +197,17 @@ class PlayerAI:
 
         cmd.fork(self.conn, on_fork)
 
+
+    def _on_eject(self, k: int):
+        """
+        we got pushed off our tile by another player,
+        if we were waiting for the ritual we need to go back to the leader
+        """
+        self._tiles = []
+        if self.state == State.WAIT_TEAM:
+            self._leader_k = k
+            self._transition(State.SEEK_TEAM)
+
+    def _on_level_up(self, level: int):
+        # this fires if the lvl up comes from an external incantation we joined
+        self.level = level
