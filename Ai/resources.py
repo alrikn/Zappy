@@ -43,3 +43,28 @@ def get_deficit(inventory: dict[str, int], level: int) -> dict[str, int]:
     return deficit
 
 
+def has_all_stones(inventory: dict[str, int], level: int) -> bool:
+    """true if we have everything we need for the current level incantation"""
+    return len(get_deficit(inventory, level)) == 0
+
+
+def next_stone_to_collect(inventory: dict[str, int], level: int) -> str | None:
+    """
+    returns the name of the next stone we should go look for,
+    we priotize rarer stones first so we dont waste time collecting common ones
+    while the rare ones are still missing,
+    returns None if inventory is already complete
+    """
+    deficit = get_deficit(inventory, level)
+    if not deficit:
+        return None
+    for stone in RARITY_ORDER:
+        if stone in deficit:
+            return stone
+    # fallback, shoudnt happen rly
+    return next(iter(deficit))
+
+
+def players_needed(level: int) -> int:
+    """how many players need to be on the tile to do the incantation at this level"""
+    return ELEVATION.get(level, {}).get("players", 1)
