@@ -197,6 +197,81 @@ class PlayerAI:
 
         cmd.fork(self.conn, on_fork)
 
+    # inventory and look refresh
+
+    def _request_inventory(self):
+        self._inventory_pending = True
+
+        def on_inv(inv: dict):
+            self._inventory_pending = False
+            if inv:
+                self.inventory = inv
+
+        cmd.inventory(self.conn, on_inv)
+
+    def _request_look(self):
+        self._look_pending = True
+
+        def on_look(tiles: list):
+            self._look_pending = False
+            if tiles:
+                self._tiles = tiles
+
+        cmd.look(self.conn, on_look)
+
+    # event callbacks
+
+    def _on_take_done(self, ok: bool):
+        self._action_pending = False
+
+    def _clear_action(self, *_):
+        self._action_pending = False
+
+    def _on_broadcast(self, k: int, text: str):
+        """
+        handles incoming broadcast messages,
+        we only care about messages from our own team (prefixed with ZAPPY:)
+        """
+        parsed = bcast.decode(text)
+        if parsed is None:
+            return
+        msg_type, payload = parsed
+
+        if msg_type == bcast.NEED_INC:
+            parts = payload.split(":")
+            if len(parts) != 2:
+                return
+            level_str, leader_uid = parts
+            try:
+                level = int(level_str)
+            except ValueError:
+                return
+            # if we're already folowing this leader, just update the direction
+            if self._leader_uid == leader_uid and self.state == State.SEEK_TEAM:
+                self._leader_k = k
+                return
+            # join if we're the right level and not already committed to someone else
+            if (level == self.level
+                    and self._leader_uid is None
+                    and self.state in (State.GATHER_STONES, State.GATHER_FOOD)):
+                self._leader_uid = leader_uid
+                self._leader_k   = k
+                self._seek_ticks = 0
+                cmd.broadcast(self.conn, bcast.encode(bcast.IM_COMING, leader_uid),
+                               lambda ok: None)
+                self._transition(State.SEEK_TEAM)
+
+        elif msg_type == bcast.IM_READY:
+            # a follower arrived at our tile (only relevant if we are the leader)
+            if payload == self.uid:
+                self._ready_count += 1
+
+        elif msg_type == bcast.START:
+            # leader says start, we join the incant
+            if payload == self._leader_uid and self.state == State.WAIT_TEAM:
+                self._transition(State.INCANTATING)
+                self._action_pending = True
+                cmd.incantation(self.conn, self._on_incantation_result)
 
     def _on_eject(self, k: int):
         """
