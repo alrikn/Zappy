@@ -28,3 +28,41 @@ class Connection:
         # deque is perfect here bc we need fifo order and fast popleft
         self._pending: deque[tuple[str, Callable]] = deque()
         self._in_flight: int = 0
+
+        # callbacks for messages the server sends without us asking
+        self._on_dead: Callable | None = None
+        self._on_broadcast: Callable | None = None  # called with (k: int, text: str)
+        self._on_eject: Callable | None = None       # called with (k: int)
+        self._on_level_up: Callable | None = None    # called with (new_level: int)
+
+    # handshake is blocking, we call it once before the main loop starts
+
+    def handshake(self, team_name: str) -> tuple[int, int, int]:
+        """
+        does the initial handshake with the server
+        the protocol is:
+          server -> WELCOME
+          client -> team name
+          server -> number of slots left
+          server -> world width and height
+        returns (world_x, world_y, slots)
+        """
+        welcome = self._recv_line_blocking()
+        if welcome != "WELCOME":
+            print(f"expected WELCOME, got: {welcome!r}", file=sys.stderr)
+            sys.exit(1)
+
+        self._send_raw(team_name + "\n")
+
+        slots_line = self._recv_line_blocking()
+        dims_line  = self._recv_line_blocking()
+
+        try:
+            slots = int(slots_line.strip())
+            x, y = map(int, dims_line.strip().split())
+        except ValueError:
+            print(f"bad handshake response: {slots_line!r} / {dims_line!r}", file=sys.stderr)
+            sys.exit(1)
+
+        return x, y, slots
+
