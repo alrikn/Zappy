@@ -12,7 +12,7 @@ from player import PlayerAI
 
 
 def parse_args() -> tuple[int, str, str]:
-    # using argparse here, way cleaner than doing it manually
+    # using argparse here, way cleaner than doing it manualy
     # https://docs.python.org/3/library/argparse.html
     parser = argparse.ArgumentParser(
         prog="zappy_ai",
@@ -29,7 +29,7 @@ def parse_args() -> tuple[int, str, str]:
     except SystemExit:
         sys.exit(84)
 
-    # basic check on the port
+    # basic sanity chek on the port
     if args.port <= 0 or args.port > 65535:
         print("USAGE: ./zappy_ai -p port -n name -h machine", file=sys.stderr)
         sys.exit(84)
