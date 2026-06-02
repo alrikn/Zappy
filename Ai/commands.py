@@ -96,3 +96,28 @@ def take(conn: Connection, resource: str, cb: Callable[[bool], None]):
 def set_down(conn: Connection, resource: str, cb: Callable[[bool], None]):
     conn.push(f"Set {resource}", lambda r: cb(r == "ok"))
 
+
+def incantation(conn: Connection, cb: Callable[[int | None], None]):
+    """
+    starts an incantation, its a bit tricky bc the server sends two seperate lines:
+      1. "Elevation underway"  -> immediate response to the command
+      2. "Current level: k"   -> arrives after the ritual finishes (300/f later)
+    so we rgst  an on_level_up handler in the connexion to catch the second one,
+    cb gets the new level on success, or none if it failed (ko)
+    """
+    def on_first_response(raw: str):
+        if raw == "ko":
+            conn.on_level_up(None)
+            cb(None)
+            return
+        if raw.startswith("Elevation underway"):
+            # nice, ritual started, now wait for lvl up event
+            def on_level(level: int):
+                conn.on_level_up(None)  # deregister so it doesnt fire again
+                cb(level)
+            conn.on_level_up(on_level)
+        else:
+            conn.on_level_up(None)
+            cb(None)
+
+    conn.push("Incantation", on_first_response)
