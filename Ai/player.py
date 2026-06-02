@@ -150,6 +150,37 @@ class PlayerAI:
             return
         self._navigate_to_resource(stone)
 
+    def _act_seek_team(self):
+        if self._leader_uid is None:
+            # nobody called for an incantation yet, so we become the leader
+            self._become_leader()
+            return
+
+        if self._leader_k is not None:
+            if self._leader_k == 0:
+                # we are already on the leaders tile
+                self._leader_k = None
+                cmd.broadcast(self.conn, bcast.encode(bcast.IM_READY, self._leader_uid),
+                               lambda ok: None)
+                self._transition(State.WAIT_TEAM)
+            else:
+                # take one step toward the leader based on bcast dir
+                moves = bcast.moves_toward(self._leader_k)
+                self._leader_k = None
+                self._execute_moves(moves)
+
+    def _act_wait_team(self):
+        # drop anything we dont need so the tile has the right stones
+        self._drop_excess()
+
+        if self._leader_uid == self.uid:
+            # we're the leader, check if enought players showed up
+            needed  = players_needed(self.level)
+            on_tile = count_players_on_tile(self._tiles, 0)
+            if on_tile >= needed:
+                self._fire_incantation()
+        # followers just sit here and wait for the START broadcast
+
     # navigation helpers below 
 
     def _navigate_to_resource(self, resource: str):
