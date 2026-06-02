@@ -66,3 +66,17 @@ class Connection:
 
         return x, y, slots
 
+    def push(self, command: str, callback: Callable[[str], None]) -> bool:
+        """
+        queues a command to be sent to the server,
+        returns false if the pipeline is full, caller should retry later,
+        commands get repsonse in the same order they were sent (fifo)
+        so we just match responses to callbacks in order
+        """
+        if self._in_flight >= self.MAX_PIPELINE:
+            return False
+        self._send_raw(command + "\n")
+        self._pending.append((command, callback))
+        self._in_flight += 1
+        return True
+
