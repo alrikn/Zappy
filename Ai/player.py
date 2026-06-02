@@ -65,3 +65,45 @@ class PlayerAI:
         # get initial state before the loop starts
         self._request_inventory()
         self._request_look()
+
+    def run(self):
+        """main loop, runs forever until the player dies or the game ends"""
+        while True:
+            self.conn.pump()       # read socket, dispatch callbacks
+            self._update_state()   # check if we need to transition
+            self._act()            # do one action based on current state
+            time.sleep(0.01)       # small sleep to avoid busy spinning
+
+    # state transition logic
+
+    def _update_state(self):
+        food = self.inventory.get("food", 0)
+
+        # food check always wins regardless of what state we are in
+        # (except during incantation where we're frozen and cant do anything anyway)
+        if food < FOOD_CRITICAL and self.state not in (State.SURVIVE, State.INCANTATING):
+            self._transition(State.SURVIVE)
+            return
+
+        if self.state == State.SURVIVE and food >= FOOD_CRITICAL + 5:
+            self._transition(State.GATHER_FOOD)
+
+        elif self.state == State.GATHER_FOOD and food >= FOOD_SAFE:
+            self._transition(State.GATHER_STONES)
+
+        elif self.state == State.GATHER_STONES:
+            if has_all_stones(self.inventory, self.level):
+                self._transition(State.SEEK_TEAM)
+            elif food < FOOD_SAFE:
+                # food droped while gathering, go refill
+                self._transition(State.GATHER_FOOD)
+
+        elif self.state == State.SEEK_TEAM:
+            self._seek_ticks += 1
+            if self._seek_ticks > SEEK_TIMEOUT:
+                # leader probably died, give up and start over
+                self._leader_uid  = None
+                self._leader_k    = None
+                self._seek_ticks  = 0
+                self._transition(State.GATHER_STONES)
+
