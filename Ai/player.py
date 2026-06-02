@@ -181,6 +181,34 @@ class PlayerAI:
                 self._fire_incantation()
         # followers just sit here and wait for the START broadcast
 
+    # leader side of the incantation coordination
+
+    def _become_leader(self):
+        """takes on the leader role and starts broadcasting to gather teammates"""
+        self._leader_uid  = self.uid
+        self._ready_count = 0
+        text = bcast.encode(bcast.NEED_INC, f"{self.level}:{self.uid}")
+        cmd.broadcast(self.conn, text, lambda ok: None)
+
+    def _fire_incantation(self):
+        """all players are here, send the START signal and kick off the ritual"""
+        text = bcast.encode(bcast.START, self.uid)
+        cmd.broadcast(self.conn, text, lambda ok: None)
+        self._transition(State.INCANTATING)
+        self._action_pending = True
+        cmd.incantation(self.conn, self._on_incantation_result)
+
+    def _on_incantation_result(self, new_level: int | None):
+        self._action_pending = False
+        self._leader_uid     = None
+        if new_level is not None:
+            self.level = new_level
+            print(f"[{self.uid}] leveled up to {self.level}!")
+            cmd.broadcast(self.conn, bcast.encode(bcast.LVL_UP, str(self.level)),
+                          lambda ok: None)
+        # whether it worked or not, go back to gathering food
+        self._transition(State.GATHER_FOOD)
+
     # navigation helpers below 
 
     def _navigate_to_resource(self, resource: str):
