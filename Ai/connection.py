@@ -80,3 +80,73 @@ class Connection:
         self._in_flight += 1
         return True
 
+    def pump(self):
+        """
+        reads all avialble data from the socket and dispatches responses,
+        uses select with timeout=0 so it doesnt block
+        call this every itaration of the main ai loop
+        """
+        # select with 0 timeout = just check if data is available, dont block
+        readable, _, _ = select.select([self._sock], [], [], 0)
+        if not readable:
+            return
+
+        try:
+            chunk = self._sock.recv(4096).decode()
+        except BlockingIOError:
+            return
+
+        if not chunk:
+            # server closed the connection
+            sys.exit(0)
+
+        self._recv_buf += chunk
+        self._dispatch_lines()
+
+    def _dispatch_lines(self):
+        # split buffer by newlines and ahdnle each complete line
+        while "\n" in self._recv_buf:
+            line, self._recv_buf = self._recv_buf.split("\n", 1)
+            line = line.strip()
+            if not line:
+                continue
+            self._handle_line(line)
+
+    def _handle_line(self, line: str):
+        # unsolicited msgs have to be caught before we try to match a pending cmd
+        # otherwise wed feed "dead" to whatever callback is waiting, which is wrong
+        if line == "dead":
+            if self._on_dead:
+                self._on_dead()
+            sys.exit(0)
+
+        if line.startswith("message "):
+            self._handle_broadcast(line)
+            return
+
+        if line.startswith("eject: "):
+            try:
+                k = int(line.split(": ", 1)[1])
+            except ValueError:
+                return
+            if self._on_eject:
+                self._on_eject(k)
+            return
+
+        # "Current level: k" is the 2nd part of a succesful incantation response
+        # it arrives after the freeze period ends, so we treat it as unsolictied
+        if line.startswith("Current level:"):
+            try:
+                level = int(line.split(":")[-1].strip())
+            except ValueError:
+                level = 0
+            if self._on_level_up:
+                self._on_level_up(level)
+            return
+
+        # if we get here its a normal response to the oldest pending command
+        if self._pending:
+            _, callback = self._pending.popleft()
+            self._in_flight -= 1
+            callback(line)
+
