@@ -176,3 +176,24 @@ class PlayerAI:
             for _ in range(have - need):
                 cmd.set_down(self.conn, stone, lambda ok: None)
 
+    # forking
+
+    def _try_fork(self):
+        """
+        spawns a new player if we have enough food and the team needs more slots,
+        fork takes a long time (42/f) so we only do it when we can afford it
+        """
+        if self.inventory.get("food", 0) < FOOD_FORK_MIN:
+            return
+        prev_state = self.state
+        self._transition(State.FORKING)
+        self._action_pending = True
+
+        def on_fork(ok: bool):
+            self._action_pending = False
+            cmd.broadcast(self.conn, bcast.encode(bcast.FORKING, self.team_name),
+                          lambda ok2: None)
+            self._transition(prev_state)
+
+        cmd.fork(self.conn, on_fork)
+
