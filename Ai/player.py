@@ -107,6 +107,48 @@ class PlayerAI:
                 self._seek_ticks  = 0
                 self._transition(State.GATHER_STONES)
 
+    def _transition(self, new_state: State):
+        print(f"[{self.uid}] {self.state} -> {new_state}")
+        self.state           = new_state
+        self._action_pending = False
+
+    # per state action handlers
+
+    def _act(self):
+        if self._action_pending:
+            return
+        # always keep inventory and vision fresh
+        if not self._inventory_pending:
+            self._request_inventory()
+        if not self._look_pending:
+            self._request_look()
+
+        if self.state == State.SURVIVE:
+            self._act_survive()
+        elif self.state == State.GATHER_FOOD:
+            self._act_gather_food()
+        elif self.state == State.GATHER_STONES:
+            self._act_gather_stones()
+        elif self.state == State.SEEK_TEAM:
+            self._act_seek_team()
+        elif self.state == State.WAIT_TEAM:
+            self._act_wait_team()
+        elif self.state == State.FORKING:
+            pass  # handled by the fork callback
+        elif self.state == State.INCANTATING:
+            pass  # frozen, nothing we can do
+
+    def _act_survive(self):
+        self._navigate_to_resource("food")
+
+    def _act_gather_food(self):
+        self._navigate_to_resource("food")
+
+    def _act_gather_stones(self):
+        stone = next_stone_to_collect(self.inventory, self.level)
+        if stone is None:
+            return
+        self._navigate_to_resource(stone)
 
     # navigation helpers below 
 
