@@ -171,7 +171,7 @@ At the end of the incantation, the exact quantity of resources needed by the rit
 
 
 ## Bonus
-
+(we in now way have to do the bonus. this will only be done if we have finished absolutely everything else and if we have time left)
 
 ### Server commands
 

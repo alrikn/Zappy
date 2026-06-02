@@ -41,7 +41,7 @@ void Server::handle_client_event(int client_fd)
     size_t pos;
 
     if (n <= 0) {
-        //remove_client(client_fd); TODO implement
+        remove_client(client_fd);
         return;
     }
 
@@ -63,10 +63,13 @@ void Server::handle_event()
         if (!(_fds[i].revents & POLLIN)) //check if an event happened that we can read
             continue;
 
-        if (_fds[i].fd == _server_fd) { //this means that there is a new client we need to acces
+        if (_fds[i].fd == _server_fd) {
             accept_new_client();
-        } else {//otherwise it means that the client sent us smth, so we read it
+        } else {
+            size_t prev_size = _fds.size();
             handle_client_event(_fds[i].fd);
+            if (_fds.size() < prev_size && i > 0)
+                i--; // fd was removed during handling, recheck this index
         }
     }
 }

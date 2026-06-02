@@ -16,7 +16,7 @@ class Gui : public Client
     private:
     protected:
     public:
-        Gui(int control_fd = -1) : Client(control_fd, GUI) {};
+        Gui(Subject &subject, int control_fd = -1) : Client(GUI, subject, control_fd) {};
         ~Gui() = default;
 
         /*

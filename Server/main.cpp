@@ -27,6 +27,11 @@ int main(int argc, char **argv)
 {
     std::signal(SIGINT, signal_handler);
     Server server = handle_arguments(argc, argv);
-    server.run();
+    try {
+        server.run();
+    } catch (const std::exception &e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 84;
+    }
     return 0;
 }
