@@ -150,3 +150,45 @@ class Connection:
             self._in_flight -= 1
             callback(line)
 
+    def _handle_broadcast(self, line: str):
+        # format is "message K, text" where K is the dir tile
+        try:
+            after_msg = line[len("message "):]
+            k_str, text = after_msg.split(", ", 1)
+            k = int(k_str)
+        except (ValueError, IndexError):
+            return
+        if self._on_broadcast:
+            self._on_broadcast(k, text)
+
+    def _send_raw(self, data: str):
+        self._sock.sendall(data.encode())
+
+    def _recv_line_blocking(self) -> str:
+        """
+        blocking read of one line, only used during the hs,
+        after hs we switch to async mode and use pump() instead
+        """
+        self._sock.setblocking(True)
+        while "\n" not in self._recv_buf:
+            chunk = self._sock.recv(1024).decode()
+            if not chunk:
+                sys.exit(1)
+            self._recv_buf += chunk
+        line, self._recv_buf = self._recv_buf.split("\n", 1)
+        self._sock.setblocking(False)
+        return line.strip()
+
+    # register handlers for unsolicited server messages
+
+    def on_dead(self, fn: Callable):
+        self._on_dead = fn
+
+    def on_broadcast(self, fn: Callable):
+        self._on_broadcast = fn
+
+    def on_eject(self, fn: Callable):
+        self._on_eject = fn
+
+    def on_level_up(self, fn: Callable | None):
+        self._on_level_up = fn
