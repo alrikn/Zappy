@@ -107,3 +107,72 @@ class PlayerAI:
                 self._seek_ticks  = 0
                 self._transition(State.GATHER_STONES)
 
+
+    # navigation helpers below 
+
+    def _navigate_to_resource(self, resource: str):
+        """
+        tries to move toward the given resource using look data,
+        if the resource is on our current tile we just take it,
+        if its visible in a nearbly tile we move one step toward it,
+        if its not visible at all we just wander and hope to find it
+        """
+        tiles = self._tiles
+        if not tiles:
+            self._wander()
+            return
+
+        # take from current tile immediately if its there
+        if resource in tiles[0]:
+            self._action_pending = True
+            cmd.take(self.conn, resource, self._on_take_done)
+            return
+
+        idx = find_resource(tiles, resource)
+        if idx is None:
+            self._wander()
+            return
+
+        moves = tile_to_moves(idx, self.level)
+        if moves:
+            self._execute_moves(moves)
+        else:
+            self._wander()
+
+    def _wander(self):
+        """random movement when we dont know where to go"""
+        self._action_pending = True
+        if random.random() < 0.3:
+            cmd.turn_right(self.conn, lambda ok: self._clear_action())
+        else:
+            cmd.forward(self.conn, lambda ok: self._clear_action())
+
+    def _execute_moves(self, moves: list[str]):
+        """executes the first move from a list, one step at a time"""
+        if not moves:
+            return
+        self._action_pending = True
+        move = moves[0]
+        if move == "Forward":
+            cmd.forward(self.conn, lambda ok: self._clear_action())
+        elif move == "Right":
+            cmd.turn_right(self.conn, lambda ok: self._clear_action())
+        elif move == "Left":
+            cmd.turn_left(self.conn, lambda ok: self._clear_action())
+
+    def _drop_excess(self):
+        """
+        drops any stones we have more of than needed for the incantation,
+        we do this before the ritual so the tile ends up with the right amounts,
+        food is never dropped
+        """
+        from resources import ELEVATION
+        if self.level not in ELEVATION:
+            return
+        needed = ELEVATION[self.level]
+        for stone in STONES:
+            have = self.inventory.get(stone, 0)
+            need = needed.get(stone, 0)
+            for _ in range(have - need):
+                cmd.set_down(self.conn, stone, lambda ok: None)
+
