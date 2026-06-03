@@ -103,7 +103,9 @@ class PlayerAI:
             self._transition(State.GATHER_STONES)
 
         elif self.state == State.GATHER_STONES:
-            if has_all_stones(self.inventory, self.level):
+            if self._coord_cooldown > 0:
+                self._coord_cooldown -= 1
+            elif has_all_stones(self.inventory, self.level):
                 self._transition(State.SEEK_TEAM)
             elif food < FOOD_SAFE:
                 # food droped while gathering, go refill
