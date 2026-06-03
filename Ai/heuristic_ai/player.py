@@ -298,17 +298,28 @@ class PlayerAI:
             cmd.forward(self.conn, lambda ok: self._clear_action())
 
     def _execute_moves(self, moves: list[str]):
-        """executes the first move from a list, one step at a time"""
+        """
+        sends all moves in the list to the server using the pipeline,
+        _action_pending clears only after the last one completes,
+        for straight ahead paths this pipelines up to 3 forwards at once
+        """
         if not moves:
             return
         self._action_pending = True
-        move = moves[0]
-        if move == "Forward":
-            cmd.forward(self.conn, lambda ok: self._clear_action())
-        elif move == "Right":
-            cmd.turn_right(self.conn, lambda ok: self._clear_action())
-        elif move == "Left":
-            cmd.turn_left(self.conn, lambda ok: self._clear_action())
+        pending = [len(moves)]
+
+        def done(_):
+            pending[0] -= 1
+            if pending[0] <= 0:
+                self._clear_action()
+
+        for move in moves:
+            if move == "Forward":
+                cmd.forward(self.conn, done)
+            elif move == "Right":
+                cmd.turn_right(self.conn, done)
+            elif move == "Left":
+                cmd.turn_left(self.conn, done)
 
     def _drop_excess(self):
         """
