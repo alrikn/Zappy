@@ -69,17 +69,19 @@ def tile_to_moves(tile_index: int, level: int) -> list[str]:
     col_in_row = (tile_index - 1) % width  # 0 = leftmost col
     center = level                          # center column index
 
-    commands = []
-
-    # turn toward the right column first?????????????????????
     offset = col_in_row - center  # negative = left of center, positive = right
+
+    # if we're more than 1 row away and the offset is small relative to the distance,
+    # just go forward to close the gap first instead of turning (avoids oscillation)
+    if row > 1 and abs(offset) < row:
+        # straight ahead is the right move, pipeline up to 3 forwards at once
+        return ["Forward"] * min(row, 3)
+
+    # otherwise fix the column first, then step forward
+    commands = []
     if offset < 0:
         commands.append("Left")
     elif offset > 0:
         commands.append("Right")
-
-    # then always step forward
-    # we do one step at a time and re calc   after each move
     commands.append("Forward")
-
     return commands
