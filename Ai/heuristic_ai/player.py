@@ -131,6 +131,15 @@ class PlayerAI:
 
     def _transition(self, new_state: State):
         print(f"[{self.uid}] {self.state} -> {new_state}")
+        # reset ritual state when entering or leaving a ritual
+        if new_state == State.WAIT_TEAM:
+            self._stones_dropped = False
+            self._bcast_ticks    = 0
+        if new_state in (State.GATHER_FOOD, State.GATHER_STONES, State.SURVIVE):
+            self._leader_uid     = None
+            self._leader_k       = None
+            self._seek_ticks     = 0
+            self._stones_dropped = False
         self.state           = new_state
         self._action_pending = False
 
