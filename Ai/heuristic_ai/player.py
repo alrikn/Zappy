@@ -55,7 +55,18 @@ class PlayerAI:
         self._leader_uid: str | None = None  # uid of whoever called NEED_INC
         self._leader_k:   int | None = None  # most recent direction to leader
         self._ready_count: int = 0           # followers that said IM_READY to us
-        self._seek_ticks:  int = 0           # anti stall counter
+        self._seek_ticks:  int = 0           # anti stall counter for seek+wait
+
+        # ritual state
+        self._stones_dropped = False  # did we already drop our stones for this ritual?
+        self._bcast_ticks    = 0      # leader re broadcast interval counter
+
+        # forking
+        self._fork_ticks = 0          # how long since last fork attempt
+
+        # cooldown after failing coordination, prevents immediately becoming a
+        # new leader when we already have all stones but just timed out as follower
+        self._coord_cooldown = 0
 
         # hook up the unsolicited event handlers
         self.conn.on_broadcast(self._on_broadcast)
