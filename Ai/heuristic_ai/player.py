@@ -321,10 +321,11 @@ class PlayerAI:
             elif move == "Left":
                 cmd.turn_left(self.conn, done)
 
-    def _drop_excess(self):
+    def _drop_for_ritual(self):
         """
-        drops any stones we have more of than needed for the incantation,
-        we do this before the ritual so the tile ends up with the right amounts,
+        drops the required stones onto the current tile before incantating,
+        each player contributes up to what the ritual needs (min of have vs need),
+        the server checks the tile so stones must be on the ground not in inventory
         food is never dropped
         """
         from resources import ELEVATION
@@ -334,7 +335,8 @@ class PlayerAI:
         for stone in STONES:
             have = self.inventory.get(stone, 0)
             need = needed.get(stone, 0)
-            for _ in range(have - need):
+            # drop up to what's required, not excess
+            for _ in range(min(have, need)):
                 cmd.set_down(self.conn, stone, lambda ok: None)
 
     # forking
