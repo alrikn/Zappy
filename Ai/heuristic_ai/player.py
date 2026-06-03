@@ -343,22 +343,31 @@ class PlayerAI:
 
     def _try_fork(self):
         """
-        spawns a new player if we have enough food and the team needs more slots,
-        fork takes a long time (42/f) so we only do it when we can afford it
+        spawns a new player only if slots are actually needed and we have enuf food,
+        we check connect_nbr first bc forking when slots are already open is a waste
+        of 42/f time units
         """
         if self.inventory.get("food", 0) < FOOD_FORK_MIN:
             return
+
         prev_state = self.state
-        self._transition(State.FORKING)
-        self._action_pending = True
 
-        def on_fork(ok: bool):
-            self._action_pending = False
-            cmd.broadcast(self.conn, bcast.encode(bcast.FORKING, self.team_name),
-                          lambda ok2: None)
-            self._transition(prev_state)
+        def on_nbr(slots: int):
+            if slots > 0:
+                # slots still available, no need to fork rn
+                return
+            self._transition(State.FORKING)
+            self._action_pending = True
 
-        cmd.fork(self.conn, on_fork)
+            def on_fork(_: bool):
+                self._action_pending = False
+                cmd.broadcast(self.conn, bcast.encode(bcast.FORKING, self.team_name),
+                              lambda *args: None)
+                self._transition(prev_state)
+
+            cmd.fork(self.conn, on_fork)
+
+        cmd.connect_nbr(self.conn, on_nbr)
 
     # inventory and look refresh
 
