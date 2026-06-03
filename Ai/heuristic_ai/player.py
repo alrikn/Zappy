@@ -249,7 +249,7 @@ class PlayerAI:
 
     def _on_incantation_result(self, new_level: int | None):
         self._action_pending = False
-        self._leader_uid     = None
+        self._stones_dropped = False
         if new_level is not None:
             self.level = new_level
             print(f"[{self.uid}] leveled up to {self.level}!")
