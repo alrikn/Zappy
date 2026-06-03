@@ -114,10 +114,19 @@ class PlayerAI:
         elif self.state == State.SEEK_TEAM:
             self._seek_ticks += 1
             if self._seek_ticks > SEEK_TIMEOUT:
-                # leader probably died, give up and start over
-                self._leader_uid  = None
-                self._leader_k    = None
-                self._seek_ticks  = 0
+                # if we were a follower, add cooldown so we dont immediately
+                # become a new leader and compete with the original one
+                if self._leader_uid != self.uid:
+                    self._coord_cooldown = 50
+                self._transition(State.GATHER_STONES)
+
+        elif self.state == State.WAIT_TEAM:
+            self._seek_ticks += 1
+            if self._seek_ticks > SEEK_TIMEOUT * 2:
+                # same logic, followers get a cooldown before re-entering
+                if self._leader_uid != self.uid:
+                    self._coord_cooldown = 50
+                # waited too long, nobody came
                 self._transition(State.GATHER_STONES)
 
     def _transition(self, new_state: State):
