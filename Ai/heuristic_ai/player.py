@@ -154,6 +154,13 @@ class PlayerAI:
         if not self._look_pending:
             self._request_look()
 
+        # try to fork around every 150 ticks when not in a critical state
+        if self.state in (State.GATHER_FOOD, State.GATHER_STONES):
+            self._fork_ticks += 1
+            if self._fork_ticks >= 150:
+                self._fork_ticks = 0
+                self._try_fork()
+
         if self.state == State.SURVIVE:
             self._act_survive()
         elif self.state == State.GATHER_FOOD:
