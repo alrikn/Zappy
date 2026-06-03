@@ -208,11 +208,20 @@ class PlayerAI:
                 self._execute_moves(moves)
 
     def _act_wait_team(self):
-        # drop anything we dont need so the tile has the right stones
-        self._drop_excess()
+        # drop our required stones onto the tile once
+        if not self._stones_dropped:
+            self._drop_for_ritual()
+            self._stones_dropped = True
 
         if self._leader_uid == self.uid:
-            # we're the leader, check if enought players showed up
+            # re broadcast every 10 ticks so followers can keep navigating toward us
+            self._bcast_ticks += 1
+            if self._bcast_ticks >= 10:
+                self._bcast_ticks = 0
+                text = bcast.encode(bcast.NEED_INC, f"{self.level}:{self.uid}")
+                cmd.broadcast(self.conn, text, lambda ok: None)
+
+            # check if enought players are on our tile
             needed  = players_needed(self.level)
             on_tile = count_players_on_tile(self._tiles, 0)
             if on_tile >= needed:
