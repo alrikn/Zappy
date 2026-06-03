@@ -231,11 +231,13 @@ class PlayerAI:
     # leader side of the incantation coordination
 
     def _become_leader(self):
-        """takes on the leader role and starts broadcasting to gather teammates"""
+        """takes on the leader role, broadcasts NEED_INC and moves to wait state"""
         self._leader_uid  = self.uid
         self._ready_count = 0
         text = bcast.encode(bcast.NEED_INC, f"{self.level}:{self.uid}")
         cmd.broadcast(self.conn, text, lambda ok: None)
+        # leader is already at the meeting point so go straight to waiting
+        self._transition(State.WAIT_TEAM)
 
     def _fire_incantation(self):
         """all players are here, send the START signal and kick off the ritual"""
