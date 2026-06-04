@@ -12,4 +12,5 @@ zappy_ai
 *.tmp
 *.txt
 *.log
+*.json
 TODO.md
