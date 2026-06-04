@@ -55,6 +55,9 @@ class Player : public Client
         // so we need to be able to notify the player when certain events happen on the server,
         // and also be able to send commands to the server when the player wants to do something.
 
+
+        void parse_command(const std::string command, Server &server) override;
+
 };
 
 
