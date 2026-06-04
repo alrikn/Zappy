@@ -1,0 +1,35 @@
+/*
+** EPITECH PROJECT, 2026
+** Zappy
+** File description:
+** Movement
+*/
+
+#include "Player.hpp"
+#include "Server.hpp"
+
+
+void Player::move_forward(Server &server)
+{
+    //we will use the server funtion to move the player. i made it for this express purpose
+
+    int new_x = position[0];
+    int new_y = position[1];
+
+    switch (orientation) {
+        case NORTH:
+            new_y = (position[1] - 1 + server.getMapHeight()) % server.getMapHeight();
+            break;
+        case EAST:
+            new_x = (position[0] + 1) % server.getMapWidth();
+            break;
+        case SOUTH:
+            new_y = (position[1] + 1) % server.getMapHeight();
+            break;
+        case WEST:
+            new_x = (position[0] - 1 + server.getMapWidth()) % server.getMapWidth();
+            break;
+    }
+    server.move_player(*this, new_x, new_y);
+
+}

@@ -65,7 +65,7 @@ class Player : public Client
 
 
         //all the player commands:
-        void forward(Server &server);
+        void move_forward(Server &server);
         void right(Server &server);
         void left(Server &server);
         void look(Server &server);

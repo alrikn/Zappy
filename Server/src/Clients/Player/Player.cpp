@@ -13,6 +13,9 @@
 
 int Player::player_num = 0; //initialize the static player_num variable
 
+
+
+
 void Player::parse_command(const std::string raw, Server &server)
 {
     std::istringstream ss(raw);
