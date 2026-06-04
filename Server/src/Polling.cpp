@@ -52,7 +52,7 @@ void Server::handle_client_event(int client_fd)
         std::string command = client->ctrl_buffer.substr(0, pos);
         client->ctrl_buffer.erase(0, pos + 1);
         // Process the command
-        //TODO: implement logic to process command
+        client->parse_command(command, *this);
         pos = client->ctrl_buffer.find('\n');
     }
 }

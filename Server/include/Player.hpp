@@ -28,10 +28,15 @@ class Subject;
 class Player : public Client
 {
     private:
+        int player_id;
     protected:
     public:
-        Player(Subject &subject, int control_fd = -1) : Client(PLAYER, subject, control_fd) {};
+
+        static int player_num; //this will be used to assign a unique number to each player, it will be incremented each time a new player is created.
+        Player(Subject &subject, int control_fd = -1) : Client(PLAYER, subject, control_fd), player_id(++player_num) {};
         ~Player() = default;
+
+        int getId() const { return player_id; }
 
 
         /*variables that are needed for the player*/
@@ -57,6 +62,14 @@ class Player : public Client
 
 
         void parse_command(const std::string command, Server &server) override;
+
+
+        //all the player commands:
+        void forward(Server &server);
+        void right(Server &server);
+        void left(Server &server);
+        void look(Server &server);
+        void inventory_handle(Server &server);
 
 };
 
