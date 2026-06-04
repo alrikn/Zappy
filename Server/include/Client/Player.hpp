@@ -66,8 +66,8 @@ class Player : public Client
 
         //all the player commands:
         void move_forward(Server &server);
-        void right(Server &server);
-        void left(Server &server);
+        void turn_right();
+        void turn_left();
         void look(Server &server);
         void inventory_handle(Server &server);
 

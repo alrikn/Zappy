@@ -31,5 +31,17 @@ void Player::move_forward(Server &server)
             break;
     }
     server.move_player(*this, new_x, new_y);
+    send_message("ok\n");
+}
 
+void Player::turn_right()
+{
+    orientation = static_cast<orientation_t>((orientation + 1) % 4);
+    send_message("ok\n");
+}
+
+void Player::turn_left()
+{
+    orientation = static_cast<orientation_t>((orientation + 3) % 4);
+    send_message("ok\n");
 }

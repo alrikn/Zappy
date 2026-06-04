@@ -28,6 +28,15 @@ void Player::parse_command(const std::string raw, Server &server)
         return;
     }
     switch (it->second) {
+        case FORWARD:
+            move_forward(server);
+            break;
+        case RIGHT:
+            turn_right();
+            break;
+        case LEFT:
+            turn_left();
+            break;
         default:
             send_message("ko\n");
             break;
