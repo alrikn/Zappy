@@ -12,7 +12,9 @@
 #include "Client.hpp"
 #include "Egg.hpp"
 #include "Struct.hpp"
+#include <vector>
 #include <memory>
+
 class Tiles
 {
     private:

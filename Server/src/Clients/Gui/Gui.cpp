@@ -20,12 +20,12 @@ void Gui::parse_command(const std::string raw, Server &server)
 
     auto it = GuiCommandMap.find(verb);
     if (it == GuiCommandMap.end()) {
-        send_message("ko\n");
+        send_message("suc\n");
         return;
     }
     switch (it->second) {
         default:
-            send_message("ko\n");
+            send_message("suc\n");
             break;
     }
 }

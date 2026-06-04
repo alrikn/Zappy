@@ -8,8 +8,8 @@
 #ifndef INCLUDED_PARSE_HPP
     #define INCLUDED_PARSE_HPP
 
-#include "Player.hpp"
 #include <unordered_map>
+#include <string>
 
 //Commands that the player can send to the server
 enum PlayerCommands {
