@@ -12,7 +12,9 @@
 #include "Client.hpp"
 #include "Egg.hpp"
 #include "Struct.hpp"
+#include <vector>
 #include <memory>
+
 class Tiles
 {
     private:
@@ -22,8 +24,10 @@ class Tiles
         ~Tiles() = default;
 
         resources_t resources; //the resources on the tile, it contains the number of each resource on the tile
-        std::shared_ptr<Client> client = nullptr; //the client on the tile, if there is one (can be null)
+        std::vector<std::shared_ptr<Client>> clients; //the clients on the tile, if there are any (can be empty)
         std::shared_ptr<Egg> egg = nullptr; //the egg on the tile, if there is one (can be null)
+
+        bool remove_specific_client(int player_num); //returns true or false depending on whether the client was found and removed or not
 
 };
 

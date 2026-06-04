@@ -12,6 +12,7 @@
 #include <string>
 
 class Subject;
+class Server;
 
 typedef enum client_type {
     GUI,
@@ -53,6 +54,8 @@ class Client
         //we may need to change it up a bit and add some kind of enum to inform the client exactly what kind of command it is.
         virtual void Update(std::string message);
         void RemoveMeFromList();
+
+        virtual void parse_command(const std::string command, Server &server) = 0;
 };
 
 
