@@ -50,7 +50,7 @@ class Connection:
         welcome = self._recv_line_blocking()
         if welcome != "WELCOME":
             print(f"expected WELCOME, got: {welcome!r}", file=sys.stderr)
-            sys.exit(1)
+            sys.exit(84)
 
         self._send_raw(team_name + "\n")
 
@@ -62,7 +62,7 @@ class Connection:
             x, y = map(int, dims_line.strip().split())
         except ValueError:
             print(f"bad handshake response: {slots_line!r} / {dims_line!r}", file=sys.stderr)
-            sys.exit(1)
+            sys.exit(84)
 
         return x, y, slots
 
@@ -173,7 +173,8 @@ class Connection:
         while "\n" not in self._recv_buf:
             chunk = self._sock.recv(1024).decode()
             if not chunk:
-                sys.exit(1)
+                # server closed mid handshake so failuer
+                sys.exit(84)
             self._recv_buf += chunk
         line, self._recv_buf = self._recv_buf.split("\n", 1)
         self._sock.setblocking(False)
