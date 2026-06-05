@@ -56,17 +56,23 @@ def decode(text: str) -> tuple[str, str] | None:
 # K=7 -> to the left
 # K=8 -> ahead and to the left
 
-# NOT SURE ABT THIS CHECK DONT PUSH // TO REVIEW
+# WARNING TODO: i assumed here athat the tiles are numbered clockwise around the player,
+# but the subject says they are numbered trigonometricaly so mayeb it means they are counter clockwise idk
+# so the mapping might be mirrored on the real server lets see
+# this only affects how fast we home in on the leader not correctness, since the
+# follower recalibrates on every new broaccast it gets, so even a wrong guess
+# eventualy converges, still need to verify against the reference server and flip
+# the left/right entries if it turns out to be counter clockwise need a real gui for this
 DIRECTION_MOVES: dict[int, list[str]] = {
     0: [],
     1: ["Forward"],
-    2: ["Forward"],               # ahead-right, close the ahead gap first
+    2: ["Forward"],               # ahead right, close the ahead gap first
     3: ["Right", "Forward"],
     4: ["Right", "Right", "Forward"],
     5: ["Right", "Right", "Forward"],
     6: ["Left", "Left", "Forward"],
     7: ["Left", "Forward"],
-    8: ["Forward"],               # ahead-left, close the ahead gap first
+    8: ["Forward"],               # ahead left, close the ahead gap first
 }
 
 
