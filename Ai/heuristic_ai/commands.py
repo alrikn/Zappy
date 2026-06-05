@@ -105,6 +105,15 @@ def incantation(conn: Connection, cb: Callable[[int | None], None]):
     so we rgst  an on_level_up handler in the connexion to catch the second one,
     cb gets the new level on success, or none if it failed (ko)
     """
+    # EDGE CASE TODO REVIEW PLESE we dont fully handle: the subject says prerequisites are checked at
+    # the start and the end of the ritual, the ko for a start failure arrives instantly
+    # and is caught below, but if the ritual fails the end check (ex: another player left
+    # the tile mid ritual) the server could send a ko after "Elevation underway" instead
+    # of "Current level: k", we only listen for "Current level:" as unsolicited so that
+    # late ko would fall throguh to _handle_line and get matched to the wrong pending
+    # cmd callback, desyning the whole pipeline, depends on the real server behavior
+    # so leaving it for now, proper fix would track an "incantation in progress" flag in
+    # the connection and treat a bare ko during that window as the incantation result
     def on_first_response(raw: str):
         if raw == "ko":
             conn.on_level_up(None)
