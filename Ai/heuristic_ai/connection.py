@@ -35,6 +35,11 @@ class Connection:
         self._on_eject: Callable | None = None       # called with (k: int)
         self._on_level_up: Callable | None = None    # called with (new_level: int)
 
+        # set to a callback between "Elevation underway" and "Current level: k"
+        # if the server sends ko during that window (end check failed) we route it
+        # here instead of letting it fall thru to the pending queue and desync things
+        self._incantation_end_cb: Callable[[str], None] | None = None
+
     # handshake is blocking, we call it once before the main loop starts
 
     def handshake(self, team_name: str) -> tuple[int, int, int]:
@@ -144,6 +149,15 @@ class Connection:
                 self._on_level_up(level)
             return
 
+        # if we got a ko during an active incantation (end check failed), route it
+        # to the incantation callback instead of the pending queue, otherwise the
+        # next cmd in the queue would get this ko as its response and desync everything
+        if line == "ko" and self._incantation_end_cb is not None:
+            cb = self._incantation_end_cb
+            self._incantation_end_cb = None
+            cb("ko")
+            return
+
         # if we get here its a normal response to the oldest pending command
         if self._pending:
             _, callback = self._pending.popleft()
@@ -193,3 +207,8 @@ class Connection:
 
     def on_level_up(self, fn: Callable | None):
         self._on_level_up = fn
+
+    def set_incantation_end_cb(self, fn: Callable[[str], None] | None):
+        # registers a callback to catch a ko that arrives after "Elevation underway"
+        # cleared automatically when the callback fires or when the ritual ends normally
+        self._incantation_end_cb = fn

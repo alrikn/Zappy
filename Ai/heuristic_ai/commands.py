@@ -105,28 +105,34 @@ def incantation(conn: Connection, cb: Callable[[int | None], None]):
     so we rgst  an on_level_up handler in the connexion to catch the second one,
     cb gets the new level on success, or none if it failed (ko)
     """
-    # EDGE CASE TODO REVIEW PLESE we dont fully handle: the subject says prerequisites are checked at
-    # the start and the end of the ritual, the ko for a start failure arrives instantly
-    # and is caught below, but if the ritual fails the end check (ex: another player left
-    # the tile mid ritual) the server could send a ko after "Elevation underway" instead
-    # of "Current level: k", we only listen for "Current level:" as unsolicited so that
-    # late ko would fall throguh to _handle_line and get matched to the wrong pending
-    # cmd callback, desyning the whole pipeline, depends on the real server behavior
-    # so leaving it for now, proper fix would track an "incantation in progress" flag in
-    # the connection and treat a bare ko during that window as the incantation result
     def on_first_response(raw: str):
         if raw == "ko":
+            # start check failed instantly, clean up and report failure
             conn.on_level_up(None)
+            conn.set_incantation_end_cb(None)
             cb(None)
             return
         if raw.startswith("Elevation underway"):
-            # nice, ritual started, now wait for lvl up event
+            # ritual started, register both paths that can end it:
+            # 1. success: "Current level: k" arrives as unsolicited, routed to on_level_up
+            # 2. failure: server sends ko after 300/f (end check failed), routed to incantation_end_cb
+            # both handlers clear both slots so only one fires
             def on_level(level: int):
-                conn.on_level_up(None)  # deregister so it doesnt fire again
+                conn.on_level_up(None)
+                conn.set_incantation_end_cb(None)
                 cb(level)
+
+            def on_end_ko(_: str):
+                # end check failed (ex: a player left the tile mid ritual)
+                # slot is already cleared by _handle_line before calling us
+                conn.on_level_up(None)
+                cb(None)
+
             conn.on_level_up(on_level)
+            conn.set_incantation_end_cb(on_end_ko)
         else:
             conn.on_level_up(None)
+            conn.set_incantation_end_cb(None)
             cb(None)
 
     conn.push("Incantation", on_first_response)
