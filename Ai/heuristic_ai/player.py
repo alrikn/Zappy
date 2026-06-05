@@ -10,11 +10,11 @@ import time
 from connection import Connection
 from state_machine import State
 from resources import (
-    get_deficit, has_all_stones, next_stone_to_collect, players_needed, STONES
+    has_all_stones, next_stone_to_collect, players_needed, STONES
 )
 import commands as cmd
 import broadcast as bcast
-from vision import parse_look, find_resource, count_players_on_tile, tile_to_moves
+from vision import find_resource, count_players_on_tile, tile_to_moves
 
 # food thresholds
 FOOD_CRITICAL = 5   # below this we go into emergency mode
