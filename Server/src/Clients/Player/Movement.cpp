@@ -45,3 +45,10 @@ void Player::turn_left()
     orientation = static_cast<orientation_t>((orientation + 3) % 4);
     send_message("ok\n");
 }
+
+//debatable if this goes in the movement, but for now goodenough
+void Player::look(Server &server)
+{
+    //TODO
+    send_message("ok\n");
+}
