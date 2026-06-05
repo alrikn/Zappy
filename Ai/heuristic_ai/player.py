@@ -211,7 +211,7 @@ class PlayerAI:
                 # we are already on the leaders tile
                 self._leader_k = None
                 cmd.broadcast(self.conn, bcast.encode(bcast.IM_READY, self._leader_uid),
-                               lambda ok: None)
+                               self._noop)
                 self._transition(State.WAIT_TEAM)
             else:
                 # take one step toward the leader based on bcast dir
@@ -231,7 +231,7 @@ class PlayerAI:
             if self._bcast_ticks >= 10:
                 self._bcast_ticks = 0
                 text = bcast.encode(bcast.NEED_INC, f"{self.level}:{self.uid}")
-                cmd.broadcast(self.conn, text, lambda ok: None)
+                cmd.broadcast(self.conn, text, self._noop)
 
             # check if enought players are on our tile
             needed  = players_needed(self.level)
@@ -247,14 +247,14 @@ class PlayerAI:
         self._leader_uid  = self.uid
         self._ready_count = 0
         text = bcast.encode(bcast.NEED_INC, f"{self.level}:{self.uid}")
-        cmd.broadcast(self.conn, text, lambda ok: None)
+        cmd.broadcast(self.conn, text, self._noop)
         # leader is already at the meeting point so go straight to waiting
         self._transition(State.WAIT_TEAM)
 
     def _fire_incantation(self):
         """all players are here, send the START signal and kick off the ritual"""
         text = bcast.encode(bcast.START, self.uid)
-        cmd.broadcast(self.conn, text, lambda ok: None)
+        cmd.broadcast(self.conn, text, self._noop)
         self._transition(State.INCANTATING)
         self._action_pending = True
         cmd.incantation(self.conn, self._on_incantation_result)
@@ -266,7 +266,7 @@ class PlayerAI:
             self.level = new_level
             print(f"[{self.uid}] leveled up to {self.level}!")
             cmd.broadcast(self.conn, bcast.encode(bcast.LVL_UP, str(self.level)),
-                          lambda ok: None)
+                          self._noop)
         # whether it worked or not, go back to gathering food
         self._transition(State.GATHER_FOOD)
 
@@ -305,9 +305,9 @@ class PlayerAI:
         """random movement when we dont know where to go"""
         self._action_pending = True
         if random.random() < 0.3:
-            cmd.turn_right(self.conn, lambda ok: self._clear_action())
+            cmd.turn_right(self.conn, self._clear_action)
         else:
-            cmd.forward(self.conn, lambda ok: self._clear_action())
+            cmd.forward(self.conn, self._clear_action)
 
     def _execute_moves(self, moves: list[str]):
         """
@@ -349,7 +349,7 @@ class PlayerAI:
             need = needed.get(stone, 0)
             # drop up to what's required, not excess
             for _ in range(min(have, need)):
-                cmd.set_down(self.conn, stone, lambda ok: None)
+                cmd.set_down(self.conn, stone, self._noop)
 
     # forking
 
@@ -374,7 +374,7 @@ class PlayerAI:
             def on_fork(_: bool):
                 self._action_pending = False
                 cmd.broadcast(self.conn, bcast.encode(bcast.FORKING, self.team_name),
-                              lambda *args: None)
+                              self._noop)
                 self._transition(prev_state)
 
             cmd.fork(self.conn, on_fork)
@@ -411,6 +411,10 @@ class PlayerAI:
     def _clear_action(self, *_):
         self._action_pending = False
 
+    def _noop(self, *_):
+        # discard callback for fire and forget cmds where we dont care about the resp
+        pass
+
     def _on_broadcast(self, k: int, text: str):
         """
         handles incoming broadcast messages,
@@ -442,7 +446,7 @@ class PlayerAI:
                 self._leader_k   = k
                 self._seek_ticks = 0
                 cmd.broadcast(self.conn, bcast.encode(bcast.IM_COMING, leader_uid),
-                               lambda ok: None)
+                               self._noop)
                 self._transition(State.SEEK_TEAM)
 
         elif msg_type == bcast.IM_READY:

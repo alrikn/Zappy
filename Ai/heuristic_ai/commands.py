@@ -13,15 +13,21 @@ from typing import Callable
 
 
 def forward(conn: Connection, cb: Callable[[bool], None]):
-    conn.push("Forward", lambda r: cb(r == "ok"))
+    def on_resp(r: str):
+        cb(r == "ok")
+    conn.push("Forward", on_resp)
 
 
 def turn_right(conn: Connection, cb: Callable[[bool], None]):
-    conn.push("Right", lambda r: cb(r == "ok"))
+    def on_resp(r: str):
+        cb(r == "ok")
+    conn.push("Right", on_resp)
 
 
 def turn_left(conn: Connection, cb: Callable[[bool], None]):
-    conn.push("Left", lambda r: cb(r == "ok"))
+    def on_resp(r: str):
+        cb(r == "ok")
+    conn.push("Left", on_resp)
 
 
 def look(conn: Connection, cb: Callable[[list[list[str]]], None]):
@@ -64,7 +70,9 @@ def inventory(conn: Connection, cb: Callable[[dict[str, int]], None]):
 
 
 def broadcast(conn: Connection, text: str, cb: Callable[[bool], None]):
-    conn.push(f"Broadcast {text}", lambda r: cb(r == "ok"))
+    def on_resp(r: str):
+        cb(r == "ok")
+    conn.push(f"Broadcast {text}", on_resp)
 
 
 def connect_nbr(conn: Connection, cb: Callable[[int], None]):
@@ -82,19 +90,27 @@ def connect_nbr(conn: Connection, cb: Callable[[int], None]):
 
 def fork(conn: Connection, cb: Callable[[bool], None]):
     # takes 42/f time units, pretty slow but necessary to grow the team
-    conn.push("Fork", lambda r: cb(r == "ok"))
+    def on_resp(r: str):
+        cb(r == "ok")
+    conn.push("Fork", on_resp)
 
 
 def eject(conn: Connection, cb: Callable[[bool], None]):
-    conn.push("Eject", lambda r: cb(r == "ok"))
+    def on_resp(r: str):
+        cb(r == "ok")
+    conn.push("Eject", on_resp)
 
 
 def take(conn: Connection, resource: str, cb: Callable[[bool], None]):
-    conn.push(f"Take {resource}", lambda r: cb(r == "ok"))
+    def on_resp(r: str):
+        cb(r == "ok")
+    conn.push(f"Take {resource}", on_resp)
 
 
 def set_down(conn: Connection, resource: str, cb: Callable[[bool], None]):
-    conn.push(f"Set {resource}", lambda r: cb(r == "ok"))
+    def on_resp(r: str):
+        cb(r == "ok")
+    conn.push(f"Set {resource}", on_resp)
 
 
 def incantation(conn: Connection, cb: Callable[[int | None], None]):
