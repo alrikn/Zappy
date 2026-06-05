@@ -7,6 +7,8 @@
 
 #include "Player.hpp"
 #include "Server.hpp"
+#include "Struct.hpp"
+#include <vector>
 
 
 void Player::move_forward(Server &server)
@@ -46,9 +48,99 @@ void Player::turn_left()
     send_message("ok\n");
 }
 
+std::string give_resources_name(resources_t resources)
+{
+    std::string result;
+
+    if (resources.deraumere > 0)
+        result += "deraumere ";
+    if (resources.sibur > 0)
+        result += "sibur ";
+    if (resources.mendiane > 0)
+        result += "mendiane ";
+    if (resources.phiras > 0)
+        result += "phiras ";
+    if (resources.thystame > 0)
+        result += "thystame ";
+    return result;
+}
+
 //debatable if this goes in the movement, but for now goodenough
 void Player::look(Server &server)
 {
-    //TODO
-    send_message("ok\n");
+    //how it works:
+    // we respond with a array: player, object-on-tile1, ..., object-on-tileP,...]
+
+    //if there are more than one thing on a tile, we separate them with a space.
+
+    //we start with the tile the player is on
+    //the 3 in front of him (left to right)
+    //and then the 5 tiles beyond that (left to right)
+    //and then the 7 tiles beyond that (left to right)
+
+    //so it looks like an updide down pyramid with a height of 4 (including the tile the player is on)
+
+    //we will use the server map to get the info we need, and we will use the player position and orientation to know which tiles to look at
+
+
+    //we do this by first calculating the coordinates of the tiles we need to look at, and then we get the info from the server map and format it in the way we need to send it to the client.
+
+    std::vector<std::vector<int>> tiles_to_look_at;
+
+    for (int i = 0; i < 4; i++) {
+        for (int j = -i; j <= i; j++) {
+            int tile_x, tile_y;
+            switch (orientation) {
+                case NORTH:
+                    tile_x = (position[0] + j + server.getMapWidth()) % server.getMapWidth();
+                    tile_y = (position[1] - i + server.getMapHeight()) % server.getMapHeight();
+                    break;
+                case EAST:
+                    tile_x = (position[0] + i) % server.getMapWidth();
+                    tile_y = (position[1] + j + server.getMapHeight()) % server.getMapHeight();
+                    break;
+                case SOUTH:
+                    tile_x = (position[0] + j + server.getMapWidth()) % server.getMapWidth();
+                    tile_y = (position[1] + i) % server.getMapHeight();
+                    break;
+                case WEST:
+                    tile_x = (position[0] - i + server.getMapWidth()) % server.getMapWidth();
+                    tile_y = (position[1] + j + server.getMapHeight()) % server.getMapHeight();
+                    break;
+            }
+            tiles_to_look_at.push_back({tile_x, tile_y});
+        }
+    }
+
+
+    std::vector<std::string> response_parts;
+
+    for (const std::vector<int> &tile_coords : tiles_to_look_at) {
+        int x = tile_coords[0];
+        int y = tile_coords[1];
+        std::string tile_info;
+
+        //first we add the players on the tile
+        for (auto player : server._map[y][x].clients) {
+            tile_info += "player ";
+        }
+        //then we add the resources on the tile
+        tile_info += give_resources_name(server._map[y][x].resources);
+
+        if (!tile_info.empty()) {
+            tile_info.pop_back(); //remove the last space
+        }
+
+        response_parts.push_back(tile_info);
+    }
+
+    std::string final_response = "[";
+    for (size_t i = 0; i < response_parts.size(); i++) {
+        final_response += response_parts[i];
+        if (i != response_parts.size() - 1) {
+            final_response += ",";
+        }
+    }
+    final_response += "]\n";
+    send_message(final_response);
 }
