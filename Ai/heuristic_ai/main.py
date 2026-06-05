@@ -8,7 +8,7 @@
 import argparse
 import sys
 from connection import Connection
-from player import PlayerAI
+from player.state import PlayerAI
 
 
 def parse_args() -> tuple[int, str, str]:
