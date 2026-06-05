@@ -46,38 +46,34 @@ def count_players_on_tile(tiles: list[list[str]], tile_index: int = 0) -> int:
 
 def tile_to_moves(tile_index: int, level: int) -> list[str]:
     """
-    given a tile index from look and the current level, returns the moves
-    needed to get one  step closer to that tile (Forward / Right / Left)
+    given a tile index from look and the cueent level, returns the moves
+    needed to get one step closer to that tile (Forward / Right / Left)
 
-    the look grid layout at level L:
-      row 0 (current tile): index 0
-      row 1 (1 step ahead): indices 1 .. 2L+1      (width = 2L+1 tiles)
-      row 2 (2 steps ahead): indices 2L+2 .. 4L+2
-      row r: indices (r-1)*(2L+1)+1 .. r*(2L+1)
+    the look grid layout: row r starts at index r^2, has 2r+1 tiles,
+    center of row r is at column index r (0 indexed from left)
 
-    within each row tiles go left to right, center column is index L,
+      row 0 (current): index 0
+      row 1:           indices 1..3   (3 tiles, center at col 1)
+      row 2:           indices 4..8   (5 tiles, center at col 2)
+      row r:           indices r^2 .. r^2+2r
+
     we only return one step at a time, caller calls this again next tick
     """
     if tile_index == 0:
         return []
 
-    width = 2 * level + 1
+    # row r starts at r^2, so row = isqrt(tile_index)
+    row = int(tile_index ** 0.5)
+    col_in_row = tile_index - row * row  # 0 indexed from left
+    center = row                          # center column index
 
-    # figure out wich row this tile is in and where in that row it is
-    # tiles_before_row(r) = 1 + (r-1)*width  for r >= 1
-    row = (tile_index - 1) // width + 1
-    col_in_row = (tile_index - 1) % width  # 0 = leftmost col
-    center = level                          # center column index
+    offset = col_in_row - center  # negative = left, positive = right
 
-    offset = col_in_row - center  # negative = left of center, positive = right
-
-    # if we're more than 1 row away and the offset is small relative to the distance,
-    # just go forward to close the gap first instead of turning (avoids oscillation)
+    # if the tile is mostly ahead (small lateral offset) close the distance first
     if row > 1 and abs(offset) < row:
-        # straight ahead is the right move, pipeline up to 3 forwards at once
         return ["Forward"] * min(row, 3)
 
-    # otherwise fix the column first, then step forward
+    # otherwise fix the lateral offset first, then step forward
     commands = []
     if offset < 0:
         commands.append("Left")
