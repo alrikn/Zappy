@@ -17,7 +17,8 @@ from .actions import PlayerActionsMixin
 
 # food thresholds
 FOOD_CRITICAL = 5   # below this we go into emergency mode
-FOOD_SAFE     = 20  # above this we can focus on stones
+FOOD_SAFE     = 15  # above this we can start gathering stones
+FOOD_LOW      = 8   # in GATHER_STONES, exit back to food when this low
 
 # how many loop ticks we wait in SEEK_TEAM before giving up and restarting
 # avoids getting stuck forever if the leader dies mid coordination
@@ -105,7 +106,7 @@ class PlayerAI(PlayerActionsMixin):
             self._transition(State.SURVIVE)
             return
 
-        if self.state == State.SURVIVE and food >= FOOD_CRITICAL + 5:
+        if self.state == State.SURVIVE and food >= FOOD_CRITICAL + 2:
             self._transition(State.GATHER_FOOD)
 
         elif self.state == State.GATHER_FOOD and food >= FOOD_SAFE:
@@ -117,7 +118,7 @@ class PlayerAI(PlayerActionsMixin):
             # lvl 8 is the max, after that just eat food and survive
             elif self.level < 8 and has_all_stones(self.inventory, self.level):
                 self._transition(State.SEEK_TEAM)
-            elif food < FOOD_SAFE:
+            elif food < FOOD_LOW:
                 # food droped while gathering, go refill
                 self._transition(State.GATHER_FOOD)
 
