@@ -68,7 +68,19 @@ class PlayerActionsMixin:
         # take from current tile immediately if its there
         if resource in tiles[0]:
             self._action_pending = True
-            cmd.take(self.conn, resource, self._on_take_done)
+            def on_taken(ok: bool, _res=resource):
+                if ok:
+                    # item taken: remove one instance from tile0 so we can
+                    # immediately take another if more are on the same tile
+                    try:
+                        self._tiles[0].remove(_res)
+                    except (ValueError, IndexError):
+                        pass
+                else:
+                    # tile doesn't have it anymore: stale tiles, force fresh look
+                    self._tiles = []
+                self._action_pending = False
+            cmd.take(self.conn, resource, on_taken)
             return
 
         idx = find_resource(tiles, resource)
