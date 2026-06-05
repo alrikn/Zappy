@@ -71,6 +71,13 @@ class PlayerAI:
         # hook up the unsolicited event handlers
         self.conn.on_broadcast(self._on_broadcast)
         self.conn.on_eject(self._on_eject)
+        # FRAGILE STUFF HERE TODO : the connection only has one on_level_up slot, we register
+        # self._on_level_up here but cmd.incantation() overwrites it with its own
+        # handler each time we incantate then sets it back to None when done, so this
+        # init handler is basicaly dead after the first incantation, its not a crash i tested it 
+        # bc the incantation flow tracks our level itself via _on_incantation_result,
+        # but if we ever want to react to external level up events this needs a rework
+        # (ideally a list of handlers instead of a single slot) but idkkk
         self.conn.on_level_up(self._on_level_up)
 
         # get initial state before the loop starts
