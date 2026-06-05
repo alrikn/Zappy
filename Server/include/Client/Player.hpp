@@ -74,6 +74,7 @@ class Player : public Client
         void turn_left();
         void look(Server &server);
         void inventory_handle();
+        void set_down_resource(Server &server, std::vector<std::string> args);
 
 };
 

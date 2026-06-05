@@ -63,6 +63,12 @@ void Player::parse_command(const std::string raw, Server &server)
         send_message("ko\n");
         return;
     }
+    std::vector<std::string> args; //we want everything except the first word to be in this vector, so we can easily access it when we need to
+    std::string arg;
+
+    while (ss >> arg) {
+        args.push_back(arg);
+    }
     switch (it->second) {
         case FORWARD:
             move_forward(server);
@@ -78,6 +84,9 @@ void Player::parse_command(const std::string raw, Server &server)
             break;
         case INVENTORY:
             inventory_handle();
+            break;
+        case SET:
+            set_down_resource(server, args);
             break;
         default:
             send_message("ko\n");
