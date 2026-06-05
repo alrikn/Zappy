@@ -48,22 +48,6 @@ void Player::turn_left()
     send_message("ok\n");
 }
 
-std::string give_resources_name(resources_t resources)
-{
-    std::string result;
-
-    if (resources.deraumere > 0)
-        result += "deraumere ";
-    if (resources.sibur > 0)
-        result += "sibur ";
-    if (resources.mendiane > 0)
-        result += "mendiane ";
-    if (resources.phiras > 0)
-        result += "phiras ";
-    if (resources.thystame > 0)
-        result += "thystame ";
-    return result;
-}
 
 //debatable if this goes in the movement, but for now goodenough
 void Player::look(Server &server)
@@ -125,7 +109,9 @@ void Player::look(Server &server)
             tile_info += "player ";
         }
         //then we add the resources on the tile
-        tile_info += give_resources_name(server._map[y][x].resources);
+        for (const std::string &resource : give_resources_name(server._map[y][x].resources)) {
+            tile_info += resource + " ";
+        }
 
         if (!tile_info.empty()) {
             tile_info.pop_back(); //remove the last space

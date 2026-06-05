@@ -14,6 +14,7 @@
 
 #include <array>
 #include <string>
+#include <tuple>
 #include <vector>
 
 typedef enum orientation{
@@ -29,6 +30,9 @@ class Player : public Client
 {
     private:
         int player_id;
+
+        std::vector<std::string> give_resources_name(resources_t resources);
+        std::vector<std::tuple<std::string, int>> give_resources_number(resources_t resources);
     protected:
     public:
 
@@ -69,7 +73,7 @@ class Player : public Client
         void turn_right();
         void turn_left();
         void look(Server &server);
-        void inventory_handle(Server &server);
+        void inventory_handle();
 
 };
 

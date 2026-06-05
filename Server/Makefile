@@ -11,6 +11,7 @@ SRC = main.cpp \
 	src/Clients/Client.cpp \
 	src/Clients/Player/Player.cpp \
 	src/Clients/Player/Movement.cpp \
+	src/Clients/Player/Actions.cpp \
 	src/Clients/Gui/Gui.cpp \
 	src/Game/game_loop.cpp \
 	src/Game/Tiles.cpp \
