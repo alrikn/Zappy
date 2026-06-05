@@ -116,7 +116,8 @@ class PlayerAI:
         elif self.state == State.GATHER_STONES:
             if self._coord_cooldown > 0:
                 self._coord_cooldown -= 1
-            elif has_all_stones(self.inventory, self.level):
+            # lvl 8 is the max, after that just eat food and survice
+            elif self.level < 8 and has_all_stones(self.inventory, self.level):
                 self._transition(State.SEEK_TEAM)
             elif food < FOOD_SAFE:
                 # food droped while gathering, go refill
