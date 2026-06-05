@@ -62,7 +62,8 @@ class PlayerActionsMixin:
         """
         tiles = self._tiles
         if not tiles:
-            self._wander()
+            # tiles were cleared after a move or failed take, wait for fresh look
+            # rather than wandering blindly with stale positional data
             return
 
         # take from current tile immediately if its there
@@ -97,10 +98,13 @@ class PlayerActionsMixin:
     def _wander(self):
         """random movement when we dont know where to go"""
         self._action_pending = True
+        def after_wander(_):
+            self._tiles = []
+            self._clear_action()
         if random.random() < 0.3:
-            cmd.turn_right(self.conn, self._clear_action)
+            cmd.turn_right(self.conn, after_wander)
         else:
-            cmd.forward(self.conn, self._clear_action)
+            cmd.forward(self.conn, after_wander)
 
     def _execute_moves(self, moves: list[str]):
         """
@@ -116,6 +120,8 @@ class PlayerActionsMixin:
         def done(_):
             pending[0] -= 1
             if pending[0] <= 0:
+                # position changed: old tiles are now wrong, force fresh look
+                self._tiles = []
                 self._clear_action()
 
         for move in moves:
