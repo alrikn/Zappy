@@ -28,6 +28,8 @@ class Gui : public Client
 
         */
 
+        void parse_command(const std::string command, Server &server) override;
+
 };
 
 

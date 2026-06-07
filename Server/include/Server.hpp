@@ -87,6 +87,10 @@ class Server
         /*server functions*/
         void run();
 
+        /*client helper functions*/
+
+        void move_player(std::shared_ptr<Player> player, int x, int y);
+
 
 };
 
