@@ -278,18 +278,48 @@ class PlayerAI(PlayerActionsMixin):
         if not self._stones_dropped:
             self._drop_for_ritual()
             self._stones_dropped = True
+            return  # wait for a fresh look reflecting the dropped stones
 
         if self._leader_uid == self.uid:
-            # re broadcast every 10 ticks so followers can keep navigating toward us
-            self._bcast_ticks += 1
-            if self._bcast_ticks >= 10:
-                self._bcast_ticks = 0
-                text = bcast.encode(bcast.NEED_INC, f"{self.level}:{self.uid}")
-                cmd.broadcast(self.conn, text, self._noop)
+            needed   = players_needed(self.level)
+            # re broadcast so followers can keep recalibrating their direction to us but
+            # ONLY for real team rituals, a solo (needed==1) leader broadcasting would
+            # lure other same level players into chasing it for nothing
+            if needed > 1:
+                self._bcast_ticks += 1
+                if self._bcast_ticks >= self.BCAST_INTERVAL:
+                    self._bcast_ticks = 0
+                    text = bcast.encode(bcast.NEED_INC, f"{self.level}:{self.uid}")
+                    cmd.broadcast(self.conn, text, self._noop)
 
-            # check if enought players are on our tile
-            needed  = players_needed(self.level)
-            on_tile = count_players_on_tile(self._tiles, 0)
-            if on_tile >= needed:
+            # check if enough players are on our tile AND stones are present
+            on_tile  = count_players_on_tile(self._tiles, 0)
+            tile     = self._tiles[0] if self._tiles else []
+            req      = ELEVATION.get(self.level, {})
+            stones_ok = all(tile.count(s) >= req.get(s, 0) for s in STONES if req.get(s, 0) > 0)
+
+            # _ready_count is followers that acked us, +1 for ourselves, fallback: if the
+            # tile visibly held enough bodies for a while but im_ready got lost, fire
+            # anyway so we dont deadlock
+            confirmed = 1 + self._ready_count
+            self._present_ticks = self._present_ticks + 1 if on_tile >= needed else 0
+            ready = confirmed >= needed or self._present_ticks >= 30
+
+            # diagnostic: show exactly which condition gates firing while we wait
+            self._wait_dbg = getattr(self, "_wait_dbg", 0) + 1
+            if self._wait_dbg % 25 == 1:
+                print(f"[{self.uid}] WAIT-LEADER lvl{self.level} on_tile={on_tile} "
+                      f"need={needed} stones_ok={stones_ok} ready={ready} "
+                      f"rcnt={self._ready_count} present={self._present_ticks} "
+                      f"food={self.inventory.get('food', 0)} tile={tile}")
+
+            # fire the instant we have what we need, we only ever need exactly "needed"
+            # players so theres nothing to gain by waiting for more, and waiting was
+            # actively harmful: the diagnostic showed leaders sting  on a fully satisfied
+            # tile (on_tile==need, stones_ok, ready) for dozens of ticks under the old
+            # "wait for more players to  pile on" branch till the partner gave up and
+            # walked off so the ritual never fired, also takes propty over eating
+            if on_tile >= needed and stones_ok and ready:
                 self._fire_incantation()
-        # followers just sit here and wait for the START broadcast
+                return
+
