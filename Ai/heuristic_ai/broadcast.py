@@ -35,50 +35,42 @@ def decode(text: str) -> tuple[str, str] | None:
     return parts[1], parts[2]
 
 
-# direction -> movement commands
-# when we receive a broadcast, K tells us which direction the sound came from
-# we use this to navigate toward the sender without knowing their coordinates
-# https://www.geeksforgeeks.org/what-is-a-state-machine/
+# direction to ONE homing primitive
+# when we get a broadcast, k tells us which neighbour tile the sound came thru so we
+# can walk toward the sender without knowing their coords
 #
-# the numbering around the player (@ = us):
+# the tiles are numbered, from pdf: "1 in front of the player then the tiles that trigonometrically encircle the player"
+# so 1 = front then counter clockwise (ccw):
+#like thiss
+#   2  1  8
+#   3  @  7
+#   4  5  6
 #
-#   8  1  2
-#   7  @  3
-#   6  5  4
+# controller: one gentle turn toward the leader then always step forward, and the
+# follower re aims on the very next ping, this is the ref epitech ais follow_beacon function from thi repo
+# inspired from this: https://gitlab.com/epitech-it-2027/zappy/-/blob/main/AI/zappy_ai/trentorian/ritual.py
+# recipe took it as is (works against the same server family):
 #
-# K=0 -> same tile as us
-# K=1 -> directly ahead
-# K=2 -> ahead and to the right
-# K=3 -> to the right
-# K=4 -> behind and to the right
-# K=5 -> directly behind
-# K=6 -> behind and to the left
-# K=7 -> to the left
-# K=8 -> ahead and to the left
-
-# WARNING TODO: i assumed here athat the tiles are numbered clockwise around the player,
-# but the subject says they are numbered trigonometricaly so mayeb it means they are counter clockwise idk
-# so the mapping might be mirrored on the real server lets see
-# this only affects how fast we home in on the leader not correctness, since the
-# follower recalibrates on every new broaccast it gets, so even a wrong guess
-# eventualy converges, still need to verify against the reference server and flip
-# the left/right entries if it turns out to be counter clockwise need a real gui for this
-DIRECTION_MOVES: dict[int, list[str]] = {
-    0: [],
-    1: ["Forward"],
-    2: ["Forward"],               # ahead right, close the ahead gap first
-    3: ["Right", "Forward"],
-    4: ["Right", "Right", "Forward"],
-    5: ["Right", "Right", "Forward"],
-    6: ["Left", "Left", "Forward"],
-    7: ["Left", "Forward"],
-    8: ["Forward"],               # ahead left, close the ahead gap first
-}
-
-
+#   k=0          = arrived (same tile)
+#   k=1          = straight ahead       = forward
+#   k in 2,3,4   = leader on the left   = left then forward
+#   k=5          = directly behind      = left left forward (about face)
+#   k in 6,7,8   = leader on the right  = right then forward
+#
+# why "turn a bit AND always step" vs the turn only version i tried before: a turn
+# only controller does pure rotations on the off axis sectors and w/ the unavoidable
+# one ping feedback lag those rotations oscillate in place near the target (follower
+# danced around the tile, k flicking 3<>7, never hitting 0), always stepping forward
+# guarantees progress each ping while the single gentle turn re centres us, next ping
+# fixes any leftover sideways error
 def moves_toward(k: int) -> list[str]:
-    """
-    returns one steps worth of move cmds to get closer to whoever broadcast from dir k,
-    we call this every time we get a new bcast from the leader to recalibrate
-    """
-    return DIRECTION_MOVES.get(k, ["Forward"])
+    """one homing move toward a sound coming from direction k (0 = same tile)"""
+    if k == 0:
+        return []
+    if k == 1:
+        return ["Forward"]
+    if k in (2, 3, 4):
+        return ["Left", "Forward"]
+    if k == 5:
+        return ["Left", "Left", "Forward"]
+    return ["Right", "Forward"]   # k in (6, 7, 8)
