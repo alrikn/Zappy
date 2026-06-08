@@ -5,24 +5,17 @@
 ## player ai entry class, holds the state machine and main loop
 ##
 
+import os
 import random
 import time
 from connection import Connection
 from state_machine import State
-from resources import has_all_stones, next_stone_to_collect, players_needed
+from resources import has_all_stones, next_stone_to_collect, players_needed, ELEVATION, STONES
 import commands as cmd
 import broadcast as bcast
+import config as cfg
 from vision import count_players_on_tile
 from .actions import PlayerActionsMixin
-
-# food thresholds
-FOOD_CRITICAL = 5   # below this we go into emergency mode
-FOOD_SAFE     = 15  # above this we can start gathering stones
-FOOD_LOW      = 8   # in GATHER_STONES, exit back to food when this low
-
-# how many loop ticks we wait in SEEK_TEAM before giving up and restarting
-# avoids getting stuck forever if the leader dies mid coordination
-SEEK_TIMEOUT = 200
 
 
 def _uid() -> str:
@@ -31,7 +24,7 @@ def _uid() -> str:
 
 
 class PlayerAI(PlayerActionsMixin):
-    def __init__(self, conn: Connection, team_name: str, world_x: int, world_y: int):
+    def __init__(self, conn: Connection, team_name: str, world_x: int, world_y: int, client_num: int = 5):
         self.conn      = conn
         self.team_name = team_name
         self.world_x   = world_x
@@ -41,6 +34,64 @@ class PlayerAI(PlayerActionsMixin):
         self.inventory: dict[str, int] = {"food": 10}
         self.state     = State.GATHER_FOOD
         self.uid       = _uid()
+
+        # all tunable behaviour comes from config (json overridable for the tuner)
+        self.cfg = cfg.load()
+
+        # dynamic food thresholds, scale to map size and estimated player count so the
+        # ai doesnt hoard more food than the map can sustain
+        total_food  = max(1, int(0.5 * world_x * world_y))
+        # assume at least 6 players (zappy goal), slots+1 gives a real upper bound when
+        # we re the first to connect (slots=c-1), max(6,...) keeps it sane even if other
+        # players joined before us and slots is already smaller
+        est_players = max(6, client_num + 1)
+        food_pp     = total_food / est_players  # food available per player on map
+
+        self.FOOD_CRITICAL = self.cfg.i("food_critical")
+        # safe reserve = density term (food per player) + travel term (map span), the
+        # travel term gives big sparse maps a fatter buffer to survive the long walks
+        # between resources and the ritual freeze, like how the strongest ref ais hoard
+        # ~45 to 52 on roomy maps while staying lean on small ones
+        food_target = food_pp * self.cfg.f("food_safe_mult") \
+                    + (world_x + world_y) * self.cfg.f("food_travel_factor")
+        # survivability floor: one coordination cycle (walk to the leader + the 300/f
+        # ritual freeze) costs food roughly proportional to map span, force a safe
+        # reserve big enough to survive it even if the tuner (tuned on a small map) set
+        # food_safe_max too low, else players gather a tiny buffer and starve mid
+        # rendezvous on a big map, ~0.8*(w+h) on top of the critical floor
+        survive_floor = self.FOOD_CRITICAL + int((world_x + world_y) * 0.8)
+        self.FOOD_SAFE = max(self.cfg.i("food_safe_min"), survive_floor,
+                             min(self.cfg.i("food_safe_max"), int(food_target)))
+        self.FOOD_LOW  = max(self.cfg.i("food_low_min"),
+                             min(self.cfg.i("food_low_max"),
+                                 int(food_pp * self.cfg.f("food_low_mult"))))
+        # coherence guard: food_low must sit below food_safe, else a player hits "safe",
+        # starts gathering stones and is instantly back under "low" so it can never build
+        # a buffer, the tuner search has no such constraint so it can make inverted
+        # configs, clamp here so behaviour stays sane whatever
+        if self.FOOD_LOW >= self.FOOD_SAFE:
+            self.FOOD_LOW = max(self.FOOD_CRITICAL + 1, self.FOOD_SAFE - 3)
+        # gate for joining a leader: must be high enough to survive the round trip +
+        # ritual, on a big map the walk to the leader is long so this scales w/ map span,
+        # committing at food=6 (what a small map tuned config gives) is a sure death on
+        # 20x20, floor at critical + ~0.5*(w+h), the tuner can only raise it
+        self.FOOD_JOIN = max(self.FOOD_CRITICAL + self.cfg.i("join_food_buffer"),
+                             self.FOOD_CRITICAL + int((world_x + world_y) * 0.5))
+        # the seek/wait budgets must scale w/ map size: homing to the leader on a 20x20
+        # takes roughly twice the steps of a 10x10 so a fixed tick budget that works on a
+        # small map times out before followers arrive on a big one
+        # span = 1.0 on 10x10, 2.0 on 20x20, etc
+        span = max(1.0, (world_x + world_y) / 20.0)
+        self.SEEK_TIMEOUT       = int(self.cfg.i("seek_timeout") * span)
+        self.WAIT_TIMEOUT       = int(self.SEEK_TIMEOUT * self.cfg.f("wait_timeout_mult"))
+        self.LISTEN_BEFORE_LEAD = self.cfg.i("listen_before_lead")
+        self.EXTRA_PLAYER_WAIT  = self.cfg.i("extra_player_wait")
+        self.EXTRA_WAIT_MIN_LVL = self.cfg.i("extra_wait_min_level")
+        self.BCAST_INTERVAL     = max(1, self.cfg.i("bcast_interval"))
+
+        print(f"[{self.uid}] map={world_x}x{world_y} total_food={total_food} "
+              f"est_players={est_players} FOOD_SAFE={self.FOOD_SAFE} "
+              f"FOOD_LOW={self.FOOD_LOW} FOOD_JOIN={self.FOOD_JOIN}")
 
         # latest look result, updated evry loop
         self._tiles: list[list[str]] = []
