@@ -24,11 +24,14 @@ class PlayerActionsMixin:
     # leader side of the incantation coordination
 
     def _become_leader(self):
-        """takes on the leader role, broadcasts NEED_INC and moves to wait state"""
+        """takes on the leader role, broadcasts need_inc and moves to wait state"""
         self._leader_uid  = self.uid
         self._ready_count = 0
-        text = bcast.encode(bcast.NEED_INC, f"{self.level}:{self.uid}")
-        cmd.broadcast(self.conn, text, self._noop)
+        # only recruit for real team rituals, a solo ritual (needed==1) must stay silent
+        # so it doesnt lure same level players into a pointless chase
+        if players_needed(self.level) > 1:
+            text = bcast.encode(bcast.NEED_INC, f"{self.level}:{self.uid}")
+            cmd.broadcast(self.conn, text, self._noop)
         # leader is already at the meeting point so go straight to waiting
         self._transition(State.WAIT_TEAM)
 
@@ -244,6 +247,31 @@ class PlayerActionsMixin:
             # if we're already folowing this leader, just update the direction
             if self._leader_uid == leader_uid and self.state == State.SEEK_TEAM:
                 self._leader_k = k
+
+            # leader election: yield to the player w/ the lower uid so only one leader
+            # exists per level group, this MUST also fire while we re already waiting
+            # (wait_team), else two players both self elect, both sit in wait_team
+            # broadcasting and neither ever joins the other, they just burn their whole
+            # timeout (the "two leaders home to each other" thrash we saw on 20x20), the
+            # higher uid leader yields and walks over to the lower one, merges the two
+            # stalled groups into a single firing ritual
+            if (level == self.level
+                    and self._leader_uid == self.uid
+                    and self.state in (State.SEEK_TEAM, State.WAIT_TEAM)
+                    and leader_uid < self.uid
+                    and self._ready_count == 0):
+                # only yield if NOBODY is counting on us yet, a leader that already has
+                # committed followers must stay put, abandoning to chase a lower uid
+                # leader leaves its followers homing to an empty tile (the cascade that
+                # had everyone leading AND following at once so no ritual fired)
+                print(f"[{self.uid}] yielding leadership to {leader_uid} (from {self.state})")
+                self._leader_uid     = leader_uid
+                self._leader_k       = k
+                self._k_fresh        = True
+                self._stones_dropped = False  # we ll re drop at the new leader tile
+                cmd.broadcast(self.conn, bcast.encode(bcast.IM_COMING, leader_uid),
+                               self._noop)
+                self._transition(State.SEEK_TEAM)  # go home to the elected leader
                 return
 
             # join if we re the right level, not already committed, and can survive the
@@ -274,12 +302,39 @@ class PlayerActionsMixin:
             if payload == self.uid:
                 self._ready_count += 1
 
+        elif msg_type == bcast.LVL_UP:
+            # leader finished the ritual (success or failure), if we re a follower still
+            # frozen in incantating (either the ritual failed so the server never sent us
+            # "current level: x", or _on_level_up was cleared bc we were the leader in a
+            # previous ritual) use this as the exit signal, payload is the leader new
+            # level on success, old level on failure
+            if (self.state == State.INCANTATING
+                    and self._leader_uid is not None
+                    and self._leader_uid != self.uid):
+                food = self.inventory.get("food", 0)
+                try:
+                    broadcast_level = int(payload)
+                except ValueError:
+                    broadcast_level = None
+                if broadcast_level is not None and broadcast_level > self.level:
+                    print(f"[{self.uid}] FOLLOWER lvl-up {self.level} -> {broadcast_level} via LVL_UP  food={food}")
+                    self.level = broadcast_level
+                else:
+                    print(f"[{self.uid}] FOLLOWER exiting INCANTATING (ko) via LVL_UP  food={food}")
+                self._action_pending = False
+                self._stones_dropped = False
+                self._transition(State.GATHER_FOOD)
+
         elif msg_type == bcast.START:
-            # leader says start, we join the incant
+            # leader says ritual starts, stay frozen on the tile without sending our own
+            # incantation, the server auto includes all players on the tile and sends
+            # "current level: x" to all of them on success (_on_level_up handles that),
+            # if the ritual fails the leader broadcasts lvl_up above so we still exit clean
             if payload == self._leader_uid and self.state == State.WAIT_TEAM:
+                self._log_incant_tile("FOLLOWER")
+                self._incant_t0 = time.time()
                 self._transition(State.INCANTATING)
                 self._action_pending = True
-                cmd.incantation(self.conn, self._on_incantation_result)
 
     def _on_eject(self, k: int):
         """

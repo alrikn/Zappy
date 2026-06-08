@@ -172,10 +172,17 @@ class PlayerAI(PlayerActionsMixin):
                 self._coord_cooldown -= 1
             # lvl 8 is the max, after that just eat food and survive
             elif self.level < 8 and has_all_stones(self.inventory, self.level):
-                self._transition(State.SEEK_TEAM)
-            elif food < FOOD_LOW:
-                # food droped while gathering, go refill
-                self._transition(State.GATHER_FOOD)
+                if players_needed(self.level) <= 1:
+                    # solo ritual (level 1 needs only 1 player): skip the whole team
+                    # dance, broadcasting need_inc here lured other level 1 players into
+                    # homing toward us then we fired instantly and vanished, stranding
+                    # them till they timed out, that poisoned evry rendezvous on big maps,
+                    # claim self leadership and go straight to drop+fire without recruiting
+                    self._leader_uid  = self.uid
+                    self._ready_count = 0
+                    self._transition(State.WAIT_TEAM)
+                else:
+                    self._transition(State.SEEK_TEAM)
 
         elif self.state == State.SEEK_TEAM:
             self._seek_ticks += 1
@@ -322,4 +329,16 @@ class PlayerAI(PlayerActionsMixin):
             if on_tile >= needed and stones_ok and ready:
                 self._fire_incantation()
                 return
+
+        elif self._leader_uid is not None:
+            # follower: keep re announcing readiness, a single im_ready sent on arrival is
+            # easily lost in a broadcast collision (we saw leaders fire w/ rcnt=0 ie never
+            # counting the follower standing right on the tile), by re broadcasting evry
+            # so often the leader reliably counts us and fires on a confirmed committed
+            # same level partner instead of a random passer by
+            self._bcast_ticks += 1
+            if self._bcast_ticks >= self.BCAST_INTERVAL:
+                self._bcast_ticks = 0
+                cmd.broadcast(self.conn, bcast.encode(bcast.IM_READY, self._leader_uid),
+                               self._noop)
 
