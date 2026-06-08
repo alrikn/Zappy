@@ -135,6 +135,25 @@ public:
 };
 
 /**
+ * @brief Thrown when the Renderer or any sub-object fails to initialise.
+ * @details Covers: shader file not found, vk-bootstrap device selection failure,
+ *          missing Vulkan extension, or any non-VkResult renderer setup error.
+ *          Distinct from RendererVkException, which is specifically for VkResult failures.
+ *
+ *          Lifetime: thrown from renderer initialisation code, caught by the top-level
+ *          try/catch in main().
+ */
+class RendererInitException : public ZappyException {
+public:
+    /**
+     * @brief Construct with a description of the initialisation failure.
+     * @param message Human-readable explanation (e.g. "shader file not found: triangle.vert.spv").
+     */
+    explicit RendererInitException(std::string message)
+        : ZappyException(std::move(message)) {}
+};
+
+/**
  * @brief Thrown when WorldState encounters an irrecoverable structural inconsistency.
  * @details This exception signals programming errors rather than normal network noise.
  *          Example: calling snapshot() before any msz message has been received in a

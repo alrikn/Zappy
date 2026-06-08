@@ -135,9 +135,10 @@ int main(int argc, char* argv[])
         spdlog::info("zappy_gui starting — server: {}:{}", args.host, args.port);
 
         // ── Construct subsystems ───────────────────────────────────────────
-        auto world    = std::make_unique<WorldState>();
-        auto network  = std::make_unique<NetworkClient>(args.host, args.port);
-        auto renderer = std::make_unique<Renderer>();
+        // Renderer is constructed later, after the GLFW window exists.
+        // It needs the window handle to create the Vulkan surface.
+        auto world   = std::make_unique<WorldState>();
+        auto network = std::make_unique<NetworkClient>(args.host, args.port);
 
         // ── Connect to server ─────────────────────────────────────────────
         //
@@ -178,6 +179,14 @@ int main(int argc, char* argv[])
 
         spdlog::info("Window created (1280x720). Press ESC to exit.");
 
+        // Renderer is constructed after the GLFW window because it needs window.get()
+        // to create the Vulkan surface (VkSurfaceKHR). The Renderer stores window.get()
+        // as a non-owning pointer — the window is owned by the unique_ptr above and is
+        // guaranteed to outlive the Renderer (the Renderer is declared after the window
+        // unique_ptr in this scope, so it is destroyed first).
+        auto renderer = std::make_unique<Renderer>(window.get());
+        spdlog::info("Renderer initialised.");
+
         // ── Event loop ────────────────────────────────────────────────────
         //
         // glfwWindowShouldClose returns true when:
@@ -213,7 +222,8 @@ int main(int argc, char* argv[])
                 throw NetworkRecvException("server disconnected unexpectedly during run");
             }
 
-            // Renderer stub: no-op until Vulkan rendering is implemented.
+            // drawFrame(): acquire a swapchain image, record and submit draw commands,
+            // then present the rendered image to the display.
             renderer->drawFrame();
         }
 
