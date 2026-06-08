@@ -6,13 +6,17 @@
 ##
 
 import random
+import time
 from state_machine import State
 from resources import STONES, ELEVATION, players_needed, next_stone_to_collect
 import commands as cmd
 import broadcast as bcast
 from vision import find_resource, tile_to_moves, count_players_on_tile
 
-FOOD_FORK_MIN = 30  # need at least this much food before we fork
+# dead reckoning: facing index to (dx, dy) applied on a forward step, in the player
+# private spawn relative frame, order is an arbitrary but consistent set of cardinals,
+# right rotates +1, left rotates +3 (ie -1) thru it
+_FACING_DELTA = [(0, 1), (1, 0), (0, -1), (-1, 0)]
 
 
 class PlayerActionsMixin:
@@ -52,15 +56,31 @@ class PlayerActionsMixin:
             print(f"[{self.uid}] homing -> {self._leader_uid} k={self._leader_k} "
                   f"seek_ticks={self._seek_ticks}/{self.SEEK_TIMEOUT}")
 
+    def _log_incant_tile(self, who: str):
+        """diagnostic: dump the tile contents we think we re incanting on"""
+        tile     = self._tiles[0] if self._tiles else []
+        req      = ELEVATION.get(self.level, {})
+        have     = {s: tile.count(s) for s in STONES if req.get(s, 0) > 0}
+        need     = {s: req.get(s, 0) for s in have}
+        print(f"[{self.uid}] {who} lvl{self.level} players_on_tile={tile.count('player')} "
+              f"need={players_needed(self.level)} ready_cnt={self._ready_count} "
+              f"stones_have={have} stones_need={need}")
+
     def _on_incantation_result(self, new_level: int | None):
         self._action_pending = False
         self._stones_dropped = False
+        food = self.inventory.get("food", 0)
         if new_level is not None:
             self.level = new_level
-            print(f"[{self.uid}] leveled up to {self.level}!")
-            cmd.broadcast(self.conn, bcast.encode(bcast.LVL_UP, str(self.level)),
-                          self._noop)
-        # whether it worked or not, go back to gathering food
+            print(f"[{self.uid}] leveled up to {self.level}!  food={food}")
+        else:
+            elapsed = time.time() - getattr(self, "_incant_t0", time.time())
+            phase = "start-check (immediate)" if elapsed < 0.5 else "end-check (after underway)"
+            print(f"[{self.uid}] incantation ko [{phase}, {elapsed:.2f}s]  food={food}")
+        # always signal followers that the ritual ended (success OR failure) so they exit
+        # incantating, followers dont send incantation so they only get the server
+        # "current level: x" on success, this broadcast is their exit on failure
+        cmd.broadcast(self.conn, bcast.encode(bcast.LVL_UP, str(self.level)), self._noop)
         self._transition(State.GATHER_FOOD)
 
     # navigation helpers
@@ -108,15 +128,54 @@ class PlayerActionsMixin:
             self._wander()
 
     def _wander(self):
-        """random movement when we dont know where to go"""
-        self._action_pending = True
-        def after_wander(_):
-            self._tiles = []
-            self._clear_action()
-        if random.random() < 0.3:
-            cmd.turn_right(self.conn, after_wander)
+        """
+        explore toward the least recently visited neighbour instead of moving at random,
+        systematic coverage finds sparse resources on a big map way faster than a random
+        walk that keeps re treading tiles it already cleared, this is the sound single
+        player version of the shared map idea (we cant merge maps across players without
+        a common coord origin which zappy doesnt give us, but each player remembering its
+        own coverage still cuts search time)
+        """
+        # score our four neighbours by how long ago we stepped on them, unvisited (-1)
+        # wins, shuffle so ties dont make evry player sweep in lockstep
+        dirs = [0, 1, 2, 3]
+        random.shuffle(dirs)
+        best_dir, best_age = self._facing, None
+        for d in dirs:
+            dx, dy = _FACING_DELTA[d]
+            nb = ((self._pos[0] + dx) % self.world_x,
+                  (self._pos[1] + dy) % self.world_y)
+            age = self._visited.get(nb, -1)
+            if best_age is None or age < best_age:
+                best_age, best_dir = age, d
+        # turn from our current facing toward the chosen direction, then step
+        diff = (best_dir - self._facing) % 4
+        if diff == 1:
+            moves = ["Right", "Forward"]
+        elif diff == 2:
+            moves = ["Right", "Right", "Forward"]
+        elif diff == 3:
+            moves = ["Left", "Forward"]
         else:
-            cmd.forward(self.conn, after_wander)
+            moves = ["Forward"]
+        self._execute_moves(moves)
+
+    def _track_move(self, move: str):
+        """
+        update our private dead reckoned facing/pos as each move is issued, forward and
+        turns never fail in zappy (the torus has no walls) so applying the update at
+        issue time stays in sync w/ the server without waiting on the response
+        """
+        if move == "Right":
+            self._facing = (self._facing + 1) % 4
+        elif move == "Left":
+            self._facing = (self._facing + 3) % 4
+        elif move == "Forward":
+            dx, dy = _FACING_DELTA[self._facing]
+            self._pos[0] = (self._pos[0] + dx) % self.world_x
+            self._pos[1] = (self._pos[1] + dy) % self.world_y
+            self._move_tick += 1
+            self._visited[(self._pos[0], self._pos[1])] = self._move_tick
 
     def _execute_moves(self, moves: list[str]):
         """
@@ -137,6 +196,8 @@ class PlayerActionsMixin:
                 self._clear_action()
 
         for move in moves:
+            # keep dead reckoning in sync (additive, doesnt change what we send)
+            self._track_move(move)
             if move == "Forward":
                 cmd.forward(self.conn, done)
             elif move == "Right":
@@ -153,13 +214,18 @@ class PlayerActionsMixin:
         """
         if self.level not in ELEVATION:
             return
-        needed = ELEVATION[self.level]
+        needed  = ELEVATION[self.level]
+        dropped = False
         for stone in STONES:
             have = self.inventory.get(stone, 0)
             need = needed.get(stone, 0)
-            # drop up to what's required, not excess
             for _ in range(min(have, need)):
                 cmd.set_down(self.conn, stone, self._noop)
+                dropped = True
+        if dropped:
+            # clear stale tile data so the stones_ok check waits for a fresh look that
+            # reflects the newly dropped stones on the ground
+            self._tiles = []
 
     # forking
 
@@ -169,7 +235,7 @@ class PlayerActionsMixin:
         we check connect_nbr first bc forking when slots are already open is a waste
         of 42/f time units
         """
-        if self.inventory.get("food", 0) < FOOD_FORK_MIN:
+        if self.inventory.get("food", 0) < self.cfg.i("fork_min_food"):
             return
 
         prev_state = self.state
@@ -228,7 +294,7 @@ class PlayerActionsMixin:
     def _on_broadcast(self, k: int, text: str):
         """
         handles incoming broadcast messages,
-        we only care about messages from our own team (prefixed with ZAPPY:)
+        we only care about messages from our own team (prefixed with zappy:)
         """
         parsed = bcast.decode(text)
         if parsed is None:
@@ -244,9 +310,12 @@ class PlayerActionsMixin:
                 level = int(level_str)
             except ValueError:
                 return
-            # if we're already folowing this leader, just update the direction
+            # if we re already following this leader, refresh the bearing, _k_fresh tells
+            # the homing loop to act on this new direction next tick
             if self._leader_uid == leader_uid and self.state == State.SEEK_TEAM:
                 self._leader_k = k
+                self._k_fresh  = True
+                return
 
             # leader election: yield to the player w/ the lower uid so only one leader
             # exists per level group, this MUST also fire while we re already waiting

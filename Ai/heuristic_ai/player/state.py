@@ -96,6 +96,17 @@ class PlayerAI(PlayerActionsMixin):
         # latest look result, updated evry loop
         self._tiles: list[list[str]] = []
 
+        # dead reckoning position tracking, in a private frame relative to spawn, the
+        # protocol never tells us our absolute coords or orientation so this cant be
+        # shared w/ teammates for rendezvous, its only so we can explore efficiently
+        # (head for tiles we havnt visited lately instead of random walking), facing
+        # 0..3 are the four cardinals in our own frame, pos wraps on the torus, eject
+        # can desync this which only hurts exploration quality never correctness
+        self._facing = 0
+        self._pos = [0, 0]
+        self._visited: dict[tuple[int, int], int] = {}
+        self._move_tick = 0
+
         # these flags track wether we have pending async calls in flight
         self._inventory_pending = False
         self._look_pending      = False
@@ -112,8 +123,11 @@ class PlayerAI(PlayerActionsMixin):
         self._seek_ticks:  int = 0           # anti stall counter for seek+wait
 
         # ritual state
-        self._stones_dropped = False  # did we already drop our stones for this ritual?
-        self._bcast_ticks    = 0      # leader re broadcast interval counter
+        self._stones_dropped  = False  # did we already drop our stones for this ritual?
+        self._bcast_ticks     = 0      # leader re broadcast interval counter
+        self._full_wait_ticks = 0      # ticks waited after min players (unused now)
+        self._present_ticks   = 0      # ticks the tile held >= needed bodies (im_ready fallback)
+        self._incant_t0       = 0.0    # wall clock when we fired incant (to tag ko phase)
 
         # forking
         self._fork_ticks = 0          # how long since last fork attempt
@@ -122,9 +136,15 @@ class PlayerAI(PlayerActionsMixin):
         # new leader when we already have all stones but just timed out as follower
         self._coord_cooldown = 0
 
+        # log throttle: suppress repeated "rejected NEED_INC" lines
+        self._reject_count = 0
+
         # hook up the unsolicited event handlers
         self.conn.on_broadcast(self._on_broadcast)
         self.conn.on_eject(self._on_eject)
+        # make starvation visible instead of a silent process exit (the connection
+        # calls this then exits on the server "dead" message)
+        self.conn.on_dead(lambda: print(f"[{self.uid}] DIED (starved) at level {self.level}"))
         # FRAGILE STUFF HERE TODO : the connection only has one on_level_up slot, we register
         # self._on_level_up here but cmd.incantation() overwrites it with its own
         # handler each time we incantate then sets it back to None when done, so this
@@ -133,6 +153,15 @@ class PlayerAI(PlayerActionsMixin):
         # but if we ever want to react to external level up events this needs a rework
         # (ideally a list of handlers instead of a single slot) but idkkk
         self.conn.on_level_up(self._on_level_up)
+
+        # loop pacing: sleep between iterations so we dont busy spin the cpu, at ~0.01s
+        # the ai does ~100 actions/sec which becomes the bottleneck once the server runs
+        # fast (high f), lower it (e.g ZAPPY_AI_TICK=0.001) to let the ai keep up w/ a
+        # sped up server so games progress faster in wall clock
+        try:
+            self._loop_sleep = max(0.0, float(os.environ.get("ZAPPY_AI_TICK", "0.01")))
+        except ValueError:
+            self._loop_sleep = 0.01
 
         # get initial state before the loop starts
         self._request_inventory()
@@ -144,32 +173,32 @@ class PlayerAI(PlayerActionsMixin):
             self.conn.pump()       # read socket, dispatch callbacks
             self._update_state()   # check if we need to transition
             self._act()            # do one action based on current state
-            # small sleep to avoid busy spinning the cpu at 100%, this isnt active
-            # waiting (we block on a tight loop with no yield), but a strict grader
-            # might prefer select() with a timeout in pump() instead of a fixed sleep
-            # so we wake exactly when data arrives, low risk either way for the ai
-            time.sleep(0.01)
+            if self._loop_sleep:
+                time.sleep(self._loop_sleep)
 
     # state transition logic
 
     def _update_state(self):
         food = self.inventory.get("food", 0)
 
-        # food check always wins regardless of what state we are in
-        # (except during incantation where we're frozen and cant do anything anyway)
-        if food < FOOD_CRITICAL and self.state not in (State.SURVIVE, State.INCANTATING):
+        # food check always wins whatever state we are in
+        # (except during incantation where we re frozen and cant do anything anyway)
+        if food < self.FOOD_CRITICAL and self.state not in (State.SURVIVE, State.INCANTATING):
             self._transition(State.SURVIVE)
             return
 
-        if self.state == State.SURVIVE and food >= FOOD_CRITICAL + 2:
+        if self.state == State.SURVIVE and food >= self.FOOD_CRITICAL + 2:
             self._transition(State.GATHER_FOOD)
 
-        elif self.state == State.GATHER_FOOD and food >= FOOD_SAFE:
+        elif self.state == State.GATHER_FOOD and food >= self.FOOD_SAFE:
             self._transition(State.GATHER_STONES)
 
         elif self.state == State.GATHER_STONES:
             if self._coord_cooldown > 0:
                 self._coord_cooldown -= 1
+            elif food < self.FOOD_LOW:
+                # food check first: coordination burns a bunch of food, gotta enter w/ enough
+                self._transition(State.GATHER_FOOD)
             # lvl 8 is the max, after that just eat food and survive
             elif self.level < 8 and has_all_stones(self.inventory, self.level):
                 if players_needed(self.level) <= 1:
@@ -186,28 +215,38 @@ class PlayerAI(PlayerActionsMixin):
 
         elif self.state == State.SEEK_TEAM:
             self._seek_ticks += 1
-            if self._seek_ticks > SEEK_TIMEOUT:
-                # if we were a follower, add cooldown so we dont immediately
-                # become a new leader and compete with the original one
-                if self._leader_uid != self.uid:
-                    self._coord_cooldown = 50
+            if self._seek_ticks > self.SEEK_TIMEOUT:
+                # diagnostic: did homing stall? show the last bearing + steps taken
+                if self._leader_uid is not None and self._leader_uid != self.uid:
+                    print(f"[{self.uid}] SEEK TIMEOUT homing to {self._leader_uid}: "
+                          f"{self._home_steps} steps, last k={self._leader_k} (never reached 0)")
+                # followers get short cooldown, leaders get longer one, without a cooldown
+                # the leader immediately re enters seek_team since it still has all its
+                # stones, makes a tight loop
+                self._coord_cooldown = 50 if self._leader_uid != self.uid else 150
                 self._transition(State.GATHER_STONES)
 
         elif self.state == State.WAIT_TEAM:
             self._seek_ticks += 1
-            if self._seek_ticks > SEEK_TIMEOUT * 2:
-                # same logic, followers get a cooldown before re-entering
-                if self._leader_uid != self.uid:
-                    self._coord_cooldown = 50
+            if self._seek_ticks > self.WAIT_TIMEOUT:
+                # same logic, leaders that waited w/ nobody showing up back off longer
+                # before trying again
+                self._coord_cooldown = 50 if self._leader_uid != self.uid else 200
                 # waited too long, nobody came
                 self._transition(State.GATHER_STONES)
 
     def _transition(self, new_state: State):
-        print(f"[{self.uid}] {self.state} -> {new_state}")
-        # reset ritual state when entering or leaving a ritual
+        food = self.inventory.get("food", 0)
+        print(f"[{self.uid}] {self.state} -> {new_state}  food={food}")
+        if new_state == State.SEEK_TEAM:
+            # reset seek counter on every (re)entry including leader-yield transitions
+            self._seek_ticks = 0
+            self._home_steps = 0
         if new_state == State.WAIT_TEAM:
-            self._stones_dropped = False
-            self._bcast_ticks    = 0
+            self._stones_dropped  = False
+            self._bcast_ticks     = 0
+            self._full_wait_ticks = 0
+            self._present_ticks   = 0
         if new_state in (State.GATHER_FOOD, State.GATHER_STONES, State.SURVIVE):
             self._leader_uid     = None
             self._leader_k       = None
@@ -227,10 +266,10 @@ class PlayerAI(PlayerActionsMixin):
         if not self._look_pending:
             self._request_look()
 
-        # try to fork around every 150 ticks when not in a critical state
+        # try to fork periodically when not in a critical state
         if self.state in (State.GATHER_FOOD, State.GATHER_STONES):
             self._fork_ticks += 1
-            if self._fork_ticks >= 150:
+            if self._fork_ticks >= self.cfg.i("fork_interval"):
                 self._fork_ticks = 0
                 self._try_fork()
 
@@ -263,22 +302,43 @@ class PlayerAI(PlayerActionsMixin):
 
     def _act_seek_team(self):
         if self._leader_uid is None:
-            # nobody called for an incantation yet, so we become the leader
+            # brief listen window: give nearby need_inc broadcasts time to arrive before
+            # we declare leadership, cuts down on competing simultaneous leaders
+            if self._seek_ticks < self.LISTEN_BEFORE_LEAD:
+                return
             self._become_leader()
             return
 
-        if self._leader_k is not None:
-            if self._leader_k == 0:
-                # we are already on the leaders tile
-                self._leader_k = None
-                cmd.broadcast(self.conn, bcast.encode(bcast.IM_READY, self._leader_uid),
-                               self._noop)
-                self._transition(State.WAIT_TEAM)
-            else:
-                # take one step toward the leader based on bcast dir
-                moves = bcast.moves_toward(self._leader_k)
-                self._leader_k = None
-                self._execute_moves(moves)
+        # sound homing toward the leader beacon: aim then advance, one homing primitive
+        # per fresh ping (moves_toward rotates to face the leader or steps forward once
+        # the leader is in our forward arc), we take a single primitive per ping and
+        # never walk blind between pings, both blind forward runs and turn+step in one
+        # move make the follower orbit the beacon at a constant bearing instead of
+        # landing on its tile (see broadcast.py)
+        if self._leader_k == 0:
+            # standing on the leader tile, announce arrival and wait for start
+            print(f"[{self.uid}] ARRIVED at {self._leader_uid} after {self._home_steps} "
+                  f"homing steps (seek_ticks={self._seek_ticks})")
+            self._leader_k = None
+            self._k_fresh  = False
+            cmd.broadcast(self.conn, bcast.encode(bcast.IM_READY, self._leader_uid),
+                           self._noop)
+            self._transition(State.WAIT_TEAM)
+            return
+
+        if self._k_fresh and self._leader_k is not None:
+            # one step per fresh bearing then wait for the next ping to re aim,
+            # moves_toward returns at most a turn + a single forward so each ping
+            # advances us <=1 tile straight at the leader, we do NOT keep walking
+            # forward between pings, a blind straight run on a stale bearing overshoots
+            # and makes the follower orbit the beacon forever (k oscillating 6,3,4 and
+            # never reaching 0 like we saw on 20x20), the leader re broadcasts evry
+            # bcast_interval ticks so pings are frequent enough that one step per ping
+            # still converges quick
+            self._k_fresh = False
+            self._home_steps += 1
+            self._home_log()
+            self._execute_moves(bcast.moves_toward(self._leader_k))
 
     def _act_wait_team(self):
         # drop our required stones onto the tile once
@@ -342,3 +402,17 @@ class PlayerAI(PlayerActionsMixin):
                 cmd.broadcast(self.conn, bcast.encode(bcast.IM_READY, self._leader_uid),
                                self._noop)
 
+        # leader (not ready to fire) AND followers: the player is anchored and cant
+        # forage so it starves while waiting, eat any food on the tile to stay alive long
+        # enough for the ritual to assemble, this was a big cause of abandoned rituals but
+        # it runs AFTER the leader fire check so it never delays firing
+        if self.cfg.b("leader_eat_in_wait") and self._tiles and "food" in self._tiles[0]:
+            self._action_pending = True
+            def on_eat(ok: bool):
+                if ok:
+                    try:
+                        self._tiles[0].remove("food")
+                    except (ValueError, IndexError):
+                        pass
+                self._action_pending = False
+            cmd.take(self.conn, "food", on_eat)
