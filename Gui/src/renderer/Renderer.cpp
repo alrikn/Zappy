@@ -7,10 +7,16 @@
  *            DeviceContext::createInstance()      → VkInstance
  *            WindowContext(window, instance)       → VkSurfaceKHR
  *            DeviceContext(instance, surface)      → VkDevice + VkQueue + VkPhysicalDevice
- *            [query surface format]                → VkFormat (for Pipeline)
- *            Pipeline(device, format, shadersDir)  → VkRenderPass + VkPipeline
- *            SwapchainContext(device, phys, surf,  → VkSwapchainKHR + views + framebuffers
- *                             renderPass, w, h)
+ *            AllocatorContext(instance, phys, dev) → VmaAllocator
+ *            [query framebuffer size]              → (fbWidth, fbHeight)
+ *            DepthResources(allocator, dev, phys,  → VkImage + VmaAllocation + VkImageView
+ *                           fbWidth, fbHeight)        + VkFormat (probed)
+ *            [query surface format]                → VkFormat (for Pipeline colour attachment)
+ *            Pipeline(device, colorFormat,         → VkRenderPass + VkPipeline (depth test ON)
+ *                     depthFormat, shadersDir)
+ *            SwapchainContext(device, phys, surf,  → VkSwapchainKHR + colour views
+ *                             renderPass,              + framebuffers (colour + depth view)
+ *                             depthView, w, h)
  *            FrameSyncPool(device, 2)              → 2× VkSemaphore + 2× VkFence
  *            renderFinished semaphores             → N× VkSemaphore (one per swapchain image)
  *            allocateCommandBuffers()              → VkCommandPool + N× VkCommandBuffer
@@ -23,7 +29,7 @@
  *            5. vkQueueSubmit — submit commands to the GPU
  *            6. vkQueuePresentKHR — ask the swapchain to present the rendered image
  *
- *          Architecture: Renderer.cpp is the only translation unit that includes all four
+ *          Architecture: Renderer.cpp is the only translation unit that includes all
  *          sub-object headers. Keeping all the wiring here prevents circular dependencies
  *          and makes the initialisation sequence easy to audit.
  */
@@ -32,6 +38,7 @@
 #include "renderer/device/VkCheck.hpp"
 #include "exceptions.hpp"
 
+#include <array>
 #include <spdlog/spdlog.h>
 
 // ─── constructor ──────────────────────────────────────────────────────────────
@@ -62,7 +69,39 @@ Renderer::Renderer(GLFWwindow* window)
     // presentation. It selects the best GPU and creates VkDevice + VkQueue.
     _device = std::make_unique<DeviceContext>(instance, _window->surface());
 
-    // ── Step 4: Query the surface format for Pipeline creation ───────────────
+    // ── Step 4: Create the VMA allocator ─────────────────────────────────────
+    //
+    // AllocatorContext wraps vmaCreateAllocator. VMA needs the Vulkan triple
+    // (instance + physical device + device) to allocate and manage GPU memory.
+    // Created here, after all three handles exist, and before DepthResources
+    // which is the first class to allocate through VMA.
+    _allocator = std::make_unique<AllocatorContext>(
+        _device->instance(),
+        _device->physicalDevice(),
+        _device->device());
+
+    // ── Step 5: Create the depth image ───────────────────────────────────────
+    //
+    // DepthResources probes the GPU for a supported depth format, allocates a
+    // depth image through VMA, and creates its VkImageView.
+    //
+    // We query the framebuffer size here (before Pipeline) because DepthResources
+    // needs the exact pixel dimensions to size the depth image to match the
+    // swapchain images. Querying early also avoids a second glfwGetFramebufferSize
+    // call later — we can reuse fbWidth/fbHeight for SwapchainContext as well.
+    uint32_t fbWidth{0};
+    uint32_t fbHeight{0};
+    // Pass the window pointer at the call site — WindowContext does not store it.
+    _window->framebufferSize(window, fbWidth, fbHeight);
+
+    _depth = std::make_unique<DepthResources>(
+        _allocator->allocator(),
+        _device->device(),
+        _device->physicalDevice(),
+        fbWidth,
+        fbHeight);
+
+    // ── Step 6: Query the surface format for Pipeline creation ───────────────
     //
     // Pipeline needs the swapchain image format to configure the render pass
     // colour attachment, but the swapchain does not exist yet (it needs the
@@ -108,41 +147,41 @@ Renderer::Renderer(GLFWwindow* window)
         }
     }
 
-    // ── Step 5: Create the graphics pipeline ─────────────────────────────────
+    // ── Step 7: Create the graphics pipeline ─────────────────────────────────
     //
-    // Pipeline loads the compiled SPIR-V shaders, creates the render pass (using
-    // the surface format queried above), and assembles the graphics pipeline.
-    // The render pass handle is then used in Step 6 for framebuffer creation.
+    // Pipeline loads the compiled SPIR-V shaders, creates the render pass with
+    // both colour and depth attachments (using the formats queried above), and
+    // assembles the graphics pipeline with depth test enabled.
+    // The render pass handle is then used in Step 8 for framebuffer creation.
     _pipeline = std::make_unique<Pipeline>(
         _device->device(),
         surfaceFormat,
+        _depth->format(),
         SHADERS_DIR);
 
-    // ── Step 6: Create the swapchain, image views, and framebuffers ───────────
+    // ── Step 8: Create the swapchain, colour views, and framebuffers ──────────
     //
     // SwapchainContext creates the VkSwapchainKHR (the ring of presentable images),
-    // one VkImageView per image, and one VkFramebuffer per view. The framebuffers
-    // reference the render pass from Step 5.
-    uint32_t fbWidth{0};
-    uint32_t fbHeight{0};
-    // Pass the window pointer at the call site — WindowContext does not store it.
-    _window->framebufferSize(window, fbWidth, fbHeight);
-
+    // one colour VkImageView per image, and one VkFramebuffer per view. Each
+    // framebuffer now has two attachments: the per-image colour view (attachment 0)
+    // and the shared depth view (attachment 1). The depth view is borrowed from
+    // DepthResources and must outlive SwapchainContext (guaranteed by declaration order).
     _swapchain = std::make_unique<SwapchainContext>(
         _device->device(),
         _device->physicalDevice(),
         _window->surface(),
         _pipeline->renderPass(),
+        _depth->view(),
         fbWidth,
         fbHeight);
 
-    // ── Step 7: Create per-frame synchronisation primitives ──────────────────
+    // ── Step 9: Create per-frame synchronisation primitives ──────────────────
     //
     // FrameSyncPool allocates 2 × imageAvailable semaphores and 2 × inFlight fences
     // (one set per frame-in-flight slot).
     _syncPool = std::make_unique<FrameSyncPool>(_device->device(), kMaxFramesInFlight);
 
-    // ── Step 8: Create one "render finished" semaphore per swapchain image ───
+    // ── Step 10: Create one "render finished" semaphore per swapchain image ──
     //
     // This semaphore is signalled by vkQueueSubmit and waited on by vkQueuePresentKHR
     // for the SAME swapchain image, so it must be indexed by swapchain image index
@@ -159,7 +198,7 @@ Renderer::Renderer(GLFWwindow* window)
         }
     }
 
-    // ── Step 9: Allocate command pool and command buffers ─────────────────────
+    // ── Step 11: Allocate command pool and command buffers ────────────────────
     allocateCommandBuffers();
 
     spdlog::info("Renderer: initialisation complete.");
@@ -209,6 +248,8 @@ Renderer::~Renderer()
     //   _syncPool  → vkDestroySemaphore × 2 + vkDestroyFence × 2
     //   _swapchain → vkDestroyFramebuffer × N + vkDestroyImageView × N + vkDestroySwapchainKHR
     //   _pipeline  → vkDestroyPipeline + vkDestroyPipelineLayout + vkDestroyRenderPass
+    //   _depth     → vkDestroyImageView + vmaDestroyImage (image + allocation)
+    //   _allocator → vmaDestroyAllocator
     //   _window    → vkDestroySurfaceKHR
     //   _device    → vkDestroyDevice + (debug messenger) + vkDestroyInstance
 }
@@ -300,11 +341,29 @@ void Renderer::recordCommandBuffer(uint32_t imageIndex)
     renderPassInfo.renderArea.offset = {0, 0};
     renderPassInfo.renderArea.extent = {_swapchain->width(), _swapchain->height()};
 
-    // Clear colour: dark grey background so the RGB triangle is clearly visible.
-    VkClearValue clearColor{};
-    clearColor.color = {{0.1f, 0.1f, 0.1f, 1.0f}};
-    renderPassInfo.clearValueCount = 1;
-    renderPassInfo.pClearValues    = &clearColor;
+    // Clear values for both render pass attachments.
+    //
+    // The array must be indexed by attachment slot, matching Pipeline's render pass:
+    //   clearValues[0] → attachment 0 (colour): dark grey background.
+    //   clearValues[1] → attachment 1 (depth):  1.0 = the far-plane value.
+    //
+    // Depth clear value {1.0f, 0}:
+    //   depthStencil.depth   = 1.0f: clear every pixel to the maximum depth (farthest from
+    //     the camera). With VK_COMPARE_OP_LESS, the first fragment drawn at any pixel always
+    //     passes the depth test because its depth (< 1.0 in clip space [0,1]) is less than
+    //     1.0. Clearing to 0.0 instead would cause every subsequent fragment to fail.
+    //   depthStencil.stencil = 0:    stencil testing is not used; value is irrelevant.
+    //
+    // Providing only one clear value when the render pass has two attachments would trigger
+    // a validation layer error: clearValueCount must equal the render pass attachment count.
+    const std::array<VkClearValue, 2> clearValues = []{
+        std::array<VkClearValue, 2> cv{};
+        cv[0].color        = {{0.1f, 0.1f, 0.1f, 1.0f}};
+        cv[1].depthStencil = {1.0f, 0};
+        return cv;
+    }();
+    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    renderPassInfo.pClearValues    = clearValues.data();
 
     // VK_SUBPASS_CONTENTS_INLINE: all draw commands are recorded inline in this
     // primary command buffer (as opposed to SECONDARY_COMMAND_BUFFERS mode where
@@ -346,15 +405,22 @@ void Renderer::recordCommandBuffer(uint32_t imageIndex)
     // ── Draw ──────────────────────────────────────────────────────────────────
     //
     // vkCmdDraw: record a non-indexed draw call.
-    // vertexCount=3: the vertex shader runs 3 times, once per vertex.
-    //               gl_VertexIndex in the shader is 0, 1, 2 on the three invocations.
+    // vertexCount=6: the vertex shader runs 6 times, once per vertex.
+    //   gl_VertexIndex 0–2 → first triangle (RGB gradient, one clip-space Z value).
+    //   gl_VertexIndex 3–5 → second triangle (solid cyan, different clip-space Z value).
+    //   The two triangles partially overlap on screen at different depths; the depth
+    //   test discards fragments from the farther shape where both cover the same pixel.
     // instanceCount=1: one instance (no instanced rendering).
     // firstVertex=0: gl_VertexIndex starts at 0.
     // firstInstance=0: gl_InstanceIndex starts at 0.
-    // The GPU assembles the 3 vertices into one triangle (TRIANGLE_LIST topology)
-    // and rasterises it — producing one fragment per covered pixel. The fragment
-    // shader runs once per fragment, outputting the interpolated colour.
-    vkCmdDraw(cmd, 3, 1, 0, 0);
+    //
+    // Topology = TRIANGLE_LIST (set in Pipeline): every 3 consecutive vertices
+    // form one independent triangle. Two triangles = 6 vertices, 2 × (0,1,2) groups.
+    // The GPU rasterises both triangles, producing one fragment per covered pixel for
+    // each triangle. Overlapping pixels produce two candidate fragments; the EARLY
+    // FRAGMENT TESTS stage (depth compare with VK_COMPARE_OP_LESS) keeps only the
+    // nearer one, discarding the farther fragment before the fragment shader runs.
+    vkCmdDraw(cmd, 6, 1, 0, 0);
 
     // ── End render pass ───────────────────────────────────────────────────────
     //

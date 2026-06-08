@@ -3,15 +3,24 @@
  * @brief Owns the VkSwapchainKHR, per-image VkImageViews, and VkFramebuffers.
  * @details The swapchain is a ring of GPU images that rotate between "being rendered
  *          into" and "being displayed on screen". This class wraps the full lifecycle:
- *          swapchain creation (via vk-bootstrap), image view creation (one per image),
- *          and framebuffer creation (one per image, bound to the provided render pass).
+ *          swapchain creation (via vk-bootstrap), colour image view creation (one per
+ *          swapchain image), and framebuffer creation (one per swapchain image, bound to
+ *          the provided render pass with both colour and depth attachments).
  *
- *          Destruction order constraint: framebuffers reference the render pass, so the
- *          render pass must outlive this object. In Renderer, SwapchainContext is declared
- *          after Pipeline (which owns the render pass), so it is destroyed first.
+ *          Each VkFramebuffer references two image views:
+ *            - Attachment 0: per-swapchain-image colour view (owned here).
+ *            - Attachment 1: shared depth view (owned by DepthResources, borrowed here).
+ *          This ordering must match the attachment declarations in Pipeline's render pass.
  *
- *          Architecture: created by Renderer after Pipeline, because the render pass handle
- *          from Pipeline is needed to create the framebuffers.
+ *          Destruction order constraint: framebuffers reference the render pass and the
+ *          depth view. The render pass must outlive this object (Pipeline is declared
+ *          before SwapchainContext in Renderer, so it is destroyed after). The depth view
+ *          must outlive this object (DepthResources is declared before SwapchainContext
+ *          in Renderer, so it is destroyed after SwapchainContext).
+ *
+ *          Architecture: created by Renderer after Pipeline and DepthResources, because
+ *          both the render pass handle and the depth image view are needed for framebuffer
+ *          creation.
  */
 
 #pragma once
@@ -21,9 +30,10 @@
 #include <vulkan/vulkan.h>
 
 /**
- * @brief Manages the swapchain, per-image views, and per-image framebuffers.
- * @details Lifetime: created in Renderer constructor after Pipeline; destroyed before
- *          Pipeline (because framebuffers reference the render pass owned by Pipeline).
+ * @brief Manages the swapchain, per-image colour views, and per-image framebuffers.
+ * @details Lifetime: created in Renderer constructor after Pipeline and DepthResources;
+ *          destroyed before both (because framebuffers reference the render pass owned by
+ *          Pipeline and the depth view owned by DepthResources).
  *          Non-copyable, non-movable.
  *
  *          Thread-safety: not thread-safe. All calls must come from the main (render) thread.
@@ -31,14 +41,17 @@
 class SwapchainContext {
 public:
     /**
-     * @brief Create the swapchain, retrieve images, create image views and framebuffers.
+     * @brief Create the swapchain, retrieve images, create colour views and framebuffers.
      * @details Uses vk-bootstrap's SwapchainBuilder to select the best format, present mode,
-     *          and extent. Then creates one VkImageView and one VkFramebuffer per swapchain
-     *          image.
+     *          and extent. Then creates one colour VkImageView per swapchain image and one
+     *          VkFramebuffer per colour view, each with two attachments: the colour view and
+     *          the shared depth view.
      * @param device         The logical device.
      * @param physicalDevice The physical device (for surface capability queries).
      * @param surface        The window surface (determines format and present mode).
      * @param renderPass     The render pass — framebuffers are created compatible with it.
+     * @param depthView      The depth image view (attachment 1) — borrowed, not owned.
+     *                       Must remain valid for the lifetime of this object.
      * @param width          Desired swapchain image width in pixels.
      * @param height         Desired swapchain image height in pixels.
      * @throws RendererVkException on any Vulkan call failure.
@@ -48,6 +61,7 @@ public:
                      VkPhysicalDevice physicalDevice,
                      VkSurfaceKHR     surface,
                      VkRenderPass     renderPass,
+                     VkImageView      depthView,
                      uint32_t         width,
                      uint32_t         height);
 

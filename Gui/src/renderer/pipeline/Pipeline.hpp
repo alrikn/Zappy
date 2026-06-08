@@ -2,13 +2,16 @@
  * @file renderer/pipeline/Pipeline.hpp
  * @brief Owns the render pass, pipeline layout, and graphics pipeline for the triangle.
  * @details Loads the compiled SPIR-V shaders from SHADERS_DIR, creates the render pass
- *          (describing how the colour attachment is treated), creates an empty pipeline
- *          layout (no descriptor sets for the triangle), then assembles the full
- *          VkPipeline with fixed-function state (viewport, rasteriser, blending, etc.).
+ *          (describing how the colour attachment and depth attachment are treated), creates
+ *          an empty pipeline layout (no descriptor sets for the triangle), then assembles
+ *          the full VkPipeline with fixed-function state (viewport, rasteriser, blending,
+ *          depth/stencil test, etc.).
  *
  *          Architecture: Pipeline is created before SwapchainContext because the render
  *          pass handle is needed when creating framebuffers. SwapchainContext borrows
  *          the render pass via renderPass() — it must not outlive this object.
+ *          Pipeline is also created after DepthResources so it can receive the depth
+ *          format determined by format-probing in DepthResources::DepthResources().
  */
 
 #pragma once
@@ -19,10 +22,17 @@
 
 /**
  * @brief Encapsulates the VkRenderPass, VkPipelineLayout, and VkPipeline.
- * @details Lifetime: created in Renderer after DeviceContext. Destroyed in Renderer
- *          destructor after SwapchainContext (because SwapchainContext framebuffers
- *          reference the render pass owned here).
+ * @details Lifetime: created in Renderer after DeviceContext and DepthResources.
+ *          Destroyed in Renderer destructor after SwapchainContext (because SwapchainContext
+ *          framebuffers reference the render pass owned here).
  *          Non-copyable, non-movable.
+ *
+ *          The render pass owns two attachment slots:
+ *            - Attachment 0: colour (the swapchain image, format = colorFormat).
+ *            - Attachment 1: depth/stencil (the depth image, format = depthFormat).
+ *          Both the framebuffer (SwapchainContext) and the clear-value array
+ *          (Renderer::recordCommandBuffer) must provide exactly two entries, in the
+ *          same order, to match these slots.
  *
  *          Thread-safety: not thread-safe. Pipeline construction and destruction must
  *          happen on the main thread.
@@ -35,13 +45,22 @@ public:
      *          from shadersDir, compiled into temporary VkShaderModule objects, used to
      *          build the pipeline, then immediately destroyed (they are not needed at
      *          draw time — the pipeline has absorbed the compiled code).
+     *
+     *          The render pass is built with two attachments: colour (index 0) and
+     *          depth/stencil (index 1). The depth attachment is cleared to 1.0 (the far
+     *          plane value) at render pass begin, matching the VkClearValue supplied in
+     *          Renderer::recordCommandBuffer. The depth/stencil state in the pipeline
+     *          enables depth test with LESS compare and depth write.
      * @param device       The logical device.
-     * @param imageFormat  The swapchain surface format (needed for the render pass attachment).
+     * @param colorFormat  The swapchain surface format (needed for the colour attachment).
+     * @param depthFormat  The depth image format, selected by DepthResources (needed for
+     *                     the depth attachment description in the render pass).
      * @param shadersDir   Path to the directory containing compiled .spv files (SHADERS_DIR).
      * @throws RendererInitException if a shader file cannot be opened or read.
      * @throws RendererVkException on any Vulkan call failure.
      */
-    Pipeline(VkDevice device, VkFormat imageFormat, const std::string& shadersDir);
+    Pipeline(VkDevice device, VkFormat colorFormat, VkFormat depthFormat,
+             const std::string& shadersDir);
 
     /**
      * @brief Destroy the pipeline, pipeline layout, and render pass.

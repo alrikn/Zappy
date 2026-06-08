@@ -10,9 +10,14 @@
  *          Steps performed in the constructor:
  *            1. Load SPIR-V binaries from disk.
  *            2. Create VkShaderModule objects from the binaries.
- *            3. Create the VkRenderPass (colour attachment description + subpass).
- *            4. Create the VkPipelineLayout (empty — no descriptor sets for this triangle).
- *            5. Assemble VkGraphicsPipelineCreateInfo and call vkCreateGraphicsPipelines.
+ *            3. Create the VkRenderPass with two attachments: colour (index 0) and
+ *               depth/stencil (index 1). The depth attachment uses the format probed
+ *               by DepthResources. The subpass dependency is extended to cover the
+ *               EARLY_FRAGMENT_TESTS stage so depth reads/writes are properly synchronised.
+ *            4. Create the VkPipelineLayout (empty — no descriptor sets for this demo).
+ *            5. Assemble VkGraphicsPipelineCreateInfo with a populated
+ *               VkPipelineDepthStencilStateCreateInfo (depth test ON, depth write ON,
+ *               compare op LESS) and call vkCreateGraphicsPipelines.
  *            6. Destroy the VkShaderModule objects (pipeline has absorbed the code).
  *
  *          Architecture: no other file in the project calls vkCreateGraphicsPipelines
@@ -24,6 +29,7 @@
 #include "renderer/device/VkCheck.hpp"
 #include "exceptions.hpp"
 
+#include <array>
 #include <spdlog/spdlog.h>
 #include <fstream>
 
@@ -93,10 +99,12 @@ VkShaderModule Pipeline::createShaderModule(VkDevice device,
 /**
  * @brief Load shaders, create render pass, pipeline layout, and graphics pipeline.
  * @param device       The logical device.
- * @param imageFormat  The swapchain surface format.
+ * @param colorFormat  The swapchain surface format.
+ * @param depthFormat  The depth image format selected by DepthResources.
  * @param shadersDir   Path to the directory containing compiled .spv files.
  */
-Pipeline::Pipeline(VkDevice device, VkFormat imageFormat, const std::string& shadersDir)
+Pipeline::Pipeline(VkDevice device, VkFormat colorFormat, VkFormat depthFormat,
+                   const std::string& shadersDir)
     : _device(device)
 {
     // ── Load shader modules ───────────────────────────────────────────────────
@@ -119,17 +127,22 @@ Pipeline::Pipeline(VkDevice device, VkFormat imageFormat, const std::string& sha
     //
     // Physically: the GPU uses the render pass to schedule memory bandwidth optimisations
     // (e.g. tile-based deferred rendering on mobile GPUs). On desktop GPUs it primarily
-    // informs the driver about image layout transitions.
+    // informs the driver about image layout transitions and allows it to elide unnecessary
+    // loads and stores (e.g. DONT_CARE avoids reading old depth data back from DRAM).
 
-    // VkAttachmentDescription: one attachment — the swapchain colour buffer.
+    // ── Attachment 0: swapchain colour buffer ─────────────────────────────────
+    //
+    // VkAttachmentDescription: declares one attachment slot in the render pass.
+    // The slot index (0 here) must match the pAttachments[] index in the
+    // VkFramebufferCreateInfo and the attachment index in the VkAttachmentReference.
     VkAttachmentDescription colorAttachment{};
-    colorAttachment.format         = imageFormat;
+    colorAttachment.format         = colorFormat;
     colorAttachment.samples        = VK_SAMPLE_COUNT_1_BIT; // no MSAA
     // CLEAR: discard old contents and fill with the clear colour at render pass begin.
     colorAttachment.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
     // STORE: keep the rendered pixels in memory so the swapchain can present them.
     colorAttachment.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
-    // Stencil: not used. DONT_CARE avoids unnecessary stencil bandwidth.
+    // Stencil: not used for the colour attachment. DONT_CARE avoids stencil bandwidth.
     colorAttachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     // UNDEFINED: we don't care about the previous image layout — CLEAR overwrites anyway.
@@ -138,46 +151,104 @@ Pipeline::Pipeline(VkDevice device, VkFormat imageFormat, const std::string& sha
     // The driver inserts a layout transition at render pass end to achieve this.
     colorAttachment.finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-    // VkAttachmentReference: the subpass references this attachment at index 0.
-    // COLOR_ATTACHMENT_OPTIMAL: the layout the image is in during rendering — the GPU
-    // can read/write it with optimal cache behaviour.
+    // ── Attachment 1: depth/stencil buffer ────────────────────────────────────
+    //
+    // A second VkAttachmentDescription for the depth image. The GPU writes one
+    // depth value per pixel here during the EARLY_FRAGMENT_TESTS stage and reads it
+    // back for the compare operation on each subsequent fragment.
+    //
+    // loadOp = CLEAR: reset all depth values to the far-plane value (1.0) at the
+    //   start of every frame. Without a clear, old depth data from the previous
+    //   frame would survive, causing geometry from frame N to incorrectly occlude
+    //   geometry from frame N+1.
+    // storeOp = DONT_CARE: the depth buffer is not sampled after the render pass
+    //   ends. Telling the driver we don't care lets tile-based GPUs skip writing the
+    //   depth tile back to main memory, saving bandwidth.
+    // initialLayout = UNDEFINED: same reasoning as the colour attachment.
+    // finalLayout = DEPTH_STENCIL_ATTACHMENT_OPTIMAL: the depth image stays in
+    //   its optimal layout for depth attachment use. It does not need to transition
+    //   to PRESENT_SRC_KHR because we never present it directly.
+    VkAttachmentDescription depthAttachment{};
+    depthAttachment.format         = depthFormat;
+    depthAttachment.samples        = VK_SAMPLE_COUNT_1_BIT;
+    depthAttachment.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAttachment.storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttachment.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+    depthAttachment.finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    // VkAttachmentReference: the colour subpass references attachment slot 0.
+    // COLOR_ATTACHMENT_OPTIMAL: the layout the image is in during rendering — the
+    // GPU can read/write it with optimal cache behaviour in the colour write stage.
     VkAttachmentReference colorAttachmentRef{};
     colorAttachmentRef.attachment = 0;
     colorAttachmentRef.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-    // VkSubpassDescription: one subpass — all draw commands target the colour attachment.
+    // VkAttachmentReference for the depth attachment: slot 1.
+    // DEPTH_STENCIL_ATTACHMENT_OPTIMAL: the layout the depth image uses during
+    // the early fragment test. The GPU needs the image in this layout to perform
+    // hardware depth testing (compare + conditional write).
+    // Skipping this reference: the subpass would have no depth attachment, the
+    // GPU would not perform depth testing, and closer geometry would NOT occlude
+    // farther geometry — the whole purpose of this feature would be broken.
+    VkAttachmentReference depthAttachmentRef{};
+    depthAttachmentRef.attachment = 1;
+    depthAttachmentRef.layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    // VkSubpassDescription: one subpass — all draw commands write to both attachments.
     // GRAPHICS: this is a graphics subpass (as opposed to COMPUTE or RAYTRACE).
+    // pDepthStencilAttachment: pointer to exactly one depth/stencil reference (not an array).
     VkSubpassDescription subpass{};
-    subpass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.colorAttachmentCount = 1;
-    subpass.pColorAttachments    = &colorAttachmentRef;
+    subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount    = 1;
+    subpass.pColorAttachments       = &colorAttachmentRef;
+    subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
     // VkSubpassDependency: synchronisation between the implicit "before render pass"
-    // pseudo-subpass (VK_SUBPASS_EXTERNAL) and our subpass (index 0).
+    // pseudo-subpass (VK_SUBPASS_EXTERNAL) and subpass 0.
     //
-    // This tells the GPU: before reading/writing the colour attachment in our subpass,
-    // wait for any prior COLOR_ATTACHMENT_OUTPUT stage operations on the image to finish.
-    // Without this, the GPU might start rendering into the image while the swapchain
-    // is still reading it for display — a race condition visible as flickering.
+    // srcStageMask covers both COLOR_ATTACHMENT_OUTPUT and EARLY_FRAGMENT_TESTS.
+    //   COLOR_ATTACHMENT_OUTPUT: wait for the swapchain image to be writable
+    //     (the presentation engine may still be reading it from the last frame).
+    //   EARLY_FRAGMENT_TESTS: wait for any previous depth read/write on this image
+    //     to complete before our subpass starts accessing it. Without this, a GPU
+    //     that re-orders rendering work could start writing depth data before a
+    //     previous frame's depth read is finished — silent depth-value corruption.
+    //
+    // dstAccessMask covers DEPTH_STENCIL_ATTACHMENT_WRITE_BIT in addition to
+    //   COLOR_ATTACHMENT_WRITE_BIT. This tells the GPU that our subpass will write
+    //   to the depth attachment, completing the dependency declaration.
     VkSubpassDependency dependency{};
     dependency.srcSubpass    = VK_SUBPASS_EXTERNAL;
     dependency.dstSubpass    = 0;
-    dependency.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                             | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     dependency.srcAccessMask = 0;
-    dependency.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependency.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                             | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+                             | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+    // Gather both attachment descriptions into an array ordered by slot index.
+    // The array index = the attachment slot index referenced in attachment references
+    // and in the VkFramebufferCreateInfo::pAttachments array.
+    const std::array<VkAttachmentDescription, 2> attachments = {
+        colorAttachment,
+        depthAttachment,
+    };
 
     VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassInfo.attachmentCount = 1;
-    renderPassInfo.pAttachments    = &colorAttachment;
+    renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+    renderPassInfo.pAttachments    = attachments.data();
     renderPassInfo.subpassCount    = 1;
     renderPassInfo.pSubpasses      = &subpass;
     renderPassInfo.dependencyCount = 1;
     renderPassInfo.pDependencies   = &dependency;
 
     VK_CHECK(vkCreateRenderPass(_device, &renderPassInfo, nullptr, &_renderPass));
-    spdlog::debug("Pipeline: VkRenderPass created.");
+    spdlog::debug("Pipeline: VkRenderPass created (colour + depth attachments).");
 
     // ── Pipeline layout creation ──────────────────────────────────────────────
     //
@@ -308,6 +379,48 @@ Pipeline::Pipeline(VkDevice device, VkFormat imageFormat, const std::string& sha
     dynamicState.dynamicStateCount = 2;
     dynamicState.pDynamicStates    = dynamicStates;
 
+    // ── Depth/stencil state ───────────────────────────────────────────────────
+    //
+    // VkPipelineDepthStencilStateCreateInfo: controls the fixed-function depth test
+    // and stencil test stages that run per fragment.
+    //
+    // depthTestEnable = VK_TRUE: before writing a fragment's colour, the GPU compares
+    //   the fragment's depth value against the current value in the depth buffer at
+    //   that pixel. If the fragment loses the comparison it is discarded — its colour
+    //   is never written, and the depth buffer is not updated for that pixel.
+    //   Physically: the EARLY_FRAGMENT_TESTS stage reads the depth buffer, compares,
+    //   and either kills the fragment or allows it to proceed to the fragment shader.
+    //   On most GPUs this happens in dedicated fixed-function hardware, not a shader.
+    //   Skipping (leaving nullptr): depth testing is disabled — fragments are written
+    //   in draw-submission order, causing farther geometry to overwrite nearer geometry
+    //   whenever it happens to be submitted last.
+    //
+    // depthWriteEnable = VK_TRUE: when a fragment passes the depth test, write its
+    //   depth value back to the depth buffer. This "claims" that pixel for future
+    //   fragments to test against. Without writes, the depth buffer would stay at its
+    //   cleared value (1.0) forever and every fragment would pass the test — effectively
+    //   disabling depth testing for all but the first fragment at each pixel.
+    //
+    // depthCompareOp = VK_COMPARE_OP_LESS: the comparison rule. A fragment passes if
+    //   its depth is LESS than the stored depth value, i.e. it is CLOSER to the camera.
+    //   The depth buffer is cleared to 1.0 at the start of every frame (the farthest
+    //   possible depth value), so the very first fragment at any pixel always passes.
+    //   Using GREATER instead would give a "reversed depth" buffer (nearer = higher
+    //   value after perspective divide) — useful for precision but not our convention.
+    //
+    // Stencil operations: disabled. Stencil testing is a separate feature (masking
+    //   regions of the screen). Setting all stencil ops to KEEP and compareOp to ALWAYS
+    //   makes the stencil test a no-op.
+    VkPipelineDepthStencilStateCreateInfo depthStencil{};
+    depthStencil.sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencil.depthTestEnable       = VK_TRUE;
+    depthStencil.depthWriteEnable      = VK_TRUE;
+    depthStencil.depthCompareOp        = VK_COMPARE_OP_LESS;
+    depthStencil.depthBoundsTestEnable = VK_FALSE;  // no depth-bounds clamping
+    depthStencil.stencilTestEnable     = VK_FALSE;  // stencil not used in this feature
+    // front/back stencil ops: zero-initialised (all KEEP, compareOp NEVER) — harmless
+    // because stencilTestEnable = VK_FALSE makes them irrelevant.
+
     // ── Graphics pipeline creation ────────────────────────────────────────────
     //
     // vkCreateGraphicsPipelines: the most expensive Vulkan call in this feature.
@@ -327,7 +440,7 @@ Pipeline::Pipeline(VkDevice device, VkFormat imageFormat, const std::string& sha
     pipelineInfo.pViewportState      = &viewportState;
     pipelineInfo.pRasterizationState = &rasterizer;
     pipelineInfo.pMultisampleState   = &multisampling;
-    pipelineInfo.pDepthStencilState  = nullptr;  // no depth/stencil for 2D triangle
+    pipelineInfo.pDepthStencilState  = &depthStencil;
     pipelineInfo.pColorBlendState    = &colorBlending;
     pipelineInfo.pDynamicState       = &dynamicState;
     pipelineInfo.layout              = _pipelineLayout;

@@ -210,9 +210,11 @@ add_executable(zappy_gui
     src/renderer/Renderer.cpp
     src/renderer/device/VkCheck.cpp
     src/renderer/device/DeviceContext.cpp
+    src/renderer/device/AllocatorContext.cpp
     src/renderer/window/WindowContext.cpp
     src/renderer/window/SwapchainContext.cpp
     src/renderer/pipeline/Pipeline.cpp
+    src/renderer/scene/DepthResources.cpp
     src/renderer/sync/FrameSync.cpp)
 
 # shaders is a build-order dependency: the .spv files must exist before the

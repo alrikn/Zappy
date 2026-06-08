@@ -1,16 +1,18 @@
 /**
  * @file renderer/window/SwapchainContext.cpp
- * @brief Implementation of SwapchainContext: swapchain, image views, framebuffers.
+ * @brief Implementation of SwapchainContext: swapchain, colour image views, framebuffers.
  * @details Uses vk-bootstrap's SwapchainBuilder to handle the boilerplate of querying
  *          surface capabilities, selecting format and present mode, and calling
  *          vkCreateSwapchainKHR.
  *
  *          After the swapchain is created:
  *            1. Retrieve the VkImage handles (owned by the swapchain — do NOT destroy them).
- *            2. Create one VkImageView per image (the view tells Vulkan how to interpret
- *               the image's memory: format, mip levels, array layers, component swizzle).
- *            3. Create one VkFramebuffer per image view (binds the view to the render pass's
- *               colour attachment slot).
+ *            2. Create one colour VkImageView per image (tells Vulkan to treat each image
+ *               as a colour surface: format, mip levels, array layers, component swizzle).
+ *            3. Create one VkFramebuffer per colour view, with two attachments:
+ *                 - pAttachments[0]: per-image colour view (attachment 0 in the render pass)
+ *                 - pAttachments[1]: the shared depth view (attachment 1 in the render pass)
+ *               The ordering must match Pipeline's render pass attachment declarations.
  *
  *          Architecture: the only consumer of vk-bootstrap's SwapchainBuilder in the project.
  *          No other file needs to know about vk-bootstrap's swapchain API.
@@ -20,15 +22,17 @@
 #include "renderer/device/VkCheck.hpp"
 #include "exceptions.hpp"
 
+#include <array>
 #include <VkBootstrap.h>
 #include <spdlog/spdlog.h>
 
 /**
- * @brief Create the swapchain, retrieve images, create image views and framebuffers.
+ * @brief Create the swapchain, retrieve images, create colour views and framebuffers.
  * @param device         The logical device.
  * @param physicalDevice The physical device.
  * @param surface        The window surface.
  * @param renderPass     The render pass for framebuffer compatibility.
+ * @param depthView      The depth image view for framebuffer attachment 1 (borrowed).
  * @param width          Desired width in pixels.
  * @param height         Desired height in pixels.
  */
@@ -36,6 +40,7 @@ SwapchainContext::SwapchainContext(VkDevice         device,
                                    VkPhysicalDevice physicalDevice,
                                    VkSurfaceKHR     surface,
                                    VkRenderPass     renderPass,
+                                   VkImageView      depthView,
                                    uint32_t         width,
                                    uint32_t         height)
     : _device(device)
@@ -139,15 +144,31 @@ SwapchainContext::SwapchainContext(VkDevice         device,
     // VkFramebuffer: binds the abstract attachment slots of a VkRenderPass to concrete
     // VkImageView objects. One framebuffer per swapchain image is the standard pattern.
     // Physically: when vkCmdBeginRenderPass is called with this framebuffer, the GPU
-    // routes its output pixels into the referenced image views.
-    // Skipping framebuffers: vkCmdBeginRenderPass has no framebuffer → VK_UNDEFINED_BEHAVIOUR.
+    // routes colour output into attachment[0] and depth reads/writes into attachment[1].
+    //
+    // The pAttachments array order must exactly match the attachment slot indices in
+    // Pipeline's render pass: [0] = colour, [1] = depth. A mismatch causes a validation
+    // error at vkCreateFramebuffer time or silent corruption at vkCmdBeginRenderPass time.
+    //
+    // The depth view (depthView) is shared across all framebuffers — there is only one
+    // depth image (one per frame, not one per swapchain image). This is safe because
+    // at any given time only one swapchain image is being rendered into, so only one
+    // framebuffer is in use and the depth image is never accessed by two framebuffers
+    // concurrently. (The inFlight fence in FrameSync guarantees this serialisation.)
+    //
+    // Skipping framebuffers: vkCmdBeginRenderPass has no framebuffer → undefined behaviour.
     _framebuffers.reserve(_imageViews.size());
-    for (VkImageView view : _imageViews) {
+    for (VkImageView colorView : _imageViews) {
+        // Both views provided together: the framebuffer routes render pass output
+        // to both attachments simultaneously. The GPU uses attachments[0] for
+        // colour writes and attachments[1] for depth test reads and writes.
+        const std::array<VkImageView, 2> fbAttachments = { colorView, depthView };
+
         VkFramebufferCreateInfo fbInfo{};
         fbInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fbInfo.renderPass      = renderPass;
-        fbInfo.attachmentCount = 1;
-        fbInfo.pAttachments    = &view;
+        fbInfo.attachmentCount = static_cast<uint32_t>(fbAttachments.size());
+        fbInfo.pAttachments    = fbAttachments.data();
         fbInfo.width           = _width;
         fbInfo.height          = _height;
         fbInfo.layers          = 1;
