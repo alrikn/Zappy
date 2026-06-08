@@ -40,6 +40,13 @@ class PlayerActionsMixin:
         self._action_pending = True
         cmd.incantation(self.conn, self._on_incantation_result)
 
+    def _home_log(self):
+        """throttled diagnostic so a test run shows wether homing converges (k to 0)"""
+        self._home_ticks += 1
+        if self._home_ticks % 15 == 1:
+            print(f"[{self.uid}] homing -> {self._leader_uid} k={self._leader_k} "
+                  f"seek_ticks={self._seek_ticks}/{self.SEEK_TIMEOUT}")
+
     def _on_incantation_result(self, new_level: int | None):
         self._action_pending = False
         self._stones_dropped = False

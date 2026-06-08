@@ -103,7 +103,11 @@ class PlayerAI(PlayerActionsMixin):
 
         # coordination state
         self._leader_uid: str | None = None  # uid of whoever called NEED_INC
-        self._leader_k:   int | None = None  # most recent direction to leader
+        self._leader_k:   int | None = None  # most recent direction to leader (sound k)
+        self._k_fresh:    bool = False       # true for one tick after a new bearing
+                                             # arrives so we only act on fresh data
+        self._home_ticks: int = 0            # throttle counter for homing logs
+        self._home_steps: int = 0            # homing moves taken this seek attempt
         self._ready_count: int = 0           # followers that said IM_READY to us
         self._seek_ticks:  int = 0           # anti stall counter for seek+wait
 
