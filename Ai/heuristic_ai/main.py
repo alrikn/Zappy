@@ -44,7 +44,7 @@ def main():
     conn = Connection(machine, port)
     world_x, world_y, slots = conn.handshake(name)
 
-    ai = PlayerAI(conn, name, world_x, world_y)
+    ai = PlayerAI(conn, name, world_x, world_y, slots)
     ai.run()
 
 
