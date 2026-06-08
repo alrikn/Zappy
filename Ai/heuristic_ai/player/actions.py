@@ -236,16 +236,29 @@ class PlayerActionsMixin:
             if self._leader_uid == leader_uid and self.state == State.SEEK_TEAM:
                 self._leader_k = k
                 return
-            # join if we're the right level and not already committed to someone else
+
+            # join if we re the right level, not already committed, and can survive the
+            # meet+ritual, the leader is a known nearby target so this is cheap (like 1
+            # to 4 food measured), we gate on food_join (survival floor) NOT food_low,
+            # gating on food_low made evry partner reject on food scarce maps so 2 player
+            # rituals never fired and the team capped at level 2
+            food = self.inventory.get("food", 0)
             if (level == self.level
                     and self._leader_uid is None
-                    and self.state in (State.GATHER_STONES, State.GATHER_FOOD)):
+                    and self.state in (State.GATHER_STONES, State.GATHER_FOOD)
+                    and food >= self.FOOD_JOIN):
+                print(f"[{self.uid}] joining {leader_uid} for lvl{level} ritual  food={food}")
                 self._leader_uid = leader_uid
                 self._leader_k   = k
+                self._k_fresh    = True
                 self._seek_ticks = 0
                 cmd.broadcast(self.conn, bcast.encode(bcast.IM_COMING, leader_uid),
                                self._noop)
                 self._transition(State.SEEK_TEAM)
+            elif level == self.level and self._leader_uid is None and self.state in (State.GATHER_STONES, State.GATHER_FOOD):
+                self._reject_count += 1
+                if self._reject_count % 10 == 1:
+                    print(f"[{self.uid}] rejected NEED_INC x{self._reject_count}: food={food} < {self.FOOD_JOIN}")
 
         elif msg_type == bcast.IM_READY:
             # a follower arrived at our tile (only relevant if we are the leader)
