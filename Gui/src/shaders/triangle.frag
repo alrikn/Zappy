@@ -1,19 +1,19 @@
-/*
- * src/shaders/triangle.frag — Fragment shader for the hardcoded RGB triangle.
+/**
+ * @file src/shaders/triangle.frag
+ * @brief Fragment shader for the hardcoded RGB triangle.
+ * @details Responsibility: receive the interpolated colour from the vertex shader and
+ *          write it to the framebuffer as the final pixel colour.
  *
- * Responsibility: receive the interpolated colour from the vertex shader and
- *                 write it to the framebuffer as the final pixel colour.
- *
- * Architecture: called once per rasterised fragment (one per covered pixel).
- *               The GPU interpolates 'fragColor' between the three vertex colours
- *               using barycentric coordinates before invoking this shader.
- *               Output is written to the single colour attachment at location 0,
- *               which corresponds to the swapchain image in the framebuffer.
+ *          Architecture: called once per rasterised fragment (one per covered pixel).
+ *          The GPU interpolates 'fragColor' between the three vertex colours
+ *          using barycentric coordinates before invoking this shader.
+ *          Output is written to the single colour attachment at location 0,
+ *          which corresponds to the swapchain image in the framebuffer.
  */
 
 #version 450
 
-/*
+/**
  * layout(location = 0) in: receive the interpolated colour from triangle.vert.
  * The location index must match the 'out' declaration in the vertex shader.
  * The GPU has already performed linear interpolation across the triangle — this
@@ -21,7 +21,7 @@
  */
 layout(location = 0) in vec3 fragColor;
 
-/*
+/**
  * layout(location = 0) out: write the final colour to the first colour attachment.
  * In the render pass, attachment 0 is the swapchain image. The GPU writes this
  * vec4 to the corresponding pixel in the framebuffer.

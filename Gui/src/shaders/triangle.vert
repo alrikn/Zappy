@@ -1,43 +1,43 @@
-/*
- * src/shaders/triangle.vert — Vertex shader for the two-triangle depth-test demo.
+/**
+ * @file src/shaders/triangle.vert
+ * @brief Vertex shader for the two-triangle depth-test demo.
+ * @details Emits six vertices (two triangles) in clip space, each at a distinct
+ *          depth (Z) value, so the depth test has two different depth values to
+ *          compare. The fragment shader receives the per-vertex colour via the
+ *          'fragColor' varying.
  *
- * Responsibility: emit six vertices (two triangles) in clip space, each at a
- *                 distinct depth (Z) value, so the depth test has two different
- *                 depth values to compare. The fragment shader receives the
- *                 per-vertex colour via the 'fragColor' varying.
+ *          Called by the graphics pipeline for every vkCmdDraw(6, 1, 0, 0) call.
+ *          No vertex buffer is bound — all positions, depths, and colours are
+ *          embedded in the shader using gl_VertexIndex as a selector. This
+ *          eliminates vertex buffer management, VMA allocation, and staging buffer
+ *          complexity, keeping the depth-buffer feature focused purely on the
+ *          depth attachment plumbing.
  *
- * Architecture: called by the graphics pipeline for every vkCmdDraw(6, 1, 0, 0)
- *               call. No vertex buffer is bound — all positions, depths, and
- *               colours are embedded in the shader using gl_VertexIndex as a
- *               selector. This eliminates vertex buffer management, VMA allocation,
- *               and staging buffer complexity, keeping the depth-buffer feature
- *               focused purely on the depth attachment plumbing.
+ *          Two-triangle layout (screen space, Y-axis points DOWN in Vulkan):
  *
- * Two-triangle layout (screen space, Y-axis points DOWN in Vulkan):
+ *          Triangle A (vertices 0-2): RGB gradient, centred, Z = 0.3 (nearer)
+ *            Vertex 0: top centre      ( 0.0, -0.5)
+ *            Vertex 1: bottom right    ( 0.5,  0.5)
+ *            Vertex 2: bottom left     (-0.5,  0.5)
  *
- *   Triangle A (vertices 0-2): RGB gradient, centred, Z = 0.3 (nearer)
- *     Vertex 0: top centre      ( 0.0, -0.5)
- *     Vertex 1: bottom right    ( 0.5,  0.5)
- *     Vertex 2: bottom left     (-0.5,  0.5)
+ *          Triangle B (vertices 3-5): solid cyan, offset right-and-down, Z = 0.7 (farther)
+ *            Vertex 3: top left        ( 0.0, -0.1)
+ *            Vertex 4: bottom right    ( 0.7,  0.6)
+ *            Vertex 5: top right       ( 0.7, -0.6)
  *
- *   Triangle B (vertices 3-5): solid cyan, offset right-and-down, Z = 0.7 (farther)
- *     Vertex 3: top left        ( 0.0, -0.1)
- *     Vertex 4: bottom right    ( 0.7,  0.6)
- *     Vertex 5: top right       ( 0.7, -0.6)
+ *          Expected visual result with depth testing ON:
+ *          In the overlap region (lower-right of triangle A, upper-left of triangle B),
+ *          triangle A (Z=0.3, nearer) occludes triangle B (Z=0.7, farther).
+ *          Outside the overlap, each triangle's full colour is visible.
  *
- * Expected visual result with depth testing ON:
- *   In the overlap region (lower-right of triangle A, upper-left of triangle B),
- *   triangle A (Z=0.3, nearer) occludes triangle B (Z=0.7, farther).
- *   Outside the overlap, each triangle's full colour is visible.
- *
- *   If depth testing were OFF, the draw-order would determine the winner:
- *   triangle B would overwrite triangle A in the overlap region because it is
- *   submitted second (gl_VertexIndex 3-5 come after 0-2).
+ *          If depth testing were OFF, the draw-order would determine the winner:
+ *          triangle B would overwrite triangle A in the overlap region because it is
+ *          submitted second (gl_VertexIndex 3-5 come after 0-2).
  */
 
 #version 450
 
-/*
+/**
  * layout(location = 0) out: pass the colour to the fragment shader.
  * The location index must match the 'in' declaration in triangle.frag.
  * The GPU linearly interpolates this value across the triangle surface
@@ -45,7 +45,7 @@
  */
 layout(location = 0) out vec3 fragColor;
 
-/*
+/**
  * Hardcoded clip-space XY positions for six vertices (two triangles).
  * Clip space: X in [-1, 1], Y in [-1, 1], Z in [0, 1], W = 1.
  * Y is flipped vs OpenGL: positive Y points DOWN in Vulkan's clip space.
@@ -70,7 +70,7 @@ const vec2 positions[6] = vec2[](
     vec2( 0.7, -0.6)    // vertex 5: top right
 );
 
-/*
+/**
  * Clip-space depth (Z) for each vertex.
  * Vulkan's depth range is [0, 1] after perspective divide.
  * Z=0 is the near plane, Z=1 is the far plane.
@@ -95,7 +95,7 @@ const float depths[6] = float[](
     0.7    // vertex 5
 );
 
-/*
+/**
  * Per-vertex colours.
  * Triangle A (vertices 0-2): classic RGB gradient (red/green/blue at each vertex).
  * Triangle B (vertices 3-5): solid cyan (0, 1, 1) — visually distinct from the

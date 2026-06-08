@@ -23,7 +23,6 @@
 
 #include "renderer/device/AllocatorContext.hpp"
 #include "renderer/device/VkCheck.hpp"
-#include "exceptions.hpp"
 
 #include <spdlog/spdlog.h>
 
@@ -59,10 +58,7 @@ AllocatorContext::AllocatorContext(VkInstance       instance,
     // and sets up data structures to manage future sub-allocations.
     // Skipping this: every subsequent vmaCreateImage / vmaCreateBuffer would have
     // no allocator to route through and would fail immediately.
-    const VkResult result = vmaCreateAllocator(&allocatorInfo, &_allocator);
-    if (result != VK_SUCCESS) {
-        throw RendererInitException("vmaCreateAllocator failed");
-    }
+    VK_CHECK(vmaCreateAllocator(&allocatorInfo, &_allocator));
 
     spdlog::info("AllocatorContext: VmaAllocator created.");
 }

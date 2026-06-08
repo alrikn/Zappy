@@ -148,12 +148,9 @@ DepthResources::DepthResources(VmaAllocator     allocator,
     // vmaCreateImage: combines vkCreateImage + memory allocation + vkBindImageMemory.
     // On success: _image is a valid VkImage handle; _allocation tracks the backing
     // memory so vmaDestroyImage can free both together.
-    // On failure: throws RendererVkException via the manual result check below.
-    const VkResult result = vmaCreateImage(
-        _allocator, &imageInfo, &allocInfo, &_image, &_allocation, nullptr);
-    if (result != VK_SUCCESS) {
-        throw RendererVkException(result, "vmaCreateImage (depth image)");
-    }
+    // On failure: throws RendererVkException via VK_CHECK.
+    VK_CHECK(vmaCreateImage(
+        _allocator, &imageInfo, &allocInfo, &_image, &_allocation, nullptr));
 
     spdlog::debug("DepthResources: depth image allocated ({}x{}).", width, height);
 
