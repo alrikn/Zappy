@@ -33,7 +33,9 @@ class PlayerActionsMixin:
         self._transition(State.WAIT_TEAM)
 
     def _fire_incantation(self):
-        """all players are here, send the START signal and kick off the ritual"""
+        """all players are here, send the start signal and kick off the ritual"""
+        self._log_incant_tile("LEADER fire")
+        self._incant_t0 = time.time()
         text = bcast.encode(bcast.START, self.uid)
         cmd.broadcast(self.conn, text, self._noop)
         self._transition(State.INCANTATING)
@@ -290,5 +292,14 @@ class PlayerActionsMixin:
             self._transition(State.SEEK_TEAM)
 
     def _on_level_up(self, level: int):
-        # this fires if the lvl up comes from an external incantation we joined
+        # fires when the server sends "current level: x" to a follower that was on the
+        # tile during the ritual (didnt send incantation so cmd.incantation on_level
+        # handler was never registered, this one stays active instead)
+        prev = self.level
         self.level = level
+        food = self.inventory.get("food", 0)
+        print(f"[{self.uid}] passive lvl-up {prev} -> {self.level}  food={food}")
+        if self.state == State.INCANTATING:
+            self._action_pending = False
+            self._stones_dropped = False
+            self._transition(State.GATHER_FOOD)
