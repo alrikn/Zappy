@@ -17,7 +17,7 @@
 #include <spdlog/spdlog.h>
 
 /**
- * @brief Create count FrameSync objects (2 semaphores + 1 fence per frame).
+ * @brief Create count FrameSync objects (1 semaphore + 1 fence per frame).
  * @param device The logical device.
  * @param count  Number of frames to keep in flight simultaneously.
  */
@@ -44,11 +44,12 @@ FrameSyncPool::FrameSyncPool(VkDevice device, std::size_t count)
         // Physically: the GPU writes a completion signal to a location in GPU memory;
         // other GPU queues or stages poll that location before proceeding.
         // imageAvailable: signalled by vkAcquireNextImageKHR → waited on by the graphics queue.
+        //
+        // Note: there is no "renderFinished" semaphore here. That semaphore must be
+        // signalled by vkQueueSubmit and waited on by vkQueuePresentKHR for the SAME
+        // swapchain image, so it has to be indexed by swapchain image index, not by
+        // frame-in-flight slot — Renderer owns one per swapchain image instead.
         VK_CHECK(vkCreateSemaphore(_device, &semInfo, nullptr, &_frames[i].imageAvailable));
-
-        // renderFinished: signalled by the graphics queue at submission completion →
-        // waited on by vkQueuePresentKHR before flipping the image to the display.
-        VK_CHECK(vkCreateSemaphore(_device, &semInfo, nullptr, &_frames[i].renderFinished));
 
         // VkFence: CPU-GPU synchronisation primitive.
         // Physically: the GPU writes a completion signal to a CPU-visible memory location;
@@ -71,9 +72,6 @@ FrameSyncPool::~FrameSyncPool()
     for (FrameSync& fs : _frames) {
         if (fs.imageAvailable != VK_NULL_HANDLE) {
             vkDestroySemaphore(_device, fs.imageAvailable, nullptr);
-        }
-        if (fs.renderFinished != VK_NULL_HANDLE) {
-            vkDestroySemaphore(_device, fs.renderFinished, nullptr);
         }
         if (fs.inFlight != VK_NULL_HANDLE) {
             vkDestroyFence(_device, fs.inFlight, nullptr);

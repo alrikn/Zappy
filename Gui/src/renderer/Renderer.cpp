@@ -11,7 +11,8 @@
  *            Pipeline(device, format, shadersDir)  → VkRenderPass + VkPipeline
  *            SwapchainContext(device, phys, surf,  → VkSwapchainKHR + views + framebuffers
  *                             renderPass, w, h)
- *            FrameSyncPool(device, 2)              → 4× VkSemaphore + 2× VkFence
+ *            FrameSyncPool(device, 2)              → 2× VkSemaphore + 2× VkFence
+ *            renderFinished semaphores             → N× VkSemaphore (one per swapchain image)
  *            allocateCommandBuffers()              → VkCommandPool + N× VkCommandBuffer
  *
  *          The per-frame loop in drawFrame() follows the Vulkan present pipeline:
@@ -137,11 +138,28 @@ Renderer::Renderer(GLFWwindow* window)
 
     // ── Step 7: Create per-frame synchronisation primitives ──────────────────
     //
-    // FrameSyncPool allocates 2 × imageAvailable semaphores, 2 × renderFinished
-    // semaphores, and 2 × inFlight fences (one set per frame-in-flight slot).
+    // FrameSyncPool allocates 2 × imageAvailable semaphores and 2 × inFlight fences
+    // (one set per frame-in-flight slot).
     _syncPool = std::make_unique<FrameSyncPool>(_device->device(), kMaxFramesInFlight);
 
-    // ── Step 8: Allocate command pool and command buffers ─────────────────────
+    // ── Step 8: Create one "render finished" semaphore per swapchain image ───
+    //
+    // This semaphore is signalled by vkQueueSubmit and waited on by vkQueuePresentKHR
+    // for the SAME swapchain image, so it must be indexed by swapchain image index
+    // (imageIndex), not by frame-in-flight slot — the swapchain can have more images
+    // than frames in flight, and reusing a smaller pool would signal a semaphore the
+    // presentation engine is still waiting on (VUID-vkQueueSubmit-pSignalSemaphores-00067).
+    {
+        VkSemaphoreCreateInfo semInfo{};
+        semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+        _renderFinishedSemaphores.resize(_swapchain->imageCount());
+        for (VkSemaphore& sem : _renderFinishedSemaphores) {
+            VK_CHECK(vkCreateSemaphore(_device->device(), &semInfo, nullptr, &sem));
+        }
+    }
+
+    // ── Step 9: Allocate command pool and command buffers ─────────────────────
     allocateCommandBuffers();
 
     spdlog::info("Renderer: initialisation complete.");
@@ -174,8 +192,21 @@ Renderer::~Renderer()
         spdlog::debug("Renderer: VkCommandPool destroyed.");
     }
 
+    // Destroy the per-swapchain-image "render finished" semaphores. Same rationale
+    // as _commandPool: raw handles, owned directly by Renderer, must be destroyed
+    // here while _device is still valid.
+    if (_device) {
+        for (VkSemaphore sem : _renderFinishedSemaphores) {
+            if (sem != VK_NULL_HANDLE) {
+                vkDestroySemaphore(_device->device(), sem, nullptr);
+            }
+        }
+        _renderFinishedSemaphores.clear();
+        spdlog::debug("Renderer: per-image renderFinished semaphores destroyed.");
+    }
+
     // unique_ptr members are now destroyed in reverse declaration order:
-    //   _syncPool  → vkDestroySemaphore × 4 + vkDestroyFence × 2
+    //   _syncPool  → vkDestroySemaphore × 2 + vkDestroyFence × 2
     //   _swapchain → vkDestroyFramebuffer × N + vkDestroyImageView × N + vkDestroySwapchainKHR
     //   _pipeline  → vkDestroyPipeline + vkDestroyPipelineLayout + vkDestroyRenderPass
     //   _window    → vkDestroySurfaceKHR
@@ -399,7 +430,12 @@ void Renderer::drawFrame()
     //   waitSemaphores:   imageAvailable — the GPU must wait until the swapchain
     //                     image is ready before executing colour output commands.
     //   signalSemaphores: renderFinished — the GPU signals this when done, allowing
-    //                     vkQueuePresentKHR to proceed.
+    //                     vkQueuePresentKHR to proceed. Indexed by imageIndex (NOT
+    //                     _currentFrame): it must stay paired with the same swapchain
+    //                     image across the submit→present round trip, otherwise it can
+    //                     be re-signalled while the presentation engine is still waiting
+    //                     on its previous signal for a different image
+    //                     (VUID-vkQueueSubmit-pSignalSemaphores-00067).
     //   signalFences:     inFlight — the GPU signals this when the submission
     //                     completes, allowing the CPU to reuse this frame's resources.
     //
@@ -408,6 +444,7 @@ void Renderer::drawFrame()
     // colour attachment until imageAvailable is signalled. This allows the GPU to
     // run vertex shaders etc. while still waiting for the image.
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkSemaphore renderFinished     = _renderFinishedSemaphores[imageIndex];
 
     VkSubmitInfo submitInfo{};
     submitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -417,7 +454,7 @@ void Renderer::drawFrame()
     submitInfo.commandBufferCount   = 1;
     submitInfo.pCommandBuffers      = &_commandBuffers[imageIndex];
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores    = &sync.renderFinished;
+    submitInfo.pSignalSemaphores    = &renderFinished;
 
     VK_CHECK(vkQueueSubmit(_device->graphicsQueue(), 1, &submitInfo, sync.inFlight));
 
@@ -425,13 +462,15 @@ void Renderer::drawFrame()
     //
     // vkQueuePresentKHR: ask the swapchain to display the rendered image.
     // waitSemaphores: renderFinished — the swapchain waits until the GPU has finished
-    //                 rendering before swapping the image to the display.
+    //                 rendering before swapping the image to the display. Same
+    //                 per-image semaphore signalled above, so the wait is always
+    //                 paired with its matching signal for this exact image.
     // Physically: the display hardware starts scanning out the new image on the next
     // vertical blank (vsync, because we selected VK_PRESENT_MODE_FIFO_KHR).
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores    = &sync.renderFinished;
+    presentInfo.pWaitSemaphores    = &renderFinished;
     presentInfo.swapchainCount     = 1;
     const VkSwapchainKHR sc        = _swapchain->swapchain();
     presentInfo.pSwapchains        = &sc;

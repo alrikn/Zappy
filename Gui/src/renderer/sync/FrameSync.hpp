@@ -26,18 +26,20 @@
  *                           has been acquired and is ready for the GPU to render into.
  *                           The graphics queue waits on this before executing draw commands.
  *
- *          renderFinished — signalled by vkQueueSubmit (via its signal semaphore) when all
- *                           draw commands in the submission have completed. The present queue
- *                           waits on this before flipping the image to the display.
- *
  *          inFlight       — CPU-GPU fence; the CPU waits on this at the start of each frame
  *                           to ensure the command buffer for this slot is no longer in use by
  *                           the GPU before we re-record it. Created in the signalled state so
  *                           the first frame does not deadlock waiting for a frame that never ran.
+ *
+ *          Note: the "render finished" semaphore is intentionally NOT part of this struct.
+ *          It must be signalled by vkQueueSubmit and waited on by vkQueuePresentKHR for the
+ *          same swapchain image, so it has to be indexed by swapchain image index — not by
+ *          frame-in-flight slot (the swapchain may have more images than frames in flight,
+ *          which would cause the same semaphore to be reused while still pending on the
+ *          presentation engine). Renderer owns one such semaphore per swapchain image.
  */
 struct FrameSync {
     VkSemaphore imageAvailable{VK_NULL_HANDLE}; ///< GPU signal: swapchain image is ready to render.
-    VkSemaphore renderFinished{VK_NULL_HANDLE}; ///< GPU signal: rendering is complete, safe to present.
     VkFence     inFlight{VK_NULL_HANDLE};       ///< CPU fence: previous frame's GPU work is done.
 };
 
@@ -53,7 +55,7 @@ struct FrameSync {
 class FrameSyncPool {
 public:
     /**
-     * @brief Create count FrameSync objects (2 semaphores + 1 fence per frame).
+     * @brief Create count FrameSync objects (1 semaphore + 1 fence per frame).
      * @param device The logical device.
      * @param count  Number of frames to keep in flight simultaneously (typically 2).
      * @throws RendererVkException if any semaphore or fence creation fails.

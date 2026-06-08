@@ -10,8 +10,9 @@
  *            2. WindowContext   — VkSurfaceKHR (borrowed GLFWwindow*)
  *            3. Pipeline        — VkRenderPass + VkPipelineLayout + VkPipeline
  *            4. SwapchainContext — VkSwapchainKHR + VkImageViews + VkFramebuffers
- *            5. FrameSyncPool   — VkSemaphores + VkFences (2 × kMaxFramesInFlight)
- *            6. VkCommandPool + VkCommandBuffers (inline members, managed in destructor)
+ *            5. FrameSyncPool   — imageAvailable VkSemaphores + VkFences (per frame-in-flight)
+ *            6. renderFinished VkSemaphores (inline member, one per swapchain image)
+ *            7. VkCommandPool + VkCommandBuffers (inline members, managed in destructor)
  *
  *          Destruction order (reverse of construction, required by Vulkan):
  *            command buffers/pool → FrameSyncPool → SwapchainContext → Pipeline →
@@ -138,6 +139,15 @@ private:
 
     VkCommandPool                _commandPool{VK_NULL_HANDLE}; ///< Pool for all command buffers.
     std::vector<VkCommandBuffer> _commandBuffers;              ///< One per swapchain image.
+
+    /// "Render finished" semaphores, one per swapchain image (NOT per frame-in-flight).
+    /// Indexed by the imageIndex returned from vkAcquireNextImageKHR. This semaphore is
+    /// signalled by vkQueueSubmit and waited on by vkQueuePresentKHR for that same image,
+    /// so it must stay associated with the image rather than cycling through a smaller
+    /// frame-in-flight pool — otherwise it can be reused while still pending on the
+    /// presentation engine (VUID-vkQueueSubmit-pSignalSemaphores-00067).
+    /// Created/destroyed manually (raw handles), like _commandPool.
+    std::vector<VkSemaphore> _renderFinishedSemaphores;
 
     std::size_t _currentFrame{0}; ///< Cycles [0, kMaxFramesInFlight); selects the active sync slot.
 };
