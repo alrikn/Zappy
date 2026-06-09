@@ -24,38 +24,38 @@ extern volatile sig_atomic_t g_shutdown_requested;
 */
 void Server::populate_map_resources()
 {
-    resources_t total_resources = {0};
-    total_resources.food = _map.size() * _map[0].size() * FOOD_DENSITY;
-    total_resources.linemate = _map.size() * _map[0].size() * LINEMATE_DENSITY;
-    total_resources.deraumere = _map.size() * _map[0].size() * DERAUMERE_DENSITY;
-    total_resources.sibur = _map.size() * _map[0].size() * SIBUR_DENSITY;
-    total_resources.mendiane = _map.size() * _map[0].size() * MENDIANE_DENSITY;
-    total_resources.phiras = _map.size() * _map[0].size() * PHIRAS_DENSITY;
-    total_resources.thystame = _map.size() * _map[0].size() * THYSTAME_DENSITY;
+    Inventory total_resources;
+    total_resources.resources[idx(Resource::Food)] = static_cast<int>(getMapHeight() * getMapWidth() * FOOD_DENSITY);
+    total_resources.resources[idx(Resource::Linemate)] = static_cast<int>(getMapHeight() * getMapWidth() * LINEMATE_DENSITY);
+    total_resources.resources[idx(Resource::Deraumere)] = static_cast<int>(getMapHeight() * getMapWidth() * DERAUMERE_DENSITY);
+    total_resources.resources[idx(Resource::Sibur)] = static_cast<int>(getMapHeight() * getMapWidth() * SIBUR_DENSITY);
+    total_resources.resources[idx(Resource::Mendiane)] = static_cast<int>(getMapHeight() * getMapWidth() * MENDIANE_DENSITY);
+    total_resources.resources[idx(Resource::Phiras)] = static_cast<int>(getMapHeight() * getMapWidth() * PHIRAS_DENSITY);
+    total_resources.resources[idx(Resource::Thystame)] = static_cast<int>(getMapHeight() * getMapWidth() * THYSTAME_DENSITY);
 
     //terrible way to spread them evenly but for now it'll do
     for (size_t i = 0; i < _map.size(); i++) {
         for (size_t j = 0; j < _map[i].size(); j++) {
-            _map[i][j].resources.food += rand() % (total_resources.food + 1);
-            total_resources.food -= _map[i][j].resources.food;
+            _map[i][j].inventory.resources[idx(Resource::Food)] += rand() % (total_resources.resources[idx(Resource::Food)] + 1);
+            total_resources.resources[idx(Resource::Food)] -= _map[i][j].inventory.resources[idx(Resource::Food)];
 
-            _map[i][j].resources.linemate += rand() % (total_resources.linemate + 1);
-            total_resources.linemate -= _map[i][j].resources.linemate;
+            _map[i][j].inventory.resources[idx(Resource::Linemate)] += rand() % (total_resources.resources[idx(Resource::Linemate)] + 1);
+            total_resources.resources[idx(Resource::Linemate)] -= _map[i][j].inventory.resources[idx(Resource::Linemate)];
 
-            _map[i][j].resources.deraumere += rand() % (total_resources.deraumere + 1);
-            total_resources.deraumere -= _map[i][j].resources.deraumere;
+            _map[i][j].inventory.resources[idx(Resource::Deraumere)] += rand() % (total_resources.resources[idx(Resource::Deraumere)] + 1);
+            total_resources.resources[idx(Resource::Deraumere)] -= _map[i][j].inventory.resources[idx(Resource::Deraumere)];
 
-            _map[i][j].resources.sibur += rand() % (total_resources.sibur + 1);
-            total_resources.sibur -= _map[i][j].resources.sibur;
+            _map[i][j].inventory.resources[idx(Resource::Sibur)] += rand() % (total_resources.resources[idx(Resource::Sibur)] + 1);
+            total_resources.resources[idx(Resource::Sibur)] -= _map[i][j].inventory.resources[idx(Resource::Sibur)];
 
-            _map[i][j].resources.mendiane += rand() % (total_resources.mendiane + 1);
-            total_resources.mendiane -= _map[i][j].resources.mendiane;
+            _map[i][j].inventory.resources[idx(Resource::Mendiane)] += rand() % (total_resources.resources[idx(Resource::Mendiane)] + 1);
+            total_resources.resources[idx(Resource::Mendiane)] -= _map[i][j].inventory.resources[idx(Resource::Mendiane)];
 
-            _map[i][j].resources.phiras += rand() % (total_resources.phiras + 1);
-            total_resources.phiras -= _map[i][j].resources.phiras;
+            _map[i][j].inventory.resources[idx(Resource::Phiras)] += rand() % (total_resources.resources[idx(Resource::Phiras)] + 1);
+            total_resources.resources[idx(Resource::Phiras)] -= _map[i][j].inventory.resources[idx(Resource::Phiras)];
 
-            _map[i][j].resources.thystame += rand() % (total_resources.thystame + 1);
-            total_resources.thystame -= _map[i][j].resources.thystame;
+            _map[i][j].inventory.resources[idx(Resource::Thystame)] += rand() % (total_resources.resources[idx(Resource::Thystame)] + 1);
+            total_resources.resources[idx(Resource::Thystame)] -= _map[i][j].inventory.resources[idx(Resource::Thystame)];
         }
     }
 }

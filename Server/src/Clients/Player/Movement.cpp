@@ -109,7 +109,7 @@ void Player::look(Server &server)
             tile_info += "player ";
         }
         //then we add the resources on the tile
-        for (const std::string &resource : give_resources_name(server._map[y][x].resources)) {
+        for (const std::string &resource : give_resources_name(server._map[y][x].inventory)) {
             tile_info += resource + " ";
         }
 
