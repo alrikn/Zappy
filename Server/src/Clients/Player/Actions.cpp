@@ -32,4 +32,36 @@ void Player::inventory_handle()
 
 void Player::set_down_resource(Server &server, std::vector<std::string> args)
 {
+    if (args.size() != 1) {
+        send_message("ko\n");
+        return;
+    }
+
+    Resource resource = parse_resource(args[0]);
+    if (inventory.resources[idx(resource)] <= 0) {
+        send_message("ko\n");
+        return;
+    }
+
+    inventory.resources[idx(resource)]--;
+    server._map[position[1]][position[0]].inventory.resources[idx(resource)]++;
+    send_message("ok\n");
+}
+
+void Player::take_resource(Server &server, std::vector<std::string> args)
+{
+    if (args.size() != 1) {
+        send_message("ko\n");
+        return;
+    }
+
+    Resource resource = parse_resource(args[0]);
+    if (server._map[position[1]][position[0]].inventory.resources[idx(resource)] <= 0) {
+        send_message("ko\n");
+        return;
+    }
+
+    inventory.resources[idx(resource)]++;
+    server._map[position[1]][position[0]].inventory.resources[idx(resource)]--;
+    send_message("ok\n");
 }
