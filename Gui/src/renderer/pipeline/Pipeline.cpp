@@ -1,6 +1,6 @@
 /**
  * @file renderer/pipeline/Pipeline.cpp
- * @brief Implementation of Pipeline: render pass, pipeline layout, graphics pipeline.
+ * @brief Implementation of Pipeline: render pass, descriptor set layout, pipeline layout, graphics pipeline.
  * @details The graphics pipeline is Vulkan's compiled description of the full rendering
  *          state. Once created, it is immutable — changing any state requires creating a
  *          new pipeline. This makes it expensive to create but cheap to use: the GPU
@@ -14,11 +14,18 @@
  *               depth/stencil (index 1). The depth attachment uses the format probed
  *               by DepthResources. The subpass dependency is extended to cover the
  *               EARLY_FRAGMENT_TESTS stage so depth reads/writes are properly synchronised.
- *            4. Create the VkPipelineLayout (empty — no descriptor sets for this demo).
- *            5. Assemble VkGraphicsPipelineCreateInfo with a populated
+ *            4. Create the VkDescriptorSetLayout for binding 0 (uniform buffer at vertex stage).
+ *            5. Create the VkPipelineLayout referencing the descriptor set layout.
+ *            6. Assemble VkGraphicsPipelineCreateInfo with a populated
  *               VkPipelineDepthStencilStateCreateInfo (depth test ON, depth write ON,
  *               compare op LESS) and call vkCreateGraphicsPipelines.
- *            6. Destroy the VkShaderModule objects (pipeline has absorbed the code).
+ *            7. Destroy the VkShaderModule objects (pipeline has absorbed the code).
+ *
+ *          Destruction order in ~Pipeline() (must be explicit — reverse of creation):
+ *            _pipeline            → vkDestroyPipeline      (first)
+ *            _pipelineLayout      → vkDestroyPipelineLayout (references _descriptorSetLayout)
+ *            _descriptorSetLayout → vkDestroyDescriptorSetLayout (must outlive _pipelineLayout)
+ *            _renderPass          → vkDestroyRenderPass    (last)
  *
  *          Architecture: no other file in the project calls vkCreateGraphicsPipelines
  *          or vkCreateRenderPass. This encapsulation allows future features to add
@@ -250,22 +257,70 @@ Pipeline::Pipeline(VkDevice device, VkFormat colorFormat, VkFormat depthFormat,
     VK_CHECK(vkCreateRenderPass(_device, &renderPassInfo, nullptr, &_renderPass));
     spdlog::debug("Pipeline: VkRenderPass created (colour + depth attachments).");
 
+    // ── Descriptor set layout creation ───────────────────────────────────────
+    //
+    // VkDescriptorSetLayout: a blueprint that describes the structure of one descriptor
+    // set — which binding numbers exist, what type of resource each binding holds, and
+    // which shader stages may read it.
+    //
+    // Physically: the GPU driver needs to know the layout at pipeline compilation time
+    // so it can bake the correct register offsets and memory access patterns for the
+    // shader. If the layout declared here does not match the GLSL "layout(binding=0)"
+    // declaration in triangle.vert, the validation layers will report an error and the
+    // shader will read from the wrong memory location.
+    //
+    // One binding is declared here:
+    //   binding = 0: the UboMvp uniform buffer.
+    //   descriptorType = UNIFORM_BUFFER: matches "layout(binding=0) uniform UboMvp { ... }"
+    //     in triangle.vert. A uniform buffer is read-only from the shader's perspective —
+    //     every invocation in a draw call sees the same data (the view+proj matrices).
+    //   stageFlags = VERTEX_BIT: only the vertex shader reads this buffer. The fragment
+    //     shader does not need camera matrices — it only receives interpolated colour.
+    //     Restricting stages is a correctness annotation and may allow driver optimisations.
+    //   descriptorCount = 1: one descriptor at this binding (not an array of descriptors).
+    //
+    // Skipping this layout: the pipeline layout below would declare zero descriptor sets.
+    // vkCmdBindDescriptorSets would then have no pipeline-declared slot to bind into,
+    // and the vertex shader's uniform read from binding 0 would access undefined memory.
+    VkDescriptorSetLayoutBinding uboBinding{};
+    uboBinding.binding            = 0;
+    uboBinding.descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uboBinding.descriptorCount    = 1;
+    uboBinding.stageFlags         = VK_SHADER_STAGE_VERTEX_BIT;
+    uboBinding.pImmutableSamplers = nullptr; // only relevant for texture samplers
+
+    VkDescriptorSetLayoutCreateInfo setLayoutInfo{};
+    setLayoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    setLayoutInfo.bindingCount = 1;
+    setLayoutInfo.pBindings    = &uboBinding;
+
+    VK_CHECK(vkCreateDescriptorSetLayout(_device, &setLayoutInfo, nullptr, &_descriptorSetLayout));
+    spdlog::debug("Pipeline: VkDescriptorSetLayout created (binding 0: UboMvp, vertex stage).");
+
     // ── Pipeline layout creation ──────────────────────────────────────────────
     //
-    // VkPipelineLayout: describes the interface between the CPU and the shaders —
-    // which descriptor sets and push constants the shaders expect.
-    // For this triangle there are none: empty layout, zero bindings.
-    // This layout must match the shader's layout qualifiers (the triangle shaders
-    // have no uniforms, so an empty layout is correct).
+    // VkPipelineLayout: describes the full interface between the CPU and the shaders —
+    // which descriptor set layouts the pipeline uses and any push constant ranges.
+    // This is the object the GPU consults at draw time to find descriptor set bindings.
+    //
+    // pSetLayouts[0] = _descriptorSetLayout: the pipeline uses one descriptor set (set=0),
+    //   whose layout was created above. This declaration must match the GLSL
+    //   "layout(set=0, binding=0)" qualifier — if the set count here were 0, the driver
+    //   would not expect any descriptor sets and vkCmdBindDescriptorSets would have no
+    //   declared slot to bind into, resulting in a validation error.
+    //
+    // Lifetime: the pipeline layout references the descriptor set layout. The layout must
+    // not be destroyed while any pipeline or pipeline layout that references it is alive.
+    // In ~Pipeline(), we destroy _pipeline first, then _pipelineLayout, then _descriptorSetLayout.
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount         = 0;
-    pipelineLayoutInfo.pSetLayouts            = nullptr;
+    pipelineLayoutInfo.setLayoutCount         = 1;
+    pipelineLayoutInfo.pSetLayouts            = &_descriptorSetLayout;
     pipelineLayoutInfo.pushConstantRangeCount = 0;
     pipelineLayoutInfo.pPushConstantRanges    = nullptr;
 
     VK_CHECK(vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr, &_pipelineLayout));
-    spdlog::debug("Pipeline: VkPipelineLayout created.");
+    spdlog::debug("Pipeline: VkPipelineLayout created (1 descriptor set layout).");
 
     // ── Shader stage setup ────────────────────────────────────────────────────
     //
@@ -467,19 +522,43 @@ Pipeline::Pipeline(VkDevice device, VkFormat colorFormat, VkFormat depthFormat,
 // ─── destructor ───────────────────────────────────────────────────────────────
 
 /**
- * @brief Destroy the pipeline, pipeline layout, and render pass.
+ * @brief Destroy the pipeline, pipeline layout, descriptor set layout, and render pass.
+ * @details Destruction order is the reverse of creation. The critical constraint:
+ *          _descriptorSetLayout must not be destroyed before _pipelineLayout, because
+ *          the pipeline layout holds a reference to the descriptor set layout internally.
+ *          Destroying the descriptor set layout first would leave the pipeline layout
+ *          pointing at freed memory — a use-after-free that triggers validation error
+ *          VUID-vkDestroyDescriptorSetLayout-setLayout-00281.
  */
 Pipeline::~Pipeline()
 {
-    // Destroy in reverse creation order.
+    // 1. Destroy the pipeline first — it references the pipeline layout.
     if (_pipeline != VK_NULL_HANDLE) {
         vkDestroyPipeline(_device, _pipeline, nullptr);
         spdlog::debug("Pipeline: VkPipeline destroyed.");
     }
+
+    // 2. Destroy the pipeline layout — it references the descriptor set layout.
+    //    Must happen BEFORE _descriptorSetLayout is destroyed.
     if (_pipelineLayout != VK_NULL_HANDLE) {
         vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
         spdlog::debug("Pipeline: VkPipelineLayout destroyed.");
     }
+
+    // 3. Destroy the descriptor set layout — safe now that _pipelineLayout is gone.
+    //    This layout was also borrowed by DescriptorAllocator, but DescriptorAllocator
+    //    is declared after _pipeline in Renderer's member list, so it is destroyed
+    //    BEFORE Pipeline's destructor is called — by the time we reach here, no live
+    //    object is still referencing _descriptorSetLayout.
+    if (_descriptorSetLayout != VK_NULL_HANDLE) {
+        vkDestroyDescriptorSetLayout(_device, _descriptorSetLayout, nullptr);
+        spdlog::debug("Pipeline: VkDescriptorSetLayout destroyed.");
+    }
+
+    // 4. Destroy the render pass last — SwapchainContext framebuffers referenced it,
+    //    but SwapchainContext is declared before Pipeline in Renderer and is therefore
+    //    destroyed first (C++ reverse member destruction), so the render pass is safe
+    //    to destroy here.
     if (_renderPass != VK_NULL_HANDLE) {
         vkDestroyRenderPass(_device, _renderPass, nullptr);
         spdlog::debug("Pipeline: VkRenderPass destroyed.");
@@ -513,4 +592,13 @@ VkPipelineLayout Pipeline::pipelineLayout() const noexcept
 VkPipeline Pipeline::pipeline() const noexcept
 {
     return _pipeline;
+}
+
+/**
+ * @brief Return the VkDescriptorSetLayout for binding 0 (the UBO).
+ * @return VkDescriptorSetLayout valid for the lifetime of this object.
+ */
+VkDescriptorSetLayout Pipeline::descriptorSetLayout() const noexcept
+{
+    return _descriptorSetLayout;
 }

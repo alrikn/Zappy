@@ -215,7 +215,10 @@ add_executable(zappy_gui
     src/renderer/window/SwapchainContext.cpp
     src/renderer/pipeline/Pipeline.cpp
     src/renderer/scene/DepthResources.cpp
-    src/renderer/sync/FrameSync.cpp)
+    src/renderer/scene/UniformBuffer.cpp
+    src/renderer/scene/DescriptorAllocator.cpp
+    src/renderer/sync/FrameSync.cpp
+    src/camera/Camera.cpp)
 
 # shaders is a build-order dependency: the .spv files must exist before the
 # game runs, but they don't affect the link step. add_dependencies (not
@@ -247,7 +250,14 @@ target_link_libraries(zappy_gui PRIVATE
 target_compile_definitions(zappy_gui PRIVATE
     VULKAN_VALIDATION=$<CONFIG:Debug>
     ASSETS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/src/assets"
-    SHADERS_DIR="${CMAKE_BINARY_DIR}/shaders")
+    SHADERS_DIR="${CMAKE_BINARY_DIR}/shaders"
+    # GLM_FORCE_DEPTH_ZERO_TO_ONE: make glm::perspective produce depth in [0, 1].
+    # Vulkan uses [0, 1] depth range; OpenGL (and GLM's default) use [-1, 1].
+    # Without this flag, depth values from the projection matrix lie in [-1, 1]
+    # and the near-plane maps to depth -1.0, which Vulkan clips as outside [0, 1].
+    # Defining this globally here ensures every translation unit that includes
+    # GLM headers sees the correct behaviour regardless of include order.
+    GLM_FORCE_DEPTH_ZERO_TO_ONE)
 
 # ─── Warning flags ────────────────────────────────────────────────────────────
 # -Werror intentionally omitted: third-party headers (imgui, vk-bootstrap) often

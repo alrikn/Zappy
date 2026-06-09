@@ -1,17 +1,27 @@
 /**
  * @file renderer/pipeline/Pipeline.hpp
- * @brief Owns the render pass, pipeline layout, and graphics pipeline for the triangle.
+ * @brief Owns the render pass, descriptor set layout, pipeline layout, and graphics pipeline.
  * @details Loads the compiled SPIR-V shaders from SHADERS_DIR, creates the render pass
  *          (describing how the colour attachment and depth attachment are treated), creates
- *          an empty pipeline layout (no descriptor sets for the triangle), then assembles
- *          the full VkPipeline with fixed-function state (viewport, rasteriser, blending,
- *          depth/stencil test, etc.).
+ *          the VkDescriptorSetLayout for the UBO binding at set=0 binding=0, creates the
+ *          pipeline layout referencing that set layout, then assembles the full VkPipeline
+ *          with fixed-function state (viewport, rasteriser, blending, depth/stencil test, etc.).
+ *
+ *          Destruction order within Pipeline (critical for correctness):
+ *            _pipeline           destroyed first  (references _pipelineLayout internally)
+ *            _pipelineLayout     destroyed second (references _descriptorSetLayout)
+ *            _descriptorSetLayout destroyed third  (must outlive the pipeline layout)
+ *            _renderPass         destroyed last
+ *          A pipeline layout that is still alive while its referenced descriptor set layout
+ *          is destroyed triggers validation error VUID-vkDestroyDescriptorSetLayout-*.
  *
  *          Architecture: Pipeline is created before SwapchainContext because the render
  *          pass handle is needed when creating framebuffers. SwapchainContext borrows
  *          the render pass via renderPass() — it must not outlive this object.
  *          Pipeline is also created after DepthResources so it can receive the depth
  *          format determined by format-probing in DepthResources::DepthResources().
+ *          DescriptorAllocator borrows the descriptor set layout via descriptorSetLayout()
+ *          to allocate compatible VkDescriptorSets — it must not outlive this object.
  */
 
 #pragma once
@@ -21,10 +31,11 @@
 #include <vulkan/vulkan.h>
 
 /**
- * @brief Encapsulates the VkRenderPass, VkPipelineLayout, and VkPipeline.
+ * @brief Encapsulates the VkRenderPass, VkDescriptorSetLayout, VkPipelineLayout, and VkPipeline.
  * @details Lifetime: created in Renderer after DeviceContext and DepthResources.
  *          Destroyed in Renderer destructor after SwapchainContext (because SwapchainContext
- *          framebuffers reference the render pass owned here).
+ *          framebuffers reference the render pass owned here) and after DescriptorAllocator
+ *          (DescriptorAllocator borrows descriptorSetLayout() — it must be destroyed first).
  *          Non-copyable, non-movable.
  *
  *          The render pass owns two attachment slots:
@@ -93,6 +104,15 @@ public:
      */
     [[nodiscard]] VkPipeline       pipeline()       const noexcept;
 
+    /**
+     * @brief Return the VkDescriptorSetLayout for binding 0 (the UBO).
+     * @details Needed by DescriptorAllocator to allocate compatible VkDescriptorSets,
+     *          and used by the pipeline layout to declare which bindings the vertex shader
+     *          may access. DescriptorAllocator must not outlive this Pipeline object.
+     * @return VkDescriptorSetLayout valid for the lifetime of this object.
+     */
+    [[nodiscard]] VkDescriptorSetLayout descriptorSetLayout() const noexcept;
+
 private:
     /**
      * @brief Read a SPIR-V binary file from disk into a word vector.
@@ -118,8 +138,9 @@ private:
     static VkShaderModule createShaderModule(VkDevice device,
                                               const std::vector<uint32_t>& code);
 
-    VkDevice         _device{VK_NULL_HANDLE};         ///< Borrowed — not owned.
-    VkRenderPass     _renderPass{VK_NULL_HANDLE};      ///< Owned here.
-    VkPipelineLayout _pipelineLayout{VK_NULL_HANDLE};  ///< Owned here.
-    VkPipeline       _pipeline{VK_NULL_HANDLE};        ///< Owned here.
+    VkDevice              _device{VK_NULL_HANDLE};              ///< Borrowed — not owned.
+    VkRenderPass          _renderPass{VK_NULL_HANDLE};          ///< Owned here.
+    VkDescriptorSetLayout _descriptorSetLayout{VK_NULL_HANDLE}; ///< Owned here. Declared after _renderPass — destroyed before _pipelineLayout.
+    VkPipelineLayout      _pipelineLayout{VK_NULL_HANDLE};      ///< Owned here. Declared after _descriptorSetLayout — destroyed before it.
+    VkPipeline            _pipeline{VK_NULL_HANDLE};            ///< Owned here. Declared last — destroyed first in ~Pipeline().
 };

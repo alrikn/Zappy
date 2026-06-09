@@ -180,10 +180,11 @@ int main(int argc, char* argv[])
         spdlog::info("Window created (1280x720). Press ESC to exit.");
 
         // Renderer is constructed after the GLFW window because it needs window.get()
-        // to create the Vulkan surface (VkSurfaceKHR). The Renderer stores window.get()
-        // as a non-owning pointer — the window is owned by the unique_ptr above and is
-        // guaranteed to outlive the Renderer (the Renderer is declared after the window
-        // unique_ptr in this scope, so it is destroyed first).
+        // to create the Vulkan surface (VkSurfaceKHR). The window pointer is used only
+        // at C API call sites during construction and is not stored as a member.
+        // Each call to drawFrame() passes window.get() again for GLFW input polling.
+        // The window unique_ptr is declared before the Renderer in this scope, so the
+        // window is guaranteed to outlive the Renderer (C++ destroys in reverse order).
         auto renderer = std::make_unique<Renderer>(window.get());
         spdlog::info("Renderer initialised.");
 
@@ -223,8 +224,9 @@ int main(int argc, char* argv[])
             }
 
             // drawFrame(): acquire a swapchain image, record and submit draw commands,
-            // then present the rendered image to the display.
-            renderer->drawFrame();
+            // then present the rendered image to the display. The window pointer is
+            // passed each frame for GLFW input polling — it is not stored in the Renderer.
+            renderer->drawFrame(window.get());
         }
 
         spdlog::info("zappy_gui exiting cleanly.");

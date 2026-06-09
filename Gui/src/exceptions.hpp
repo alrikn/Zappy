@@ -154,6 +154,23 @@ public:
 };
 
 /**
+ * @brief Thrown when Camera is constructed with invalid parameters.
+ * @details Currently covers: a non-positive aspect ratio. Future uses may include invalid
+ *          FOV values or unsupported projection parameters.
+ *
+ *          Lifetime: thrown from Camera::Camera(), caught by the top-level try/catch in main().
+ */
+class CameraException : public ZappyException {
+public:
+    /**
+     * @brief Construct with a description of the camera initialisation failure.
+     * @param message Human-readable explanation (e.g. "Camera: aspect ratio must be positive").
+     */
+    explicit CameraException(std::string message)
+        : ZappyException(std::move(message)) {}
+};
+
+/**
  * @brief Thrown when WorldState encounters an irrecoverable structural inconsistency.
  * @details This exception signals programming errors rather than normal network noise.
  *          Example: calling snapshot() before any msz message has been received in a

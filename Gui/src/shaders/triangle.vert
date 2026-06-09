@@ -1,41 +1,57 @@
 /**
  * @file src/shaders/triangle.vert
- * @brief Vertex shader for the two-triangle depth-test demo.
- * @details Emits six vertices (two triangles) in clip space, each at a distinct
- *          depth (Z) value, so the depth test has two different depth values to
- *          compare. The fragment shader receives the per-vertex colour via the
- *          'fragColor' varying.
+ * @brief Vertex shader for the two-triangle MVP camera demo.
+ * @details Transforms six world-space vertex positions by the view and projection matrices
+ *          read from the UboMvp uniform buffer at set=0, binding=0. The result is a
+ *          correct perspective-projected clip-space position for each vertex.
+ *
+ *          Moving the camera (WASD + mouse look) changes the view matrix each frame,
+ *          which in turn changes where the triangles appear on screen — proving the full
+ *          CPU-to-GPU MVP transform path works end-to-end.
  *
  *          Called by the graphics pipeline for every vkCmdDraw(6, 1, 0, 0) call.
- *          No vertex buffer is bound — all positions, depths, and colours are
- *          embedded in the shader using gl_VertexIndex as a selector. This
- *          eliminates vertex buffer management, VMA allocation, and staging buffer
- *          complexity, keeping the depth-buffer feature focused purely on the
- *          depth attachment plumbing.
+ *          No vertex buffer is bound — all positions and colours are embedded in the shader
+ *          using gl_VertexIndex as a selector. This eliminates vertex buffer management and
+ *          keeps the feature focused on the UBO and camera transform plumbing.
  *
- *          Two-triangle layout (screen space, Y-axis points DOWN in Vulkan):
+ *          Triangle A (vertices 0-2): RGB gradient. Positioned in the XY plane at Z=0,
+ *          spanning X in [-0.5, 0.5] and Y in [-0.5, 0.5]. The camera is at (0,0,3)
+ *          looking toward -Z, so the triangles face the camera directly and are visible.
  *
- *          Triangle A (vertices 0-2): RGB gradient, centred, Z = 0.3 (nearer)
- *            Vertex 0: top centre      ( 0.0, -0.5)
- *            Vertex 1: bottom right    ( 0.5,  0.5)
- *            Vertex 2: bottom left     (-0.5,  0.5)
+ *          Triangle B (vertices 3-5): solid cyan. Shifted slightly right and behind
+ *          Triangle A (higher Z value = farther from the camera). The depth test ensures
+ *          Triangle A correctly occludes Triangle B where they overlap.
  *
- *          Triangle B (vertices 3-5): solid cyan, offset right-and-down, Z = 0.7 (farther)
- *            Vertex 3: top left        ( 0.0, -0.1)
- *            Vertex 4: bottom right    ( 0.7,  0.6)
- *            Vertex 5: top right       ( 0.7, -0.6)
- *
- *          Expected visual result with depth testing ON:
- *          In the overlap region (lower-right of triangle A, upper-left of triangle B),
- *          triangle A (Z=0.3, nearer) occludes triangle B (Z=0.7, farther).
- *          Outside the overlap, each triangle's full colour is visible.
- *
- *          If depth testing were OFF, the draw-order would determine the winner:
- *          triangle B would overwrite triangle A in the overlap region because it is
- *          submitted second (gl_VertexIndex 3-5 come after 0-2).
+ *          Key fix vs. the previous XZ-plane layout: vertices that all share Y=0 with a
+ *          camera also at Y=0 produce a degenerate edge-on view — the triangle has zero
+ *          projected screen area and is invisible. Triangles in the XY plane (with varying
+ *          X and Y, constant Z) are fully face-on to a camera looking along -Z and are
+ *          rendered correctly.
  */
 
 #version 450
+
+/**
+ * layout(set=0, binding=0) uniform UboMvp:
+ *   Matches the VkDescriptorSetLayout created in Pipeline — one uniform buffer binding at
+ *   set=0, binding=0, visible to the vertex stage. The CPU writes view+proj matrices into
+ *   the corresponding UniformBuffer each frame before the draw call is submitted.
+ *
+ *   Physically: before each draw call the GPU reads this binding's VkDescriptorBufferInfo
+ *   (buffer handle + offset + range) from the descriptor set. During vertex shader execution
+ *   it fetches the 128-byte UboMvp struct from that buffer into shader registers. All 6
+ *   vertex shader invocations in the draw call read the same buffer contents (the matrices
+ *   are frame-constant), which is why uniform buffers are the correct tool here (as opposed
+ *   to storage buffers, which are per-element writeable).
+ *
+ *   std140 layout: each mat4 is 64 bytes (4 columns × vec4 = 4×16 bytes). The struct size
+ *   is exactly 128 bytes. std140 ensures no padding is inserted between view and proj, and
+ *   the CPU-side UboMvp struct (in UboMvp.hpp) uses glm::mat4 which matches this layout.
+ */
+layout(set = 0, binding = 0) uniform UboMvp {
+    mat4 view; ///< World-space → camera-space transform (written by Camera::viewMatrix()).
+    mat4 proj; ///< Camera-space → clip-space transform (written by Camera::projMatrix()).
+} ubo;
 
 /**
  * layout(location = 0) out: pass the colour to the fragment shader.
@@ -46,53 +62,43 @@
 layout(location = 0) out vec3 fragColor;
 
 /**
- * Hardcoded clip-space XY positions for six vertices (two triangles).
- * Clip space: X in [-1, 1], Y in [-1, 1], Z in [0, 1], W = 1.
- * Y is flipped vs OpenGL: positive Y points DOWN in Vulkan's clip space.
+ * World-space XY-plane positions for six vertices (two triangles).
  *
- * Vertices 0-2 form Triangle A (RGB gradient, Z=0.3 — nearer to camera).
- * Vertices 3-5 form Triangle B (solid cyan, Z=0.7 — farther from camera).
+ * Coordinate system: right-hand, Y-up.
+ *   X = right, Y = up, Z = toward the viewer (camera looks toward -Z at yaw=0).
  *
- * Triangle B is positioned so its upper-left corner overlaps Triangle A's
- * lower-right region. That overlap area is where the depth test is visible:
- * Triangle A's fragments (Z=0.3 < Z=0.7) beat Triangle B's (Z=0.7) and
- * the RGB gradient colour wins over cyan in the overlap pixels.
+ * The camera is at (0, 0, 3) looking toward -Z. Triangles placed in the XY plane
+ * (Z constant, X and Y varying) face the camera directly and have non-zero projected
+ * screen area — they are fully visible.
+ *
+ * Previous layout (all Y=0, XZ plane) was incorrect: a flat XZ-plane triangle
+ * viewed by a camera also at Y=0 is edge-on (zero projected area → invisible).
+ *
+ * Triangle A (vertices 0-2): centred at Z=0, spanning X and Y around the origin.
+ *   Closer to the camera (lower Z value when viewed = smaller camera-space Z distance
+ *   in a right-hand -Z forward system) so it wins the depth test over Triangle B.
+ *
+ * Triangle B (vertices 3-5): shifted right and placed at Z=-0.5 (farther from camera).
+ *   Partially overlaps Triangle A. The depth test discards Triangle B fragments that
+ *   are hidden behind Triangle A.
+ *
+ * With depth testing ON and a perspective projection from (0,0,3):
+ *   Triangle A occludes Triangle B where they overlap because its world-space Z (0.0)
+ *   is closer to the camera (at Z=3) than Triangle B's Z (-0.5).
+ *   Depth values emerge naturally from the perspective divide of the projection result —
+ *   no hardcoded constants needed.
  */
-const vec2 positions[6] = vec2[](
-    // Triangle A — nearer (Z=0.3)
-    vec2( 0.0, -0.5),   // vertex 0: top centre
-    vec2( 0.5,  0.5),   // vertex 1: bottom right
-    vec2(-0.5,  0.5),   // vertex 2: bottom left
+const vec3 positions[6] = vec3[](
+    // Triangle A — RGB gradient, in the XY plane at Z=0 (closest to camera)
+    vec3( 0.0,  0.5, 0.0),  // vertex 0: top-centre
+    vec3( 0.5, -0.5, 0.0),  // vertex 1: bottom-right
+    vec3(-0.5, -0.5, 0.0),  // vertex 2: bottom-left
 
-    // Triangle B — farther (Z=0.7), overlaps Triangle A's lower-right corner
-    vec2( 0.0, -0.1),   // vertex 3: top left  (overlaps triangle A's interior)
-    vec2( 0.7,  0.6),   // vertex 4: bottom right
-    vec2( 0.7, -0.6)    // vertex 5: top right
-);
-
-/**
- * Clip-space depth (Z) for each vertex.
- * Vulkan's depth range is [0, 1] after perspective divide.
- * Z=0 is the near plane, Z=1 is the far plane.
- * All three vertices of each triangle share the same Z so the triangle is
- * parallel to the screen — making the depth comparison unambiguous.
- *
- * The depth buffer is cleared to 1.0 at the start of each frame.
- * With VK_COMPARE_OP_LESS, a fragment passes if its depth < stored depth.
- *   - Triangle A vertices: Z=0.3 < 1.0 → pass on first draw.
- *   - Triangle B vertices: Z=0.7 < 1.0 → pass where A has not yet written.
- *   - Triangle B vertices: Z=0.7 > 0.3 → FAIL where A already wrote Z=0.3.
- */
-const float depths[6] = float[](
-    // Triangle A — nearer
-    0.3,   // vertex 0
-    0.3,   // vertex 1
-    0.3,   // vertex 2
-
-    // Triangle B — farther
-    0.7,   // vertex 3
-    0.7,   // vertex 4
-    0.7    // vertex 5
+    // Triangle B — solid cyan, in the XY plane at Z=-0.5 (farther from camera)
+    // Shifted right so it partially overlaps Triangle A; the depth test resolves the overlap.
+    vec3( 0.8,  0.5, -0.5),  // vertex 3: top-right
+    vec3( 1.3, -0.5, -0.5),  // vertex 4: bottom-far-right
+    vec3( 0.3, -0.5, -0.5)   // vertex 5: bottom-near-right
 );
 
 /**
@@ -103,30 +109,44 @@ const float depths[6] = float[](
  */
 const vec3 colors[6] = vec3[](
     // Triangle A
-    vec3(1.0, 0.0, 0.0),   // red   (vertex 0 — top centre)
-    vec3(0.0, 1.0, 0.0),   // green (vertex 1 — bottom right)
-    vec3(0.0, 0.0, 1.0),   // blue  (vertex 2 — bottom left)
+    vec3(1.0, 0.0, 0.0),  // red   (vertex 0)
+    vec3(0.0, 1.0, 0.0),  // green (vertex 1)
+    vec3(0.0, 0.0, 1.0),  // blue  (vertex 2)
 
     // Triangle B — all cyan
-    vec3(0.0, 1.0, 1.0),   // cyan (vertex 3)
-    vec3(0.0, 1.0, 1.0),   // cyan (vertex 4)
-    vec3(0.0, 1.0, 1.0)    // cyan (vertex 5)
+    vec3(0.0, 1.0, 1.0),  // cyan (vertex 3)
+    vec3(0.0, 1.0, 1.0),  // cyan (vertex 4)
+    vec3(0.0, 1.0, 1.0)   // cyan (vertex 5)
 );
 
 void main()
 {
     /*
-     * gl_VertexIndex: built-in variable set by the GPU to the current vertex index.
-     * With vkCmdDraw(6, 1, 0, 0):
-     *   Invocations 0-2 → Triangle A (RGB gradient, Z=0.3).
-     *   Invocations 3-5 → Triangle B (solid cyan, Z=0.7).
+     * gl_VertexIndex: built-in, set by the GPU to the current vertex index (0-5).
      *
-     * gl_Position: built-in output; the clip-space position for this vertex.
-     * vec4(x, y, z, 1.0): W=1 (no perspective divide for this flat demo).
-     * The Z component is taken from the depths[] array so each triangle
-     * sits at a distinct depth. The GPU writes Z to the depth buffer during
-     * the EARLY_FRAGMENT_TESTS stage and compares it against the stored value.
+     * MVP transform: proj * view * position.
+     *   1. vec4(positions[gl_VertexIndex], 1.0): promote the 3D world-space position
+     *      to homogeneous coordinates (W=1). W=1 means "this is a point, not a direction".
+     *   2. ubo.view * ...: transform from world space to camera space.
+     *      The view matrix moves the world so the camera is at the origin looking toward -Z.
+     *      Physically: this is equivalent to moving all geometry relative to a fixed camera.
+     *   3. ubo.proj * ...: transform from camera space to clip space.
+     *      Applies perspective foreshortening: things farther away get smaller X and Y values.
+     *      After the perspective divide (done automatically by the GPU after the vertex shader),
+     *      the result is a normalised device coordinate (NDC) position.
+     *      The Y flip is already baked into ubo.proj (projection[1][1] is negated in Camera.cpp)
+     *      so this produces correct Vulkan clip-space Y without any per-vertex correction.
+     *
+     * The depth value written to the depth buffer is no longer a hardcoded constant.
+     * It emerges naturally from the perspective divide of the clip-space Z component.
+     * Vertices farther from the camera produce higher clip-space Z (after divide), so
+     * the depth test automatically resolves occlusion based on actual world-space distance.
+     *
+     * Skipping the view multiply: the camera would never appear to move — all geometry
+     * would stay fixed in camera space regardless of the CPU-side camera position.
+     * Skipping the proj multiply: there would be no perspective foreshortening and no
+     * correct depth values — the render would look like an orthographic projection.
      */
-    gl_Position = vec4(positions[gl_VertexIndex], depths[gl_VertexIndex], 1.0);
+    gl_Position = ubo.proj * ubo.view * vec4(positions[gl_VertexIndex], 1.0);
     fragColor   = colors[gl_VertexIndex];
 }

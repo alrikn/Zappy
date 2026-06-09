@@ -1,6 +1,6 @@
 /**
  * @file renderer/Renderer.cpp
- * @brief Implementation of Renderer: construction, drawFrame(), and teardown.
+ * @brief Implementation of Renderer: construction, camera update, UBO upload, draw loop, teardown.
  * @details The Renderer constructor must follow a strict ordering because each Vulkan
  *          object depends on handles from the objects created before it:
  *
@@ -12,22 +12,28 @@
  *            DepthResources(allocator, dev, phys,  → VkImage + VmaAllocation + VkImageView
  *                           fbWidth, fbHeight)        + VkFormat (probed)
  *            [query surface format]                → VkFormat (for Pipeline colour attachment)
- *            Pipeline(device, colorFormat,         → VkRenderPass + VkPipeline (depth test ON)
- *                     depthFormat, shadersDir)
+ *            Pipeline(device, colorFormat,         → VkDescriptorSetLayout + VkRenderPass
+ *                     depthFormat, shadersDir)          + VkPipelineLayout + VkPipeline
  *            SwapchainContext(device, phys, surf,  → VkSwapchainKHR + colour views
  *                             renderPass,              + framebuffers (colour + depth view)
  *                             depthView, w, h)
  *            FrameSyncPool(device, 2)              → 2× VkSemaphore + 2× VkFence
+ *            UniformBuffer × kMaxFramesInFlight    → 2× host-coherent VMA buffer (persistently mapped)
+ *            DescriptorAllocator(device, layout,   → VkDescriptorPool + 2× VkDescriptorSet
+ *                                uniformBuffers)       (each set bound to one UniformBuffer)
+ *            Camera(aspectRatio)                   → pure-math camera, no Vulkan objects
  *            renderFinished semaphores             → N× VkSemaphore (one per swapchain image)
  *            allocateCommandBuffers()              → VkCommandPool + N× VkCommandBuffer
  *
- *          The per-frame loop in drawFrame() follows the Vulkan present pipeline:
- *            1. vkWaitForFences — block CPU until previous use of this frame slot is done
- *            2. vkAcquireNextImageKHR — ask the swapchain for the next presentable image
- *            3. vkResetFences — un-signal the fence so we can wait on it next frame
- *            4. recordCommandBuffer — re-record draw commands for the acquired image
- *            5. vkQueueSubmit — submit commands to the GPU
- *            6. vkQueuePresentKHR — ask the swapchain to present the rendered image
+ *          The per-frame loop in drawFrame() follows this sequence:
+ *            1. updateCamera()          — poll GLFW input, update yaw/pitch/position
+ *            2. uploadUbo()             — write view+proj matrices to the UBO for this frame slot
+ *            3. vkWaitForFences         — block CPU until previous use of this frame slot is done
+ *            4. vkAcquireNextImageKHR   — ask the swapchain for the next presentable image
+ *            5. vkResetFences           — un-signal the fence so we can wait on it next frame
+ *            6. recordCommandBuffer()   — re-record draw commands including descriptor set bind
+ *            7. vkQueueSubmit           — submit commands to the GPU
+ *            8. vkQueuePresentKHR       — ask the swapchain to present the rendered image
  *
  *          Architecture: Renderer.cpp is the only translation unit that includes all
  *          sub-object headers. Keeping all the wiring here prevents circular dependencies
@@ -36,6 +42,7 @@
 
 #include "renderer/Renderer.hpp"
 #include "renderer/device/VkCheck.hpp"
+#include "renderer/scene/UboMvp.hpp"
 #include "exceptions.hpp"
 
 #include <array>
@@ -44,8 +51,9 @@
 // ─── constructor ──────────────────────────────────────────────────────────────
 
 /**
- * @brief Initialise the entire Vulkan stack.
- * @param window Non-owning pointer to the GLFW window created in main().
+ * @brief Initialise the entire Vulkan stack including UBO, descriptors, and camera.
+ * @param window Non-owning pointer to the GLFW window created in main(). Used only
+ *               at C API call sites in the constructor body — never stored as a member.
  */
 Renderer::Renderer(GLFWwindow* window)
 {
@@ -149,10 +157,10 @@ Renderer::Renderer(GLFWwindow* window)
 
     // ── Step 7: Create the graphics pipeline ─────────────────────────────────
     //
-    // Pipeline loads the compiled SPIR-V shaders, creates the render pass with
-    // both colour and depth attachments (using the formats queried above), and
-    // assembles the graphics pipeline with depth test enabled.
-    // The render pass handle is then used in Step 8 for framebuffer creation.
+    // Pipeline loads the compiled SPIR-V shaders, creates the VkDescriptorSetLayout
+    // for binding 0 (the UBO), creates the render pass with both colour and depth
+    // attachments, creates the pipeline layout referencing the descriptor set layout,
+    // and assembles the full graphics pipeline with depth test enabled.
     _pipeline = std::make_unique<Pipeline>(
         _device->device(),
         surfaceFormat,
@@ -163,9 +171,9 @@ Renderer::Renderer(GLFWwindow* window)
     //
     // SwapchainContext creates the VkSwapchainKHR (the ring of presentable images),
     // one colour VkImageView per image, and one VkFramebuffer per view. Each
-    // framebuffer now has two attachments: the per-image colour view (attachment 0)
-    // and the shared depth view (attachment 1). The depth view is borrowed from
-    // DepthResources and must outlive SwapchainContext (guaranteed by declaration order).
+    // framebuffer has two attachments: the per-image colour view and the shared
+    // depth view. The depth view is borrowed from DepthResources and must outlive
+    // SwapchainContext (guaranteed by declaration order in Renderer.hpp).
     _swapchain = std::make_unique<SwapchainContext>(
         _device->device(),
         _device->physicalDevice(),
@@ -181,13 +189,77 @@ Renderer::Renderer(GLFWwindow* window)
     // (one set per frame-in-flight slot).
     _syncPool = std::make_unique<FrameSyncPool>(_device->device(), kMaxFramesInFlight);
 
-    // ── Step 10: Create one "render finished" semaphore per swapchain image ──
+    // ── Step 10: Create one UniformBuffer per frame-in-flight slot ───────────
     //
-    // This semaphore is signalled by vkQueueSubmit and waited on by vkQueuePresentKHR
-    // for the SAME swapchain image, so it must be indexed by swapchain image index
-    // (imageIndex), not by frame-in-flight slot — the swapchain can have more images
-    // than frames in flight, and reusing a smaller pool would signal a semaphore the
-    // presentation engine is still waiting on (VUID-vkQueueSubmit-pSignalSemaphores-00067).
+    // Each frame-in-flight slot has its own UBO buffer so the CPU can write the
+    // next frame's camera matrices while the GPU is still reading the previous
+    // frame's matrices from a different buffer. Without this double-buffering, the
+    // CPU write would race with the GPU read — corrupted camera data.
+    //
+    // The UniformBuffer objects are stored as unique_ptr in a vector so they can
+    // be constructed one by one while the vector is built, without requiring all
+    // buffers to be created atomically (which would complicate error handling).
+    _uniformBuffers.reserve(kMaxFramesInFlight);
+    for (std::size_t i = 0; i < kMaxFramesInFlight; ++i) {
+        _uniformBuffers.push_back(
+            std::make_unique<UniformBuffer>(_allocator->allocator()));
+    }
+    spdlog::debug("Renderer: {} UniformBuffers created.", kMaxFramesInFlight);
+
+    // ── Step 11: Create the DescriptorAllocator ───────────────────────────────
+    //
+    // DescriptorAllocator creates a VkDescriptorPool large enough for kMaxFramesInFlight
+    // uniform-buffer descriptors, allocates one VkDescriptorSet per frame slot, and
+    // immediately updates each set to point at the corresponding UniformBuffer.
+    //
+    // We pass raw UniformBuffer* pointers here. DescriptorAllocator only uses them
+    // during construction (to fill VkDescriptorBufferInfo) and does not store them.
+    // The vector of raw pointers is built on the stack and discarded after construction.
+    {
+        std::vector<UniformBuffer*> uboPtrs;
+        uboPtrs.reserve(kMaxFramesInFlight);
+        for (const auto& ubo : _uniformBuffers) {
+            uboPtrs.push_back(ubo.get());
+        }
+        _descriptorAllocator = std::make_unique<DescriptorAllocator>(
+            _device->device(),
+            _pipeline->descriptorSetLayout(),
+            uboPtrs);
+    }
+
+    // ── Step 12: Create the Camera ────────────────────────────────────────────
+    //
+    // The camera is a pure-math object (no Vulkan state). It is constructed after
+    // the swapchain so the correct aspect ratio (swapchain width / height) can be
+    // passed in. The projection matrix is computed once and cached.
+    const float aspectRatio = static_cast<float>(fbWidth) / static_cast<float>(fbHeight);
+    _camera = std::make_unique<Camera>(aspectRatio);
+
+    // ── Step 13: Capture the mouse cursor ────────────────────────────────────
+    //
+    // GLFW_CURSOR_DISABLED: hide the cursor and lock it to the window so the OS
+    // does not clip cursor movement at window edges. GLFW will continue to report
+    // raw cursor delta even when the cursor "moves" past the window boundary.
+    // Without this, mouse-look would stop working when the cursor hits an edge.
+    //
+    // The OS restores the cursor automatically when the window loses focus.
+    // No escape-key toggle is implemented in this feature — the window can be closed
+    // with Alt+F4 or by the window manager's close button.
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    // Initialise the last-time timestamp so the first frame delta is ~0 rather than
+    // the full elapsed time since the process started.
+    _lastTime = glfwGetTime();
+
+    // ── Step 14: Create "render finished" semaphores ──────────────────────────
+    //
+    // One semaphore per swapchain image (NOT per frame-in-flight slot).
+    // Indexed by the imageIndex returned from vkAcquireNextImageKHR. This semaphore
+    // is signalled by vkQueueSubmit and waited on by vkQueuePresentKHR for the SAME
+    // swapchain image, so it must be indexed by swapchain image — the swapchain can
+    // have more images than frames in flight, and reusing a smaller pool would signal
+    // a semaphore still pending on the presentation engine
+    // (VUID-vkQueueSubmit-pSignalSemaphores-00067).
     {
         VkSemaphoreCreateInfo semInfo{};
         semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -198,7 +270,7 @@ Renderer::Renderer(GLFWwindow* window)
         }
     }
 
-    // ── Step 11: Allocate command pool and command buffers ────────────────────
+    // ── Step 15: Allocate command pool and command buffers ────────────────────
     allocateCommandBuffers();
 
     spdlog::info("Renderer: initialisation complete.");
@@ -214,7 +286,7 @@ Renderer::~Renderer()
     // vkDeviceWaitIdle: block the CPU until all submitted GPU work completes.
     // Permitted here (destructor = shutdown, not the hot path — rule 9).
     // This is required before destroying any Vulkan object that might still be
-    // referenced by in-flight GPU commands.
+    // referenced by in-flight GPU commands (command buffers, semaphores, UBO buffers).
     if (_device && _device->device() != VK_NULL_HANDLE) {
         vkDeviceWaitIdle(_device->device());
         spdlog::debug("Renderer: vkDeviceWaitIdle completed.");
@@ -232,7 +304,7 @@ Renderer::~Renderer()
     }
 
     // Destroy the per-swapchain-image "render finished" semaphores. Same rationale
-    // as _commandPool: raw handles, owned directly by Renderer, must be destroyed
+    // as _commandPool: raw handles owned directly by Renderer, must be destroyed
     // here while _device is still valid.
     if (_device) {
         for (VkSemaphore sem : _renderFinishedSemaphores) {
@@ -245,16 +317,95 @@ Renderer::~Renderer()
     }
 
     // unique_ptr members are now destroyed in reverse declaration order:
-    //   _syncPool  → vkDestroySemaphore × 2 + vkDestroyFence × 2
-    //   _swapchain → vkDestroyFramebuffer × N + vkDestroyImageView × N + vkDestroySwapchainKHR
-    //   _pipeline  → vkDestroyPipeline + vkDestroyPipelineLayout + vkDestroyRenderPass
-    //   _depth     → vkDestroyImageView + vmaDestroyImage (image + allocation)
-    //   _allocator → vmaDestroyAllocator
-    //   _window    → vkDestroySurfaceKHR
-    //   _device    → vkDestroyDevice + (debug messenger) + vkDestroyInstance
+    //   _camera              → ~Camera() (no Vulkan calls)
+    //   _descriptorAllocator → vkDestroyDescriptorPool (frees all sets)
+    //   _uniformBuffers      → vmaDestroyBuffer × 2
+    //   _syncPool            → vkDestroySemaphore × 2 + vkDestroyFence × 2
+    //   _swapchain           → vkDestroyFramebuffer × N + vkDestroyImageView × N + vkDestroySwapchainKHR
+    //   _pipeline            → vkDestroyPipeline + vkDestroyPipelineLayout + vkDestroyDescriptorSetLayout + vkDestroyRenderPass
+    //   _depth               → vkDestroyImageView + vmaDestroyImage (image + allocation)
+    //   _allocator           → vmaDestroyAllocator
+    //   _window              → vkDestroySurfaceKHR
+    //   _device              → vkDestroyDevice + (debug messenger) + vkDestroyInstance
 }
 
 // ─── private helpers ──────────────────────────────────────────────────────────
+
+/**
+ * @brief Sample GLFW input and update the Camera for this frame.
+ * @param window The GLFW window to query.
+ */
+void Renderer::updateCamera(GLFWwindow* window)
+{
+    // ── Cursor delta computation ──────────────────────────────────────────────
+    //
+    // glfwGetCursorPos: returns the current cursor position in screen pixels.
+    // When GLFW_CURSOR_DISABLED is active, the cursor is hidden and locked to the
+    // window centre; GLFW reports an ever-accumulating position rather than one
+    // clamped to the window bounds — giving us true raw mouse motion.
+    double cursorX{0.0};
+    double cursorY{0.0};
+    glfwGetCursorPos(window, &cursorX, &cursorY);
+
+    if (_firstMouse) {
+        // First frame: store the initial position but do NOT compute a delta.
+        // Without this guard, the delta would be (cursorX - 0.0, cursorY - 0.0),
+        // which could be hundreds of pixels if the OS cursor was positioned away
+        // from the window origin — causing the camera to snap to a random direction.
+        _lastCursorX = cursorX;
+        _lastCursorY = cursorY;
+        _firstMouse  = false;
+    }
+
+    // Compute the pixel delta since the last frame.
+    const float dx = static_cast<float>(cursorX - _lastCursorX);
+    const float dy = static_cast<float>(cursorY - _lastCursorY);
+    _lastCursorX = cursorX;
+    _lastCursorY = cursorY;
+
+    // Apply the delta to the camera's yaw and pitch.
+    _camera->processMouseDelta(dx, dy);
+
+    // ── Frame delta time ──────────────────────────────────────────────────────
+    //
+    // glfwGetTime(): returns elapsed seconds since glfwInit() was called.
+    // The difference gives the duration of the last frame in seconds, which is
+    // multiplied by kSpeed inside Camera::processKeyboard() to give frame-rate-
+    // independent movement.
+    const double currentTime = glfwGetTime();
+    const float  dt          = static_cast<float>(currentTime - _lastTime);
+    _lastTime                = currentTime;
+
+    // ── Keyboard movement ─────────────────────────────────────────────────────
+    //
+    // glfwGetKey: returns GLFW_PRESS if the key is currently held down.
+    // We read the four movement keys and pass booleans to the camera.
+    const bool forward  = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS);
+    const bool backward = (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS);
+    const bool left     = (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS);
+    const bool right    = (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS);
+
+    _camera->processKeyboard(forward, backward, left, right, dt);
+}
+
+/**
+ * @brief Write the camera's view + proj matrices into the UBO for the given frame slot.
+ * @param frameIndex The current frame-in-flight slot index.
+ */
+void Renderer::uploadUbo(std::size_t frameIndex)
+{
+    // Assemble the UboMvp struct from the current camera state.
+    // viewMatrix() and projMatrix() are const — they do not modify the camera.
+    UboMvp ubo{};
+    ubo.view = _camera->viewMatrix();
+    ubo.proj = _camera->projMatrix();
+
+    // Write the 128-byte struct into the persistently-mapped VMA buffer for this slot.
+    // The HOST_COHERENT flag ensures the GPU sees the updated bytes without a flush call.
+    // This call happens before vkQueueSubmit, guaranteeing the GPU reads the new values
+    // during the draw commands submitted in the same frame.
+    _uniformBuffers[frameIndex]->write(ubo);
+}
 
 /**
  * @brief Create a command pool and allocate one command buffer per swapchain image.
@@ -302,10 +453,11 @@ void Renderer::allocateCommandBuffers()
 }
 
 /**
- * @brief Record the draw commands for one swapchain image index.
- * @param imageIndex Index of the swapchain image whose framebuffer to target.
+ * @brief Record the draw commands for one swapchain image index and frame-in-flight slot.
+ * @param imageIndex The swapchain image index (selects which framebuffer to target).
+ * @param frameIndex The frame-in-flight slot index (selects which descriptor set to bind).
  */
-void Renderer::recordCommandBuffer(uint32_t imageIndex)
+void Renderer::recordCommandBuffer(uint32_t imageIndex, std::size_t frameIndex)
 {
     VkCommandBuffer cmd = _commandBuffers[imageIndex];
 
@@ -319,8 +471,6 @@ void Renderer::recordCommandBuffer(uint32_t imageIndex)
     // ── Begin command buffer ──────────────────────────────────────────────────
     //
     // vkBeginCommandBuffer: transition the buffer from Initial to Recording state.
-    // ONE_TIME_SUBMIT_BIT would hint that the buffer is submitted once then reset —
-    // we do not set it because we re-use these buffers repeatedly each frame.
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = 0;
@@ -330,10 +480,9 @@ void Renderer::recordCommandBuffer(uint32_t imageIndex)
     // ── Begin render pass ─────────────────────────────────────────────────────
     //
     // vkCmdBeginRenderPass: start the render pass, binding the framebuffer and
-    // clearing the colour attachment with the specified clear colour.
+    // clearing the attachments with the specified clear values.
     // Physically: on tile-based GPUs (mobile), this signals the start of a tile
-    // render. On desktop GPUs it primarily performs the layout transition from
-    // UNDEFINED to COLOR_ATTACHMENT_OPTIMAL and issues the clear operation.
+    // render. On desktop GPUs it performs the layout transition and clears.
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.renderPass        = _pipeline->renderPass();
@@ -341,21 +490,12 @@ void Renderer::recordCommandBuffer(uint32_t imageIndex)
     renderPassInfo.renderArea.offset = {0, 0};
     renderPassInfo.renderArea.extent = {_swapchain->width(), _swapchain->height()};
 
-    // Clear values for both render pass attachments.
-    //
-    // The array must be indexed by attachment slot, matching Pipeline's render pass:
+    // Clear values for both render pass attachments (indexed by attachment slot).
     //   clearValues[0] → attachment 0 (colour): dark grey background.
-    //   clearValues[1] → attachment 1 (depth):  1.0 = the far-plane value.
+    //   clearValues[1] → attachment 1 (depth):  1.0 = far-plane value (cleared every frame).
     //
-    // Depth clear value {1.0f, 0}:
-    //   depthStencil.depth   = 1.0f: clear every pixel to the maximum depth (farthest from
-    //     the camera). With VK_COMPARE_OP_LESS, the first fragment drawn at any pixel always
-    //     passes the depth test because its depth (< 1.0 in clip space [0,1]) is less than
-    //     1.0. Clearing to 0.0 instead would cause every subsequent fragment to fail.
-    //   depthStencil.stencil = 0:    stencil testing is not used; value is irrelevant.
-    //
-    // Providing only one clear value when the render pass has two attachments would trigger
-    // a validation layer error: clearValueCount must equal the render pass attachment count.
+    // Depth clear value 1.0f: with VK_COMPARE_OP_LESS, any fragment at depth < 1.0 passes
+    // the test on the first draw. Clearing to 0.0 instead would cause all fragments to fail.
     const std::array<VkClearValue, 2> clearValues = []{
         std::array<VkClearValue, 2> cv{};
         cv[0].color        = {{0.1f, 0.1f, 0.1f, 1.0f}};
@@ -366,24 +506,19 @@ void Renderer::recordCommandBuffer(uint32_t imageIndex)
     renderPassInfo.pClearValues    = clearValues.data();
 
     // VK_SUBPASS_CONTENTS_INLINE: all draw commands are recorded inline in this
-    // primary command buffer (as opposed to SECONDARY_COMMAND_BUFFERS mode where
-    // secondary buffers are executed via vkCmdExecuteCommands).
+    // primary command buffer (no secondary command buffer execution).
     vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     // ── Bind graphics pipeline ────────────────────────────────────────────────
     //
     // vkCmdBindPipeline: set the pipeline that subsequent draw commands will use.
     // GRAPHICS: this is a graphics pipeline (as opposed to COMPUTE).
-    // Physically: the GPU loads the compiled shader programs and the fixed-function
-    // state (rasteriser settings, blend state, etc.) for the draw calls that follow.
+    // Physically: the GPU loads the compiled shader programs and fixed-function state.
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->pipeline());
 
     // ── Set dynamic viewport ──────────────────────────────────────────────────
     //
     // vkCmdSetViewport: define the viewport transform — maps NDC [-1,1] to pixel space.
-    // x=0, y=0: top-left of the framebuffer.
-    // width = swapchain width, height = swapchain height: full framebuffer coverage.
-    // minDepth=0, maxDepth=1: standard depth range.
     VkViewport viewport{};
     viewport.x        = 0.0f;
     viewport.y        = 0.0f;
@@ -395,45 +530,68 @@ void Renderer::recordCommandBuffer(uint32_t imageIndex)
 
     // ── Set dynamic scissor ───────────────────────────────────────────────────
     //
-    // vkCmdSetScissor: define the scissor rectangle — fragments outside are discarded.
-    // Full framebuffer coverage: no scissoring.
+    // vkCmdSetScissor: fragments outside this rectangle are discarded. Full framebuffer.
     VkRect2D scissor{};
     scissor.offset = {0, 0};
     scissor.extent = {_swapchain->width(), _swapchain->height()};
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
+    // ── Bind the UBO descriptor set ───────────────────────────────────────────
+    //
+    // vkCmdBindDescriptorSets: tell the GPU which descriptor sets to use for the
+    // next draw calls. The descriptor set at set=0 binding=0 points to the
+    // UniformBuffer for this frame slot, which holds the view+proj matrices written
+    // by uploadUbo() earlier in this frame.
+    //
+    // GRAPHICS: the descriptor set is bound for the graphics pipeline (not compute).
+    // pipelineLayout: the layout that declares the descriptor set structure — must
+    //   match the layout used to create the pipeline and to allocate the sets.
+    // firstSet=0: binding starts at set index 0.
+    // descriptorSetCount=1: we bind exactly one set (set=0).
+    // pDescriptorSets: pointer to the set for this frame-in-flight slot.
+    // dynamicOffsetCount=0: no dynamic offsets (our UBO occupies the full buffer).
+    //
+    // Physically: the GPU records the descriptor set binding in the command buffer.
+    // When the draw call executes, the vertex shader reads the set's binding 0 to
+    // find the UboMvp buffer and fetches the view+proj matrices from it.
+    //
+    // Skipping this bind: the vertex shader would read from whatever descriptor set
+    // was previously bound (undefined at the first frame) — invalid data, GPU crash,
+    // or validation error VUID-vkCmdDraw-None-02700.
+    VkDescriptorSet descSet = _descriptorAllocator->set(frameIndex);
+    vkCmdBindDescriptorSets(
+        cmd,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        _pipeline->pipelineLayout(),
+        0,       // firstSet
+        1,       // descriptorSetCount
+        &descSet,
+        0,       // dynamicOffsetCount
+        nullptr  // pDynamicOffsets
+    );
+
     // ── Draw ──────────────────────────────────────────────────────────────────
     //
     // vkCmdDraw: record a non-indexed draw call.
-    // vertexCount=6: the vertex shader runs 6 times, once per vertex.
-    //   gl_VertexIndex 0–2 → first triangle (RGB gradient, one clip-space Z value).
-    //   gl_VertexIndex 3–5 → second triangle (solid cyan, different clip-space Z value).
-    //   The two triangles partially overlap on screen at different depths; the depth
-    //   test discards fragments from the farther shape where both cover the same pixel.
-    // instanceCount=1: one instance (no instanced rendering).
-    // firstVertex=0: gl_VertexIndex starts at 0.
-    // firstInstance=0: gl_InstanceIndex starts at 0.
+    // vertexCount=6: the vertex shader runs 6 times.
+    //   gl_VertexIndex 0–2 → Triangle A (RGB gradient).
+    //   gl_VertexIndex 3–5 → Triangle B (solid cyan).
+    // instanceCount=1, firstVertex=0, firstInstance=0: standard single draw.
     //
-    // Topology = TRIANGLE_LIST (set in Pipeline): every 3 consecutive vertices
-    // form one independent triangle. Two triangles = 6 vertices, 2 × (0,1,2) groups.
-    // The GPU rasterises both triangles, producing one fragment per covered pixel for
-    // each triangle. Overlapping pixels produce two candidate fragments; the EARLY
-    // FRAGMENT TESTS stage (depth compare with VK_COMPARE_OP_LESS) keeps only the
-    // nearer one, discarding the farther fragment before the fragment shader runs.
+    // Each vertex shader invocation reads the UboMvp from the bound descriptor
+    // set (binding 0) and computes: gl_Position = proj * view * vec4(pos, 1.0).
+    // The depth buffer is cleared to 1.0 at render pass begin; perspective-divide
+    // produces natural depth ordering so the depth test resolves occlusion correctly.
     vkCmdDraw(cmd, 6, 1, 0, 0);
 
     // ── End render pass ───────────────────────────────────────────────────────
     //
-    // vkCmdEndRenderPass: finalise the render pass.
-    // Physically: on tile-based GPUs this flushes the tile data to main memory.
-    // On desktop GPUs it primarily performs the layout transition from
-    // COLOR_ATTACHMENT_OPTIMAL to PRESENT_SRC_KHR (as declared in the render pass).
+    // vkCmdEndRenderPass: finalise the render pass, triggering layout transitions.
     vkCmdEndRenderPass(cmd);
 
     // ── End command buffer ────────────────────────────────────────────────────
     //
     // vkEndCommandBuffer: transition from Recording to Executable state.
-    // The buffer is now ready to be submitted to a queue.
     VK_CHECK(vkEndCommandBuffer(cmd));
 }
 
@@ -441,34 +599,42 @@ void Renderer::recordCommandBuffer(uint32_t imageIndex)
 
 /**
  * @brief Submit and present one frame.
+ * @param window The GLFW window to query for cursor position and key states.
+ *               Passed in from main() each frame; not stored as a member.
  */
-void Renderer::drawFrame()
+void Renderer::drawFrame(GLFWwindow* window)
 {
+    // ── Update the camera from GLFW input ─────────────────────────────────────
+    //
+    // Called FIRST so the view matrix reflects the latest input before the UBO is
+    // written and before the command buffer is recorded with the new descriptor set.
+    // The window pointer arrives here from main() — it is only ever used at GLFW
+    // C API call sites and is never stored beyond this stack frame.
+    updateCamera(window);
+
+    // ── Write the camera matrices into the UBO for this frame slot ────────────
+    //
+    // uploadUbo writes the view+proj matrices to the HOST_COHERENT buffer for
+    // _currentFrame. The GPU will read this buffer during the draw call below.
+    // This must happen before vkQueueSubmit but after updateCamera() so the latest
+    // camera state is captured.
+    uploadUbo(_currentFrame);
+
     FrameSync& sync = (*_syncPool)[_currentFrame];
 
     // ── Wait for previous use of this frame slot ──────────────────────────────
     //
     // vkWaitForFences: block the CPU until the GPU signals the inFlight fence.
-    // This ensures the command buffer for this slot has finished executing on the GPU
-    // before we re-record it. Without this wait, the CPU would overwrite commands
-    // the GPU is still reading — corrupted rendering or a GPU hang.
-    //
-    // VK_TRUE: wait for ALL listed fences (we have only one).
-    // UINT64_MAX: no timeout (wait forever). Acceptable here because validation layers
-    //             will catch infinite waits caused by programming errors.
+    // Ensures the command buffer for this slot finished executing on the GPU
+    // before we re-record it.
     VK_CHECK(vkWaitForFences(
         _device->device(), 1, &sync.inFlight, VK_TRUE, UINT64_MAX));
 
     // ── Acquire the next swapchain image ──────────────────────────────────────
     //
-    // vkAcquireNextImageKHR: ask the swapchain for the index of the next image
-    // that is free for rendering. The GPU signals imageAvailable when the image
-    // is truly ready (not being scanned out by the display hardware).
-    //
-    // The returned imageIndex may not equal _currentFrame — the swapchain
-    // manages its own image ordering, which may differ from our frame-in-flight
-    // index. We use imageIndex to select the framebuffer; _currentFrame to select
-    // the sync objects.
+    // vkAcquireNextImageKHR: ask the swapchain for the next available image index.
+    // The GPU signals imageAvailable when the image is truly ready (not being
+    // scanned out by the display hardware).
     uint32_t imageIndex{0};
     VK_CHECK(vkAcquireNextImageKHR(
         _device->device(),
@@ -482,33 +648,21 @@ void Renderer::drawFrame()
     //
     // vkResetFences: return the fence to the unsignalled state so vkQueueSubmit
     // can signal it again when this frame's commands complete.
-    // Reset AFTER acquiring the image (not before) so the fence is only reset when
-    // we are sure we will submit work this frame.
     VK_CHECK(vkResetFences(_device->device(), 1, &sync.inFlight));
 
-    // ── Record the command buffer for this image ──────────────────────────────
-    recordCommandBuffer(imageIndex);
+    // ── Record the command buffer for this image and frame slot ──────────────
+    //
+    // The new recordCommandBuffer signature includes frameIndex so it can bind
+    // the correct descriptor set (the one pointing at _uniformBuffers[_currentFrame]).
+    recordCommandBuffer(imageIndex, _currentFrame);
 
     // ── Submit the command buffer ─────────────────────────────────────────────
     //
     // vkQueueSubmit: hand the recorded command buffer to the GPU for execution.
-    // The submission specifies:
-    //   waitSemaphores:   imageAvailable — the GPU must wait until the swapchain
-    //                     image is ready before executing colour output commands.
-    //   signalSemaphores: renderFinished — the GPU signals this when done, allowing
-    //                     vkQueuePresentKHR to proceed. Indexed by imageIndex (NOT
-    //                     _currentFrame): it must stay paired with the same swapchain
-    //                     image across the submit→present round trip, otherwise it can
-    //                     be re-signalled while the presentation engine is still waiting
-    //                     on its previous signal for a different image
-    //                     (VUID-vkQueueSubmit-pSignalSemaphores-00067).
-    //   signalFences:     inFlight — the GPU signals this when the submission
-    //                     completes, allowing the CPU to reuse this frame's resources.
-    //
-    // waitDstStageMask: the stage at which the wait applies. COLOR_ATTACHMENT_OUTPUT
-    // means the GPU is allowed to proceed up to (but not including) writing to the
-    // colour attachment until imageAvailable is signalled. This allows the GPU to
-    // run vertex shaders etc. while still waiting for the image.
+    //   waitSemaphores:   imageAvailable — GPU waits until the swapchain image is ready.
+    //   signalSemaphores: renderFinished — GPU signals this when rendering is done.
+    //   signalFences:     inFlight — GPU signals this when the submission completes.
+    //   waitDstStageMask: COLOR_ATTACHMENT_OUTPUT — wait applies at colour write stage.
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSemaphore renderFinished     = _renderFinishedSemaphores[imageIndex];
 
@@ -527,12 +681,9 @@ void Renderer::drawFrame()
     // ── Present the rendered image ────────────────────────────────────────────
     //
     // vkQueuePresentKHR: ask the swapchain to display the rendered image.
-    // waitSemaphores: renderFinished — the swapchain waits until the GPU has finished
-    //                 rendering before swapping the image to the display. Same
-    //                 per-image semaphore signalled above, so the wait is always
-    //                 paired with its matching signal for this exact image.
+    // waitSemaphores: renderFinished — the swapchain waits until rendering completes.
     // Physically: the display hardware starts scanning out the new image on the next
-    // vertical blank (vsync, because we selected VK_PRESENT_MODE_FIFO_KHR).
+    // vertical blank (vsync, because VK_PRESENT_MODE_FIFO_KHR is selected).
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     presentInfo.waitSemaphoreCount = 1;
