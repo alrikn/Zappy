@@ -9,6 +9,7 @@
 #include "Client.hpp"
 #include "Player.hpp"
 #include "Tiles.hpp"
+#include "Struct.hpp"
 
 
 
@@ -21,5 +22,18 @@ void Server::move_player(Player &player, int new_x, int new_y)
     player.set_position(new_x, new_y);
     //add player to new tile
     _map[new_y][new_x].clients.push_back(std::make_shared<Player>(player));
+}
+
+Resource parse_resource(const std::string& name)
+{
+    if (name == "food") return Resource::Food;
+    if (name == "linemate") return Resource::Linemate;
+    if (name == "deraumere") return Resource::Deraumere;
+    if (name == "sibur") return Resource::Sibur;
+    if (name == "mendiane") return Resource::Mendiane;
+    if (name == "phiras") return Resource::Phiras;
+    if (name == "thystame") return Resource::Thystame;
+
+    throw std::runtime_error("Unknown resource");
 }
 

@@ -10,6 +10,7 @@
 
 
 //on a 10 by 10 world there would be 50 food and 5 thystane
+#include <string>
 const float FOOD_DENSITY = 0.5;
 const float LINEMATE_DENSITY = 0.3;
 const float DERAUMERE_DENSITY = 0.15;
@@ -28,6 +29,19 @@ typedef struct resources
     int phiras = 0;
     int thystame = 0;
 } resources_t;
+
+enum class Resource {
+    Food,
+    Linemate,
+    Deraumere,
+    Sibur,
+    Mendiane,
+    Phiras,
+    Thystame,
+    Count
+};
+
+Resource parse_resource(const std::string& name);
 
 
 #endif

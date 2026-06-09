@@ -75,6 +75,12 @@ class Player : public Client
         void look(Server &server);
         void inventory_handle();
         void set_down_resource(Server &server, std::vector<std::string> args);
+        void take_resource(Server &server, std::vector<std::string> args);
+        void incantation(Server &server);
+        void broadcast(Server &server, std::vector<std::string> args);
+        void fork(Server &server);
+        void eject(Server &server);
+        void connect_nbr(Server &server);
 
 };
 
