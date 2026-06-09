@@ -8,46 +8,55 @@
 #include "Player.hpp"
 #include "Server.hpp"
 #include "Parse.hpp"
+#include "Struct.hpp"
 #include <sstream>
 #include <vector>
 
 
 int Player::player_num = 0; //initialize the static player_num variable
 
-std::vector<std::tuple<std::string, int>> Player::give_resources_number(resources_t resources)
+
+Player::Player(Subject &subject, int control_fd) :Client(PLAYER, subject, control_fd), player_id(++player_num)
+{
+    inventory.resources[static_cast<size_t>(Resource::Food)] = 10;
+}
+
+
+
+std::vector<std::tuple<std::string, int>> Player::give_resources_number(const Inventory &inventory)
 {
     std::vector<std::tuple<std::string, int>> result;
 
-    if (resources.food > 0)
-        result.push_back(std::make_tuple("food", resources.food));
-    if (resources.linemate > 0)
-        result.push_back(std::make_tuple("linemate", resources.linemate));
-    if (resources.deraumere > 0)
-        result.push_back(std::make_tuple("deraumere", resources.deraumere));
-    if (resources.sibur > 0)
-        result.push_back(std::make_tuple("sibur", resources.sibur));
-    if (resources.mendiane > 0)
-        result.push_back(std::make_tuple("mendiane", resources.mendiane));
-    if (resources.phiras > 0)
-        result.push_back(std::make_tuple("phiras", resources.phiras));
-    if (resources.thystame > 0)
-        result.push_back(std::make_tuple("thystame", resources.thystame));
+    if (inventory.resources[idx(Resource::Food)] > 0)
+        result.push_back(std::make_tuple("food", inventory.resources[idx(Resource::Food)]));
+    if (inventory.resources[idx(Resource::Linemate)] > 0)
+        result.push_back(std::make_tuple("linemate", inventory.resources[idx(Resource::Linemate)]));
+    if (inventory.resources[idx(Resource::Deraumere)] > 0)
+        result.push_back(std::make_tuple("deraumere", inventory.resources[idx(Resource::Deraumere)]));
+    if (inventory.resources[idx(Resource::Sibur)] > 0)
+        result.push_back(std::make_tuple("sibur", inventory.resources[idx(Resource::Sibur)]));
+    if (inventory.resources[idx(Resource::Mendiane)] > 0)
+        result.push_back(std::make_tuple("mendiane", inventory.resources[idx(Resource::Mendiane)]));
+    if (inventory.resources[idx(Resource::Phiras)] > 0)
+        result.push_back(std::make_tuple("phiras", inventory.resources[idx(Resource::Phiras)]));
+    if (inventory.resources[idx(Resource::Thystame)] > 0)
+        result.push_back(std::make_tuple("thystame", inventory.resources[idx(Resource::Thystame)]));
     return result;
 }
 
-std::vector<std::string> Player::give_resources_name(resources_t resources)
+std::vector<std::string> Player::give_resources_name(const Inventory &inventory)
 {
     std::vector<std::string> result;
 
-    if (resources.deraumere > 0)
+    if (inventory.resources[idx(Resource::Deraumere)] > 0)
         result.push_back("deraumere");
-    if (resources.sibur > 0)
+    if (inventory.resources[idx(Resource::Sibur)] > 0)
         result.push_back("sibur");
-    if (resources.mendiane > 0)
+    if (inventory.resources[idx(Resource::Mendiane)] > 0)
         result.push_back("mendiane");
-    if (resources.phiras > 0)
+    if (inventory.resources[idx(Resource::Phiras)] > 0)
         result.push_back("phiras");
-    if (resources.thystame > 0)
+    if (inventory.resources[idx(Resource::Thystame)] > 0)
         result.push_back("thystame");
     return result;
 }

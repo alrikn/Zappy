@@ -31,13 +31,13 @@ class Player : public Client
     private:
         int player_id;
 
-        std::vector<std::string> give_resources_name(resources_t resources);
-        std::vector<std::tuple<std::string, int>> give_resources_number(resources_t resources);
+        std::vector<std::string> give_resources_name(const Inventory& inventory);
+std::vector<std::tuple<std::string, int>> give_resources_number(const Inventory& inventory);
     protected:
     public:
 
         static int player_num; //this will be used to assign a unique number to each player, it will be incremented each time a new player is created.
-        Player(Subject &subject, int control_fd = -1) : Client(PLAYER, subject, control_fd), player_id(++player_num) {};
+        Player(Subject &subject, int control_fd = -1);
         ~Player() = default;
 
         int getId() const { return player_id; }
@@ -49,14 +49,14 @@ class Player : public Client
         orientation_t orientation; //the direction the player is facing (0 = north, 1 = east, 2 = south, 3 = west)
         int level = 0; //the level of the player
         std::string team_name; //the name of the team the player belongs to
-        resources_t inventory = {10, 0, 0, 0, 0, 0, 0}; //the inventory of the player, it contains the number of each resource the player has
+        Inventory inventory; //the inventory of the player, it contains the number of each resource the player has
 
 
         Player& set_position(int x, int y) {position[0] = x;position[1] = y; return *this;}
         Player& set_orientation(orientation_t orientation){this->orientation = orientation; return *this;}
         Player& set_level(int level){this->level = level; return *this;}
         Player& set_team_name(std::string team_name){this->team_name = team_name; return *this;}
-        Player& set_inventory(resources_t inventory){this->inventory = inventory; return *this;}
+        Player& set_inventory(const Inventory& inventory){this->inventory = inventory; return *this;}
 
         //we do need to set up a behavioral observer pattern for the player,
         // because the player needs to be able to receive updates from the server,
