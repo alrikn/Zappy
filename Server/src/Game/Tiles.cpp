@@ -14,10 +14,10 @@ bool Tiles::remove_specific_client(int player_num)
 {
     //check if client is on this tile.
 
-    for (auto it = clients.begin(); it != clients.end(); ++it) {
+    for (auto it = players.begin(); it != players.end(); ++it) {
         std::shared_ptr<Player> player = std::dynamic_pointer_cast<Player>(*it);
         if (player && player->getId() == player_num) {
-            clients.erase(it);
+            players.erase(it);
             return true;
         }
     }

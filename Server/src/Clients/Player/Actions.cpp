@@ -65,3 +65,28 @@ void Player::take_resource(Server &server, std::vector<std::string> args)
     server._map[position[1]][position[0]].inventory.resources[idx(resource)]--;
     send_message("ok\n");
 }
+
+void Player::eject(Server &server)
+{
+    Tiles &current_tile = server._map[position[1]][position[0]];
+    for (const auto &player : current_tile.players) {
+        if (player->getId() != player_id) { //don't eject yourself
+            switch (orientation) {
+                case NORTH:
+                    player->set_position(player->position[0], (player->position[1] - 1 + server.getMapHeight()) % server.getMapHeight());
+                    break;
+                case EAST:
+                    player->set_position((player->position[0] + 1) % server.getMapWidth(), player->position[1]);
+                    break;
+                case SOUTH:
+                    player->set_position(player->position[0], (player->position[1] + 1) % server.getMapHeight());
+                    break;
+                case WEST:
+                    player->set_position((player->position[0] - 1 + server.getMapWidth()) % server.getMapWidth(), player->position[1]);
+                    break;
+            }
+            player->send_message("eject\n");
+        }
+    }
+    send_message("ok\n");
+}

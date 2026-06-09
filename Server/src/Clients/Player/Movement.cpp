@@ -105,7 +105,7 @@ void Player::look(Server &server)
         std::string tile_info;
 
         //first we add the players on the tile
-        for (auto player : server._map[y][x].clients) {
+        for (auto player : server._map[y][x].players) {
             tile_info += "player ";
         }
         //then we add the resources on the tile
