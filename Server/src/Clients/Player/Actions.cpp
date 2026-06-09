@@ -106,3 +106,23 @@ void Player::broadcast(Server &server, std::vector<std::string> args)
     //where K is the tile indicating the direction the sound is coming from.
     send_message("ok\n");
 }
+
+void Player::fork(Server &server)
+{
+    //TODO: implement egg logic first
+    send_message("ok\n");
+}
+
+void Player::connect_nbr(Server &server)
+{
+    //sends the number of available spots in the team of the player
+
+    int slots_left = 0;
+    for (const auto &team : server.teams) {
+        if (team->name == team_name) {
+            slots_left = team->spots_left;
+            break;
+        }
+    }
+    send_message("connect_nbr " + std::to_string(slots_left) + "\n");
+}

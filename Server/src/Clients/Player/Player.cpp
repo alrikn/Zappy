@@ -106,14 +106,14 @@ void Player::parse_command(const std::string raw, Server &server)
         case BROADCAST:
             broadcast(server, args);
             break;
-        //case INCANTATION:
-        //    incantation(server);
-        //    break;
-        //case FORK:
-        //    fork(server);
-        //    break;
-        default:
-            send_message("ko\n");
+        case INCANTATION:
+            incantation(server);
+            break;
+        case FORK:
+            fork(server);
+            break;
+        case CONNECT_NBR:
+            connect_nbr(server);
             break;
     }
 }
