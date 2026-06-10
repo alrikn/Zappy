@@ -9,7 +9,9 @@
     #define INCLUDED_GUI_HPP
 
 #include "Client.hpp"
+#include "Struct.hpp"
 #include <iostream>
+#include <vector>
 
 class Gui : public Client
 {
@@ -29,6 +31,18 @@ class Gui : public Client
         */
 
         void parse_command(const std::string command, Server &server) override;
+
+        /*these are all the commands that the server can receive from the gui*/
+
+        void msz(Server &server); //map size
+        void bct(Server &server, std::vector<std::string> args); //content of a tile
+        void mct(Server &server); //content of the map (all tiles)
+        void tna(Server &server); //team names
+        void ppo(Server &server, std::vector<std::string> args); //player position
+        void plv(Server &server, std::vector<std::string> args); //player level
+        void pin(Server &server, std::vector<std::string> args); //player inventory
+        void sgt(Server &server); //server time unit (set gui time unit to the server time unit)
+        void sst(Server &server, std::vector<std::string> args); //set server time unit (set server time unit to the gui time unit)
 
 };
 
