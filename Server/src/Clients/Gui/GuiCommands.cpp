@@ -63,3 +63,24 @@ void Gui::tna(Server &server)
     }
     send_message(result);
 }
+
+void Gui::ppo(Server &server, std::vector<std::string> args)
+{
+    if (args.size() != 1) {
+        send_message("suc\n");
+        return;
+    }
+    int player_id = std::stoi(args[0]);
+
+    for (const auto& [fd, client] : server._clients) {
+        if (client->get_type() == client_type::PLAYER) {
+            auto player = std::dynamic_pointer_cast<Player>(client);
+            if (player->getId() == player_id) {
+                std::string result = "ppo " + std::to_string(player_id) + " " + std::to_string(player->position[0]) + " " + std::to_string(player->position[1]) + " " + std::to_string(static_cast<int>(player->orientation)) + "\n";
+                send_message(result);
+                return;
+            }
+        }
+    }
+    send_message("suc\n");
+}
