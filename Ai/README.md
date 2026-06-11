@@ -298,6 +298,115 @@ ZAPPY_AI_TICK=0.001 ./zappy_ai -p 4242 -n team1   # keep up with high-frequency 
 
 ---
 
+## Why the AI stalls at level 3
+
+This is the most prominent observed failure: players consistently reach level 3 but
+the level 3→4 ritual rarely or never fires. Several independent problems compound to
+cause this.
+
+### The 4-player jump (structural root cause)
+
+Level 1→2 needs **1 player**. Level 2→3 needs **2 players**. Level 3→4 jumps to
+**4 players** — the first ritual that requires coordinating more than a pair. This is
+where the AI's coordination reliability is first truly tested at scale.
+
+With a 6-player team, all 6 reach level 2, then pair up into 3 simultaneous level
+2→3 rituals, and all 6 reach level 3. Now the problem: the first successful 4-player
+level 3→4 ritual leaves the remaining **2 players permanently stranded at level 3**.
+They can never do level 3→4 alone or as a pair — they would need 4 same-level
+partners and there are none. These two players will spend the rest of the game
+cycling through GATHER_STONES → SEEK_TEAM → timeout → GATHER_STONES forever,
+burning food until they die. They are dead weight from this point on.
+
+The 4 players who did level up to 4 then need to coordinate for level 4→5 (also 4
+players) — which is achievable but now every subsequent failure becomes permanent.
+The team has no margin for error: if even one of the 4 level-4 players dies or falls
+out of sync, the level 4→5 ritual can never fire either.
+
+The only escape is forking. Forked players re-enter at level 1 and can eventually
+catch up, but the stranded level-3 players need 2 more companions at level 3, which
+takes a very long time. In practice the stranded players starve before the forked
+ones catch up.
+
+### `_present_ticks` fires the ritual with wrong-level players
+
+`_present_ticks` is a fallback in the leader's WAIT_TEAM loop: if the tile holds
+`>= needed` bodies for 30 consecutive ticks, the leader fires even if not enough
+`IM_READY` messages arrived (to handle lost broadcasts). The check is:
+
+```python
+self._present_ticks = self._present_ticks + 1 if on_tile >= needed else 0
+ready = confirmed >= needed or self._present_ticks >= 30
+```
+
+The problem: `count_players_on_tile` counts **any** player on the tile, regardless
+of level. On a 10×10 map with 6 bots all wandering, the probability of 3 wrong-level
+bots drifting through the leader's tile and staying for 30 ticks is high — especially
+when bots cluster near resource-rich tiles.
+
+When this fires with wrong-level players, the server returns `ko` immediately. The
+leader transitions back to GATHER_FOOD with no level gain, broadcasts `LVL_UP(3)`
+(same level as before), and followers exit INCANTATING having wasted the whole
+coordination sequence. The `_coord_cooldown` then blocks another attempt for 150–200
+ticks.
+
+**Fix**: only use the `_present_ticks` fallback after confirming via `_ready_count`
+that at least the required number of same-level followers have committed
+(`_ready_count >= needed - 1`), or remove the fallback entirely and rely on the
+periodic `IM_READY` re-broadcasts which already exist for exactly this purpose.
+
+### Dropped stones are not reclaimed after a failed ritual
+
+When a player enters WAIT_TEAM they call `_drop_for_ritual()`, which sets their
+inventory to 0 for all ritual stones and places them on the tile. On ritual failure
+the player transitions back to GATHER_STONES — but `_stones_dropped` is reset to
+`False`, so `_drop_for_ritual` will re-run on the next WAIT_TEAM entry. The player
+must now re-collect all the stones from scratch.
+
+The stones that were dropped sit on the old tile. The player has no logic to return
+to that tile and pick them up. In the worst case this happens repeatedly:
+
+1. Player collects 2 linemate + 1 sibur + 2 phiras (hard on a resource-scarce map)
+2. Drops them, ritual fails (KO or timeout)
+3. Player leaves, stones stay on tile
+4. Player re-collects 2 linemate + 1 sibur + 2 phiras again
+
+Each failed attempt wastes the stone collection effort entirely and burns food during
+the re-collection traverse. Phiras in particular are sparse (about 8 on a 10×10 map),
+so repeated re-collection can leave the map depleted.
+
+**Fix**: on the transition out of WAIT_TEAM (failure path), before leaving the tile,
+pick up all the stones that were just dropped.
+
+### Competing leaders split the recruitment pool
+
+When multiple players complete stone collection at similar times, multiple leaders can
+emerge simultaneously (the `LISTEN_BEFORE_LEAD` window reduces but does not prevent
+this). Leader A broadcasts `NEED_INC("3:A")` and recruits followers B and C
+(`_ready_count = 1, 2`). Then leader D broadcasts `NEED_INC("3:D")`.
+
+A hears D and would normally yield (if `D.uid < A.uid`), but the yield guard fires
+only when `_ready_count == 0`:
+
+```python
+and self._ready_count == 0):
+    # only yield if NOBODY is counting on us yet
+```
+
+Since B already committed to A (`_ready_count ≥ 1`), A stays put. D now tries to
+recruit from the remaining level-3 pool, but B and C already have `_leader_uid = A`
+set, so they ignore D's broadcast. D gets no recruits, times out, and the whole cycle
+resets. A also times out because D was the 4th needed player but homed somewhere
+else.
+
+Result: A had 3 players (A+B+C), one short. D had 1 player. Neither fired. Both
+cooldown, try again, same thing happens.
+
+This deadlock is most likely to occur when all 6 players reach level 3 at the same
+time — precisely the situation you are in after 3 successful level 2→3 pairs.
+
+---
+
 ## Known issues
 
 ### 1. Single `on_level_up` callback slot (fragile follower level-up)
