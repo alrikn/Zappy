@@ -14,6 +14,7 @@ SRC = main.cpp \
 	src/Clients/Player/Actions.cpp \
 	src/Clients/Player/Incantation.cpp \
 	src/Clients/Gui/Gui.cpp \
+	src/Clients/Gui/GuiCommands.cpp \
 	src/Game/game_loop.cpp \
 	src/Game/Tiles.cpp \
 	src/Server/Polling.cpp \
