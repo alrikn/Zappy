@@ -10,7 +10,7 @@
 
 void Gui::msz(Server &server)
 {
-    send_message("msz " + std::to_string(server.getMapHeight()) + " " + std::to_string(server.getMapWidth()) + "\n");
+    send_message("msz " + std::to_string(server.getMapWidth()) + " " + std::to_string(server.getMapHeight()) + "\n");
 }
 
 void Gui::bct(Server &server, std::vector<std::string> args)
@@ -36,12 +36,12 @@ void Gui::bct(Server &server, std::vector<std::string> args)
 
 void Gui::mct(Server &server)
 {
-    std::string result = "bct"; //not sure if i'm supposesd to send bct every line or just at beginning
+    std::string result;
 
     for (int y = 0; y < server.getMapHeight(); y++) {
         for (int x = 0; x < server.getMapWidth(); x++) {
             Tiles tile = server._map[y][x];
-            result += " " + std::to_string(x) + " " + std::to_string(y);
+            result += "bct " + std::to_string(x) + " " + std::to_string(y);
             for (size_t i = 0; i < static_cast<size_t>(Resource::Count); i++) {
                 result += " " + std::to_string(tile.inventory.resources[i]);
             }
