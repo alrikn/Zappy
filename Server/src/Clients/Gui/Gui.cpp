@@ -44,6 +44,18 @@ void Gui::parse_command(const std::string raw, Server &server)
         case GuiCommands::PPO:
             ppo(server, args);
             break;
+        case GuiCommands::PLV:
+            plv(server, args);
+            break;
+        case GuiCommands::PIN:
+            pin(server, args);
+            break;
+        case GuiCommands::SGT:
+            sgt(server);
+            break;
+        case GuiCommands::SST:
+            sst(server, args);
+            break;
         default:
             send_message("suc\n");
             break;
