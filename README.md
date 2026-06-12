@@ -38,4 +38,4 @@ into 6 players that gather resources and elevate together
 fully heuristic, idk how we could make it real ai, maybe reinforcement learning algo in the wander func where, we handle connection with tcp with the server, Ai/zappy_ai is the shell script that calls main.py
 strategy: the whole 6 player team converges on a single tile for
 every incantation, so one ritual elevates the entire team at once and they advance
-in lockstep, reaches levle 6 soemtimes 4
+in lockstep, reaches levle 6 sometimes like not eprfect not psosible but reaches 2 to 6
