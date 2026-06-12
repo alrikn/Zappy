@@ -51,7 +51,8 @@ enum GuiCommands {
     PPO, //player position
     PLV, //player level
     PIN, //player inventory
-    SGT, //server time
+    SGT, //set gui time
+    SST  //set server time
 };
 
 const std::unordered_map<std::string, GuiCommands> GuiCommandMap = {
@@ -63,6 +64,7 @@ const std::unordered_map<std::string, GuiCommands> GuiCommandMap = {
     {"plv", PLV},
     {"pin", PIN},
     {"sgt", SGT},
+    {"sst", SST}
 };
 
 #endif

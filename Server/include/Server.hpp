@@ -89,7 +89,12 @@ class Server
 
         /*client helper functions*/
 
-        void move_player(std::shared_ptr<Player> player, int x, int y);
+        void move_player(Player &player, int x, int y);
+
+        int getMapWidth() const { return _map[0].size(); }
+        int getMapHeight() const { return _map.size(); }
+        std::vector<std::shared_ptr<Team>> getTeams() const { return teams; }
+        long long getTimeUnit() const { return time_unit; }
 
 
 };
