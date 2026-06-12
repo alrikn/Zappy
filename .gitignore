@@ -1,8 +1,10 @@
 zappy_ref-v3.0.1
 __pycache__/
-/zappy_server
-/zappy_gui
-/zappy_ai
+#these are all binaries and therforeshould not be pushed
+zappy_server
+zappy_gui
+#for the ai, jad will have to figure out how to compile it
+zappy_ai
 .vscode
 .cache
 *.o
