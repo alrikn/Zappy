@@ -130,3 +130,22 @@ void Gui::pin(Server &server, std::vector<std::string> args)
     }
     send_message("suc\n");
 }
+
+void Gui::sgt(Server &server)
+{
+    std::string result = "sgt " + std::to_string(server.getTimeUnit()) + "\n";
+
+    send_message(result);
+}
+
+void Gui::sst(Server &server, std::vector<std::string> args)
+{
+    if (args.size() != 1) {
+        send_message("suc\n");
+        return;
+    }
+    long long time_unit = std::stoll(args[0]);
+    server.time_unit = time_unit;
+    std::string result = "sst " + std::to_string(server.getTimeUnit()) + "\n";
+    send_message(result);
+}
