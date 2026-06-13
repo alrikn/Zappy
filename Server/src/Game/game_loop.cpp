@@ -24,48 +24,108 @@ extern volatile sig_atomic_t g_shutdown_requested;
 */
 void Server::populate_map_resources()
 {
-    Inventory total_resources;
-    total_resources.resources[idx(Resource::Food)] = static_cast<int>(getMapHeight() * getMapWidth() * FOOD_DENSITY);
-    total_resources.resources[idx(Resource::Linemate)] = static_cast<int>(getMapHeight() * getMapWidth() * LINEMATE_DENSITY);
-    total_resources.resources[idx(Resource::Deraumere)] = static_cast<int>(getMapHeight() * getMapWidth() * DERAUMERE_DENSITY);
-    total_resources.resources[idx(Resource::Sibur)] = static_cast<int>(getMapHeight() * getMapWidth() * SIBUR_DENSITY);
-    total_resources.resources[idx(Resource::Mendiane)] = static_cast<int>(getMapHeight() * getMapWidth() * MENDIANE_DENSITY);
-    total_resources.resources[idx(Resource::Phiras)] = static_cast<int>(getMapHeight() * getMapWidth() * PHIRAS_DENSITY);
-    total_resources.resources[idx(Resource::Thystame)] = static_cast<int>(getMapHeight() * getMapWidth() * THYSTAME_DENSITY);
+    static const double densities[] = {
+        FOOD_DENSITY, LINEMATE_DENSITY, DERAUMERE_DENSITY, SIBUR_DENSITY,
+        MENDIANE_DENSITY, PHIRAS_DENSITY, THYSTAME_DENSITY};
 
-    //terrible way to spread them evenly but for now it'll do
-    for (size_t i = 0; i < _map.size(); i++) {
-        for (size_t j = 0; j < _map[i].size(); j++) {
-            _map[i][j].inventory.resources[idx(Resource::Food)] += rand() % (total_resources.resources[idx(Resource::Food)] + 1);
-            total_resources.resources[idx(Resource::Food)] -= _map[i][j].inventory.resources[idx(Resource::Food)];
-
-            _map[i][j].inventory.resources[idx(Resource::Linemate)] += rand() % (total_resources.resources[idx(Resource::Linemate)] + 1);
-            total_resources.resources[idx(Resource::Linemate)] -= _map[i][j].inventory.resources[idx(Resource::Linemate)];
-
-            _map[i][j].inventory.resources[idx(Resource::Deraumere)] += rand() % (total_resources.resources[idx(Resource::Deraumere)] + 1);
-            total_resources.resources[idx(Resource::Deraumere)] -= _map[i][j].inventory.resources[idx(Resource::Deraumere)];
-
-            _map[i][j].inventory.resources[idx(Resource::Sibur)] += rand() % (total_resources.resources[idx(Resource::Sibur)] + 1);
-            total_resources.resources[idx(Resource::Sibur)] -= _map[i][j].inventory.resources[idx(Resource::Sibur)];
-
-            _map[i][j].inventory.resources[idx(Resource::Mendiane)] += rand() % (total_resources.resources[idx(Resource::Mendiane)] + 1);
-            total_resources.resources[idx(Resource::Mendiane)] -= _map[i][j].inventory.resources[idx(Resource::Mendiane)];
-
-            _map[i][j].inventory.resources[idx(Resource::Phiras)] += rand() % (total_resources.resources[idx(Resource::Phiras)] + 1);
-            total_resources.resources[idx(Resource::Phiras)] -= _map[i][j].inventory.resources[idx(Resource::Phiras)];
-
-            _map[i][j].inventory.resources[idx(Resource::Thystame)] += rand() % (total_resources.resources[idx(Resource::Thystame)] + 1);
-            total_resources.resources[idx(Resource::Thystame)] -= _map[i][j].inventory.resources[idx(Resource::Thystame)];
+    //pdf: the map must hold at least width*height*density of each resource
+    // so we count whats already on the floor and only drop the missing amount,
+    // spread over random tiles. (the old version blindly readded every cycle and
+    // drove its running total negative -> rand() % 0 -> SIGFPE
+    for (size_t r = 0; r < static_cast<size_t>(Resource::Count); r++) {
+        int target = static_cast<int>(getMapWidth() * getMapHeight() * densities[r]);
+        int current = 0;
+        for (const auto &row : _map)
+            for (const auto &tile : row)
+                current += tile.inventory.resources[r];
+        for (int n = current; n < target; n++) {
+            int x = rand() % getMapWidth();
+            int y = rand() % getMapHeight();
+            _map[y][x].inventory.resources[r]++;
         }
     }
 }
 
 void Server::game_tick()
 {
-    if (tick % 20 == 0 || tick == 0) { //every 20 ticks we populate the map with resources
-        populate_map_resources();
-    }
     tick++;
+}
+
+static long long action_cost_tu(PlayerCommands verb)
+{
+    switch (verb) {
+        case INVENTORY:   return 1;
+        case CONNECT_NBR: return 0;
+        case FORK:        return 42;
+        case INCANTATION: return 300;
+        default:          return 7;
+    }
+}
+
+void Server::advance_game()
+{
+    auto now = std::chrono::steady_clock::now();
+
+    // resource respawn on 20tu deadline
+    while (now >= _next_respawn_at) {
+        populate_map_resources();
+        _next_respawn_at += std::chrono::milliseconds(20 * time_unit);
+    }
+
+    // collect players to kill after the loop to avoid iterator invalidation
+    std::vector<std::shared_ptr<Player>> to_kill;
+
+    for (auto &[fd, client] : _clients) {
+        (void)fd;
+        if (client->get_type() != PLAYER)
+            continue;
+        std::shared_ptr<Player> player = std::dynamic_pointer_cast<Player>(client);
+        if (!player)
+            continue;
+
+        // initialise food timer on first sight
+        if (player->next_food_at == std::chrono::steady_clock::time_point{})
+            player->next_food_at = now + std::chrono::milliseconds(126 * time_unit);
+
+        // food drain: each tick of 126tu costs 1 food
+        while (now >= player->next_food_at) {
+            if (player->inventory.resources[static_cast<size_t>(Resource::Food)] > 0) {
+                player->inventory.resources[static_cast<size_t>(Resource::Food)]--;
+                player->next_food_at += std::chrono::milliseconds(126 * time_unit);
+            } else {
+                to_kill.push_back(player);
+                break;
+            }
+        }
+
+        // finish running action if its time has elapsed
+        if (player->busy && now >= player->action_done_at) {
+            player->busy = false;
+            player->execute_command(player->running_cmd.first,
+                player->running_cmd.second, *this);
+        }
+        // start next queued action (skip if frozen for incantation)
+        if (!player->busy && !player->in_incantation && !player->cmd_queue.empty()) {
+            auto [verb, args] = player->cmd_queue.front();
+            player->cmd_queue.pop_front();
+            long long cost = action_cost_tu(verb);
+            if (cost == 0) {
+                player->execute_command(verb, args, *this);
+            } else if (verb == INCANTATION) {
+                // phase 1: check requirements, freeze participants for 300tu, or send ko
+                // incantation_start sets busy/running_cmd/action_done_at for all participants
+                player->incantation_start(*this);
+            } else {
+                player->busy = true;
+                player->running_cmd = {verb, args};
+                player->action_done_at =
+                    now + std::chrono::milliseconds(cost * time_unit);
+            }
+        }
+    }
+
+    for (auto &dead : to_kill)
+        kill_player(dead);
 }
 
 void Server::run()
@@ -76,13 +136,13 @@ void Server::run()
         auto now = std::chrono::steady_clock::now();
         if (now >= next_tick) {
             game_tick();
-            std::cout << "tick: " << tick << std::endl;
             next_tick += std::chrono::milliseconds(time_unit);
         }
         now = std::chrono::steady_clock::now();
         int timeout = std::chrono::duration_cast<std::chrono::milliseconds>(next_tick - now).count();
         if (timeout < 0)
             timeout = 0;
-        poll_clients(timeout);
+        poll_clients(timeout); //blocks until socket activity or the next tick
+        advance_game();        //run any commands that came in
     }
 }
