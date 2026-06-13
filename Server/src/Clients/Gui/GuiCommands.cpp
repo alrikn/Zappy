@@ -149,3 +149,30 @@ void Gui::sst(Server &server, std::vector<std::string> args)
     std::string result = "sst " + std::to_string(server.getTimeUnit()) + "\n";
     send_message(result);
 }
+
+void Gui::initial_state(Server &server)
+{
+    // 1. map size
+    msz(server);
+    // 2. all tile contents
+    mct(server);
+    // 3. team names
+    tna(server);
+    // 4. server time
+    sgt(server);
+    // 5. all currently connected players (pnw registers them with the gui)
+    for (const auto &[fd, client] : server._clients) {
+        if (client->get_type() != client_type::PLAYER)
+            continue;
+        auto player = std::dynamic_pointer_cast<Player>(client);
+        if (!player)
+            continue;
+        // orientation is 1 to4 in the protocol (our enum is 0 to  3)
+        send_message("pnw " + std::to_string(player->getId())
+            + " " + std::to_string(player->position[0])
+            + " " + std::to_string(player->position[1])
+            + " " + std::to_string(static_cast<int>(player->orientation) + 1)
+            + " " + std::to_string(player->level)
+            + " " + player->team_name + "\n");
+    }
+}
