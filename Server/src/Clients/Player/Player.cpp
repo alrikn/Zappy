@@ -48,6 +48,10 @@ std::vector<std::string> Player::give_resources_name(const Inventory &inventory)
 {
     std::vector<std::string> result;
 
+    if (inventory.resources[idx(Resource::Food)] > 0)
+        result.push_back("food");
+    if (inventory.resources[idx(Resource::Linemate)] > 0)
+        result.push_back("linemate");
     if (inventory.resources[idx(Resource::Deraumere)] > 0)
         result.push_back("deraumere");
     if (inventory.resources[idx(Resource::Sibur)] > 0)
@@ -63,13 +67,14 @@ std::vector<std::string> Player::give_resources_name(const Inventory &inventory)
 
 void Player::parse_command(const std::string raw, Server &server)
 {
+    (void)server;
     std::istringstream ss(raw);
     std::string verb;
     ss >> verb;
 
     auto it = ClientCommandMap.find(verb);
     if (it == ClientCommandMap.end()) {
-        send_message("ko\n");
+        send_message("ko\n"); //bad/unknown command is answered immediately
         return;
     }
     std::vector<std::string> args; //we want everything except the first word to be in this vector, so we can easily access it when we need to
@@ -78,7 +83,17 @@ void Player::parse_command(const std::string raw, Server &server)
     while (ss >> arg) {
         args.push_back(arg);
     }
-    switch (it->second) {
+    //subject: a client can buffer up to 10 requests, anything over is dropped
+    //we only enqueue here, the game loop executes it once its time has elapsed
+    if (cmd_queue.size() >= 10)
+        return;
+    cmd_queue.push_back({it->second, args});
+}
+
+void Player::execute_command(PlayerCommands verb, std::vector<std::string> args,
+    Server &server)
+{
+    switch (verb) {
         case FORWARD:
             move_forward(server);
             break;
