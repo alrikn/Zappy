@@ -6,6 +6,7 @@
 */
 
 #include "Server.hpp"
+#include <chrono>
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
@@ -19,10 +20,12 @@ Server::Server(int port_number,
             int num_client_per_team,
             long long trantorian_time_unit)
 {
-    this->time_unit = (7.0 / trantorian_time_unit) * 1000; //that just how the pdf want it, divide by 1000 to make milliseconds
-
-    std::cout << "time unit: " << time_unit << std::endl;
+    //one time unit (1/f) in milliseconds. every action cost is a multiple of this
+    //(Forward 7tu, Inventory 1tu, Fork 42tu, Incantation 300tu, food drains 1/126tu)
+    this->time_unit = 1000.0 / trantorian_time_unit; //f=100 -> 10ms per time unit
     this->tick = 0;
+    this->_next_respawn_at = std::chrono::steady_clock::now()
+        + std::chrono::milliseconds(20 * time_unit);
     this->_port = port_number;
     //we intialise the map with no resources.
     this->_map = std::vector<std::vector<Tiles>>(map_height, std::vector<Tiles>(map_width, Tiles()));
