@@ -16,12 +16,18 @@
 
 void Server::move_player(Player &player, int new_x, int new_y)
 {
-    //remove player from old tile
     _map[player.position[1]][player.position[0]].remove_specific_client(player.getId());
-    //update player position
     player.set_position(new_x, new_y);
-    //add player to new tile
-    _map[new_y][new_x].players.push_back(std::make_shared<Player>(player));
+    // push the real shared_ptr (look it up by fd), not a copy
+    auto it = _clients.find(player.control_fd);
+    if (it != _clients.end())
+        _map[new_y][new_x].players.push_back(
+            std::dynamic_pointer_cast<Player>(it->second));
+    // orientation is 1 to 4 in the protocol
+    notify_gui("ppo " + std::to_string(player.getId())
+        + " " + std::to_string(new_x)
+        + " " + std::to_string(new_y)
+        + " " + std::to_string(static_cast<int>(player.orientation) + 1) + "\n");
 }
 
 Resource parse_resource(const std::string& name)
