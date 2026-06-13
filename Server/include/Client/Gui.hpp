@@ -43,6 +43,7 @@ class Gui : public Client
         void pin(Server &server, std::vector<std::string> args); //player inventory
         void sgt(Server &server); //server time unit (set gui time unit to the server time unit)
         void sst(Server &server, std::vector<std::string> args); //set server time unit (set server time unit to the gui time unit)
+        void initial_state(Server &server); //full state dump sent on connect
 
 };
 
