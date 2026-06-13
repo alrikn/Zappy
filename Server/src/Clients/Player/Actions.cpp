@@ -16,17 +16,22 @@
 
 void Player::inventory_handle()
 {
+    // protocol format: "[ food N, linemate N, ... thystame N ]\n"
+    // space after [ and before ] so the AI parser's [1:]/[:-1] strips the spaces,
+    // not letters/digits. all 7 resources always listed (zero counts included)
+    static const char *names[] = {
+        "food", "linemate", "deraumere", "sibur", "mendiane", "phiras", "thystame"
+    };
     std::string response = "[";
-
-    std::vector<std::tuple<std::string, int>> resources = give_resources_number(inventory);
-    for (size_t i = 0; i < resources.size(); i++) {
-        const auto &resource = resources[i];
-        response += std::get<0>(resource) + " " + std::to_string(std::get<1>(resource));
-        if (i < resources.size() - 1) {
-            response += ", ";
-        }
+    for (size_t i = 0; i < static_cast<size_t>(Resource::Count); i++) {
+        response += " ";
+        response += names[i];
+        response += " ";
+        response += std::to_string(inventory.resources[i]);
+        if (i < static_cast<size_t>(Resource::Count) - 1)
+            response += ",";
     }
-    response += "]\n";
+    response += " ]\n";
     send_message(response);
 }
 
@@ -124,5 +129,5 @@ void Player::connect_nbr(Server &server)
             break;
         }
     }
-    send_message("connect_nbr " + std::to_string(slots_left) + "\n");
+    send_message(std::to_string(slots_left) + "\n");
 }
