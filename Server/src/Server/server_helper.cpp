@@ -104,19 +104,17 @@ void Server::add_fd(int fd)
 std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_name)
 {
     //first we check if team name is valid and if there is still a spot left in that team
-    bool team_found = false;
+    std::shared_ptr<Team> matched_team;
     for (const std::shared_ptr<Team> &team : teams)
         if (team->name == team_name) {
-            team_found = true;
-            team->spots_left--;
-            if (team->spots_left <= 0)
-                return nullptr;
+            matched_team = team;
+            break;
         }
-    if (!team_found)
+    if (!matched_team || matched_team->spots_left <= 0)
         return nullptr;
-    //now we create the player. we give him a random non occupied position
+    matched_team->spots_left--;
 
-    std::vector<int> position; //= random_unncoupied_position(team_name);
+    std::vector<int> position;
     position.push_back(rand() % _map[0].size());
     position.push_back(rand() % _map.size());
 
@@ -124,19 +122,51 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
 
     player->set_orientation(NORTH)
     .set_team_name(team_name)
+    .set_level(1)
     .set_position(position[0], position[1]);
 
-    //now we write to the client that it has been succesful
-    std::string valid_message = std::to_string(client_num) + "\n" + std::to_string(position[0]) + " " + std::to_string(position[1]) + "\n";
+    // add to initial tile so tile scanning (incantation, eject, look) finds the player
+    _map[position[1]][position[0]].players.push_back(player);
+
+    // protocol: line1 = remaining team slots, line2 = map dimensions (width height)
+    std::string valid_message = std::to_string(matched_team->spots_left) + "\n"
+        + std::to_string(getMapWidth()) + " " + std::to_string(getMapHeight()) + "\n";
 
     write(client_fd, valid_message.c_str(), valid_message.length());
+
+    // notify all connected GUIs of the new player (pnw = player new)
+    // orientation is 1 too 4 in the protocol (our enum is 0-3, so +1)
+    notify_gui("pnw " + std::to_string(player->getId())
+        + " " + std::to_string(position[0])
+        + " " + std::to_string(position[1])
+        + " " + std::to_string(static_cast<int>(NORTH) + 1)
+        + " 1 " + team_name + "\n");
+
     return player;
+}
+
+void Server::kill_player(std::shared_ptr<Player> player)
+{
+    player->send_message("dead\n");
+    // remove from tile
+    _map[player->position[1]][player->position[0]].remove_specific_client(player->getId());
+    // notify GUI
+    notify_gui("pdi " + std::to_string(player->getId()) + "\n");
+    remove_client(player->control_fd);
+}
+
+void Server::notify_gui(const std::string &message)
+{
+    for (auto &[fd, client] : _clients)
+        if (client->get_type() == GUI)
+            client->send_message(message);
 }
 
 std::shared_ptr<Gui> Server::create_gui(int client_fd)
 {
     std::shared_ptr<Gui> gui = std::make_shared<Gui>(_gui_subject, client_fd);
     _gui_subject.Attach(gui.get());
+    gui->initial_state(*this);
     return gui;
 }
 
