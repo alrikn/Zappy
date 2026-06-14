@@ -114,9 +114,17 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
         return nullptr;
     matched_team->spots_left--;
 
+    // hatch from a forked egg if one exists, otherwise random spawn
     std::vector<int> position;
-    position.push_back(rand() % _map[0].size());
-    position.push_back(rand() % _map.size());
+    if (!matched_team->eggs.empty()) {
+        auto egg = matched_team->eggs.back();
+        matched_team->eggs.pop_back();
+        position = egg->position;
+        notify_gui("ebo " + std::to_string(egg->id) + "\n");
+    } else {
+        position.push_back(rand() % _map[0].size());
+        position.push_back(rand() % _map.size());
+    }
 
     std::shared_ptr<Player> player = std::make_shared<Player>(_player_subject, client_fd);
 
