@@ -35,6 +35,7 @@ Server::Server(int port_number,
     }
     _server_fd = set_up_server_socket(_port);
     add_fd(_server_fd);
+    populate_map_resources();
 }
 
 void Server::handle_client_event(int client_fd)
