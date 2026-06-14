@@ -55,5 +55,4 @@ class RitualMixin:
             if required[k] > 0:
                 return
         self.data_to_write = "Incantation\n"
-        self.commands_list = ["Incantation\n"]
         self.step += 1
