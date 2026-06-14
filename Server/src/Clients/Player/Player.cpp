@@ -83,6 +83,9 @@ void Player::parse_command(const std::string raw, Server &server)
     while (ss >> arg) {
         args.push_back(arg);
     }
+    // frozen during incantation ritual: drop silently
+    if (in_incantation)
+        return;
     //subject: a client can buffer up to 10 requests, anything over is dropped
     //we only enqueue here, the game loop executes it once its time has elapsed
     if (cmd_queue.size() >= 10)
