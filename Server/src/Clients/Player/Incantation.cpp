@@ -150,11 +150,11 @@ bool Player::incantation_start(Server &server)
             p->running_cmd = {INCANTATION, {}};
             p->action_done_at = deadline;
             pic_msg += " " + std::to_string(p->getId());
+            p->send_message("Elevation underway\n");
         }
     }
     pic_msg += "\n";
 
-    send_message("Elevation underway\n");
     server.notify_gui(pic_msg);
     return true;
 }
