@@ -49,8 +49,8 @@ class Gui : public Client
 
         /*these are all things that the server sends without explicit request to the gui*/
         //TODO: figure out what arguments these functions need to take
-        void pnw(Server &server, std::shared_ptr<Player> player); //new player
-        void pex(Server &server, std::shared_ptr<Player> player); //player expulsion
+        void pnw(std::shared_ptr<Player> player); //new player
+        void pex(std::shared_ptr<Player> player); //player expulsion
         void pbc(Server &server, std::shared_ptr<Player> player); //player broadcast
         void pic(Server &server, std::shared_ptr<Player> player); //player incantation start
         void pie(Server &server, std::shared_ptr<Player> player); //player incantation end
