@@ -48,3 +48,19 @@ void Gui::pbc(std::shared_ptr<Player> player, std::string message)
     result += "\n";
     send_message(result);
 }
+
+//player incantation start
+//returns: pic <x> <y> <level> <array of player ids> (starts with the player that started the incantation)
+void Gui::pic(int incantaion_level, std::vector<std::shared_ptr<Player>> players)
+{
+    std::string result = "pic";
+
+    result += " " + std::to_string(players[0]->getX());
+    result += " " + std::to_string(players[0]->getY());
+    result += " " + std::to_string(incantaion_level);
+    for (const auto& player : players) {
+        result += " " + std::to_string(player->getId());
+    }
+    result += "\n";
+    send_message(result);
+}
