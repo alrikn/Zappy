@@ -51,7 +51,7 @@ class Gui : public Client
         //TODO: figure out what arguments these functions need to take
         void pnw(std::shared_ptr<Player> player); //new player
         void pex(std::shared_ptr<Player> player); //player expulsion
-        void pbc(Server &server, std::shared_ptr<Player> player); //player broadcast
+        void pbc(std::shared_ptr<Player> player, std::string message); //player broadcast
         void pic(Server &server, std::shared_ptr<Player> player); //player incantation start
         void pie(Server &server, std::shared_ptr<Player> player); //player incantation end
         void pfk(Server &server, std::shared_ptr<Player> player); //player laying egg (start action)

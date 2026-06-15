@@ -22,6 +22,7 @@ void Gui::pnw(std::shared_ptr<Player> player)
     result += " " + std::to_string(player->getOrientation());
     result += " " + std::to_string(player->getLevel());
     result += " " + player->getTeamName();
+    result += "\n";
     send_message(result);
 }
 
@@ -32,5 +33,18 @@ void Gui::pex(std::shared_ptr<Player> player)
     std::string result = "pex";
 
     result += " " + std::to_string(player->getId());
+    result += "\n";
+    send_message(result);
+}
+
+//player broadcast
+//returns: pbc <player id> <message>
+void Gui::pbc(std::shared_ptr<Player> player, std::string message)
+{
+    std::string result = "pbc";
+
+    result += " " + std::to_string(player->getId());
+    result += " " + message;
+    result += "\n";
     send_message(result);
 }
