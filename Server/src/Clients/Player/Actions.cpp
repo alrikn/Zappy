@@ -46,6 +46,11 @@ void Player::set_down_resource(Server &server, std::vector<std::string> args)
 
     inventory.resources[idx(resource)]--;
     server._map[position[1]][position[0]].inventory.resources[idx(resource)]++;
+    //notify the gui that a resource has been dropped on the tile
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    server._gui_subject.Notify([self, resource](Client* c) {
+        static_cast<Gui*>(c)->pdr(self, idx(resource));
+    });
     send_message("ok\n");
 }
 
@@ -64,6 +69,11 @@ void Player::take_resource(Server &server, std::vector<std::string> args)
 
     inventory.resources[idx(resource)]++;
     server._map[position[1]][position[0]].inventory.resources[idx(resource)]--;
+    //notify the gui that a resource has been taken from the tile
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    server._gui_subject.Notify([self, resource](Client* c) {
+        static_cast<Gui*>(c)->pgt(self, idx(resource));
+    });
     send_message("ok\n");
 }
 
@@ -116,6 +126,11 @@ void Player::fork(Server &server)
 {
     //TODO: implement egg logic first
     send_message("ok\n");
+    //notify the gui that a new egg has been laid
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    server._gui_subject.Notify([self](Client* c) {
+        static_cast<Gui*>(c)->pfk(self);
+    });
 }
 
 void Player::connect_nbr(Server &server)
