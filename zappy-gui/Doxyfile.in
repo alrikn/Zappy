@@ -1,0 +1,84 @@
+# Doxyfile.in — Doxygen configuration for zappy_gui.
+#
+# This is a CMake template file. The @VARIABLE@ placeholders are substituted
+# by configure_file() when you run: cmake --build <build-dir> --target docs
+# Do not run doxygen directly against this file — use the generated Doxyfile
+# in the build directory instead.
+
+#---------------------------------------------------------------------------
+# Project identity
+#---------------------------------------------------------------------------
+PROJECT_NAME           = "Zappy GUI"
+PROJECT_BRIEF          = "Godot GDExtension client for the Epitech Zappy game"
+PROJECT_NUMBER         = 0.1.0
+OUTPUT_DIRECTORY       = @CMAKE_CURRENT_SOURCE_DIR@/docs/doxygen
+
+#---------------------------------------------------------------------------
+# Input
+#---------------------------------------------------------------------------
+INPUT                  = @CMAKE_CURRENT_SOURCE_DIR@/src
+RECURSIVE              = YES
+FILE_PATTERNS          = *.cpp *.hpp
+FULL_PATH_NAMES        = NO
+
+#---------------------------------------------------------------------------
+# Extraction — document everything so stubs are visible in the output
+#---------------------------------------------------------------------------
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = YES
+EXTRACT_STATIC         = YES
+# Anonymous namespaces (e.g. internal helpers in .cpp files) are invisible
+# to Doxygen by default. YES makes them appear on the owning file's page.
+EXTRACT_ANON_NSPACES   = YES
+
+#---------------------------------------------------------------------------
+# Warnings — catch missing @param / @return tags during development
+#---------------------------------------------------------------------------
+QUIET                  = YES
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = YES
+WARN_NO_PARAMDOC       = YES
+
+#---------------------------------------------------------------------------
+# HTML output with Doxygen Awesome CSS theme
+#---------------------------------------------------------------------------
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+GENERATE_TREEVIEW      = YES
+DISABLE_INDEX          = NO
+FULL_SIDEBAR           = NO
+HTML_COLORSTYLE        = LIGHT
+
+# Path substituted by CMake configure_file() — points at the fetched theme.
+HTML_EXTRA_STYLESHEET  = @DOXYGEN_AWESOME_CSS_DIR@/doxygen-awesome.css
+
+#---------------------------------------------------------------------------
+# Disable formats we do not use
+#---------------------------------------------------------------------------
+GENERATE_LATEX         = NO
+GENERATE_MAN           = NO
+GENERATE_RTF           = NO
+GENERATE_XML           = NO
+
+#---------------------------------------------------------------------------
+# Source browsing — lets readers click any symbol and see the source line.
+#---------------------------------------------------------------------------
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = NO
+STRIP_CODE_COMMENTS    = NO
+
+#---------------------------------------------------------------------------
+# C++20 parsing
+#---------------------------------------------------------------------------
+CLANG_ASSISTED_PARSING = NO
+BUILTIN_STL_SUPPORT    = YES
+CPP_CLI_SUPPORT        = NO
+SIP_SUPPORT            = NO
+IDL_PROPERTY_SUPPORT   = NO
+
+#---------------------------------------------------------------------------
+# Diagrams — enabled only if dot (Graphviz) is found by CMake
+#---------------------------------------------------------------------------
+HAVE_DOT               = @DOXYGEN_HAVE_DOT@
+CALL_GRAPH             = NO
+CALLER_GRAPH           = NO

@@ -1,0 +1,3 @@
+CompileFlags:
+  CompilationDatabase: build/linux-debug
+  Remove: -fno-gnu-unique

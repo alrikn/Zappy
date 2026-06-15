@@ -1,0 +1,15 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# GDExtension build artifacts (rebuilt via CMake presets)
+/build/
+/bin/*.so
+/bin/*.dll
+/bin/*.a
+/bin/*.lib
+/bin/*.pdb
+compile_commands.json
+
+# Generated Doxygen documentation (rebuilt via `cmake --build <build-dir> --target docs`)
+docs/doxygen/
