@@ -39,15 +39,22 @@ class CommsMixin:
             if self.clear_broadcast == 1:
                 self.clear_broadcast = 0
                 return
+            master_num = int(message.split(";")[0])
             # collision resolution: a master yields to a competing master with a
             # higher client_num, leaving exactly one deterministic master
-            if self.master_incantation >= 1 and int(message.split(";")[0]) > self.client_num:
+            if self.master_incantation >= 1 and master_num > self.client_num:
                 self.master_incantation = 0
                 self.incantation = 0
                 self.step = 0
+                self.current_master = 0
                 return
+            # follower: ignore broadcasts from a lower priority competing master
+            # so we dont take nav steps toward the wrong tile
+            if self.incantation == 1 and master_num < self.current_master:
+                return
+            self.current_master = master_num
             # a master is calling: if i have enough food, drop what im doing and join
-            if self.step > -1 and self.step < 4 and self.inventory["food"] > 35:
+            if self.step > -1 and self.step < 4 and self.inventory["food"] > 10:
                 self.step = 4
                 self.commands_list = []
             if self.incantation == 1:
