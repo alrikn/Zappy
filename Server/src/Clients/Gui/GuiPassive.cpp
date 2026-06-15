@@ -137,3 +137,24 @@ void Gui::enw(std::shared_ptr<Player> player, int egg_id)
     result += "\n";
     send_message(result);
 }
+
+//egg hatching (new player appears)
+//returns: ebo <egg id>
+void Gui::ebo(int egg_id)
+{
+    std::string result = "ebo";
+
+    result += " " + std::to_string(egg_id);
+    result += "\n";
+    send_message(result);
+}
+
+//egg death
+//returns: edi <egg id>
+void Gui::edi(int egg_id)
+{
+    std::string result = "edi";
+    result += " " + std::to_string(egg_id);
+    result += "\n";
+    send_message(result);
+}

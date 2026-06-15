@@ -59,6 +59,8 @@ class Gui : public Client
         void pgt(std::shared_ptr<Player> player, int resource_type); //player take
         void pdi(std::shared_ptr<Player> player); //player death
         void enw(std::shared_ptr<Player> player, int egg_id); //egg laid (end action)
+        void ebo(int egg_id); //egg hatching (start action)
+        void edi(int egg_id); //egg death
         void seg(Server &server); //end of game
         void smg(Server &server, std::string message); //server message
 
