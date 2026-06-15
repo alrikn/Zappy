@@ -11,8 +11,11 @@
 #include "Client.hpp"
 #include "Struct.hpp"
 #include <iostream>
+#include <memory>
 #include <vector>
 
+
+class Player;
 class Gui : public Client
 {
     private:
@@ -43,6 +46,23 @@ class Gui : public Client
         void pin(Server &server, std::vector<std::string> args); //player inventory
         void sgt(Server &server); //server time unit (set gui time unit to the server time unit)
         void sst(Server &server, std::vector<std::string> args); //set server time unit (set server time unit to the gui time unit)
+
+        /*these are all things that the server sends without explicit request to the gui*/
+        //TODO: figure out what arguments these functions need to take
+        void pnw(Server &server, std::shared_ptr<Player> player); //new player
+        void pex(Server &server, std::shared_ptr<Player> player); //player expulsion
+        void pbc(Server &server, std::shared_ptr<Player> player); //player broadcast
+        void pic(Server &server, std::shared_ptr<Player> player); //player incantation start
+        void pie(Server &server, std::shared_ptr<Player> player); //player incantation end
+        void pfk(Server &server, std::shared_ptr<Player> player); //player laying egg (start action)
+        void pdr(Server &server, std::shared_ptr<Player> player); //player drop
+        void pgt(Server &server); //player take
+        void pdi(Server &server); //player death
+        void enw(Server &server); //egg laid (end action)
+        void seg(Server &server); //end of game
+        void smg(Server &server, std::string message); //server message
+
+
 
 };
 
