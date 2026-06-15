@@ -7,6 +7,7 @@
 
 #include "Player.hpp"
 #include "Server.hpp"
+#include "Gui.hpp"
 #include <string>
 #include <tuple>
 #include <vector>
@@ -91,7 +92,10 @@ void Player::eject(Server &server)
             player->send_message("eject" + std::to_string((orientation + 2) % 4) + "\n");
         }
     }
-    //we now notify the gui clients that the player has been ejected, so they can update their view of the game.
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    server._gui_subject.Notify([self](Client* c) {
+        static_cast<Gui*>(c)->pex(self);
+    });
     send_message("ok\n");
 }
 
