@@ -56,7 +56,7 @@ class Gui : public Client
         void pie(int x, int y, bool succeeded); //player incantation end
         void pfk(std::shared_ptr<Player> player); //player laying egg (start action)
         void pdr(std::shared_ptr<Player> player, int resource_type); //player drop
-        void pgt(Server &server); //player take
+        void pgt(std::shared_ptr<Player> player, int resource_type); //player take
         void pdi(Server &server); //player death
         void enw(Server &server); //egg laid (end action)
         void seg(Server &server); //end of game
