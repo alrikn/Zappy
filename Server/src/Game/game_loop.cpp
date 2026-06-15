@@ -51,17 +51,6 @@ void Server::game_tick()
     tick++;
 }
 
-static long long action_cost_tu(PlayerCommands verb)
-{
-    switch (verb) {
-        case INVENTORY:   return 1;
-        case CONNECT_NBR: return 0;
-        case FORK:        return 42;
-        case INCANTATION: return 300;
-        default:          return 7;
-    }
-}
-
 void Server::advance_game()
 {
     auto now = std::chrono::steady_clock::now();
@@ -98,29 +87,20 @@ void Server::advance_game()
             }
         }
 
-        // finish running action if its time has elapsed
+        // finish incantation phase 2 when its 300tu deadline elapses
         if (player->busy && now >= player->action_done_at) {
             player->busy = false;
             player->execute_command(player->running_cmd.first,
                 player->running_cmd.second, *this);
         }
-        // start next queued action (skip if frozen for incantation)
+        // exe next queued cmd immediately
         if (!player->busy && !player->in_incantation && !player->cmd_queue.empty()) {
             auto [verb, args] = player->cmd_queue.front();
             player->cmd_queue.pop_front();
-            long long cost = action_cost_tu(verb);
-            if (cost == 0) {
-                player->execute_command(verb, args, *this);
-            } else if (verb == INCANTATION) {
-                // phase 1: check requirements, freeze participants for 300tu, or send ko
-                // incantation_start sets busy/running_cmd/action_done_at for all participants
+            if (verb == INCANTATION)
                 player->incantation_start(*this);
-            } else {
-                player->busy = true;
-                player->running_cmd = {verb, args};
-                player->action_done_at =
-                    now + std::chrono::milliseconds(cost * time_unit);
-            }
+            else
+                player->execute_command(verb, args, *this);
         }
     }
 

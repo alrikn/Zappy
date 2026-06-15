@@ -36,14 +36,6 @@ void Player::inventory_handle()
     send_message(response);
 }
 
-static std::string bct_msg(int x, int y, const Inventory &inv)
-{
-    std::string s = "bct " + std::to_string(x) + " " + std::to_string(y);
-    for (size_t i = 0; i < static_cast<size_t>(Resource::Count); i++)
-        s += " " + std::to_string(inv.resources[i]);
-    return s + "\n";
-}
-
 void Player::set_down_resource(Server &server, std::vector<std::string> args)
 {
     if (args.size() != 1) {

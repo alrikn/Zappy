@@ -120,7 +120,6 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
         auto egg = matched_team->eggs.back();
         matched_team->eggs.pop_back();
         position = egg->position;
-        notify_gui("ebo " + std::to_string(egg->id) + "\n");
     } else {
         position.push_back(rand() % _map[0].size());
         position.push_back(rand() % _map.size());
@@ -156,18 +155,8 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
 void Server::kill_player(std::shared_ptr<Player> player)
 {
     player->send_message("dead\n");
-    // remove from tile
     _map[player->position[1]][player->position[0]].remove_specific_client(player->getId());
-    // notify GUI
-    notify_gui("pdi " + std::to_string(player->getId()) + "\n");
     remove_client(player->control_fd);
-}
-
-void Server::notify_gui(const std::string &message)
-{
-    for (auto &[fd, client] : _clients)
-        if (client->get_type() == GUI)
-            client->send_message(message);
 }
 
 std::shared_ptr<Gui> Server::create_gui(int client_fd)

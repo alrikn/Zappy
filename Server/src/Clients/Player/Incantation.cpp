@@ -139,23 +139,15 @@ bool Player::incantation_start(Server &server)
     auto deadline = std::chrono::steady_clock::now()
         + std::chrono::milliseconds(300 * server.time_unit);
 
-    // build pic GUI message while freezing participants
-    std::string pic_msg = "pic " + std::to_string(position[0]) + " "
-        + std::to_string(position[1]) + " " + std::to_string(level);
-
     for (const auto &p : tile.players) {
         if (p->level == level) {
             p->in_incantation = true;
             p->busy = true;
             p->running_cmd = {INCANTATION, {}};
             p->action_done_at = deadline;
-            pic_msg += " " + std::to_string(p->getId());
             p->send_message("Elevation underway\n");
         }
     }
-    pic_msg += "\n";
-
-    server.notify_gui(pic_msg);
     return true;
 }
 
@@ -182,8 +174,6 @@ void Player::incantation(Server &server)
             p->send_message("ko\n");
             p->in_incantation = false;
         }
-        server.notify_gui("pie " + std::to_string(position[0]) + " "
-            + std::to_string(position[1]) + " 0\n");
         return;
     }
 
@@ -196,12 +186,7 @@ void Player::incantation(Server &server)
         p->level = new_level;
         p->in_incantation = false;
         p->send_message("Current level: " + std::to_string(new_level) + "\n");
-        server.notify_gui("plv " + std::to_string(p->getId()) + " "
-            + std::to_string(new_level) + "\n");
     }
-
-    server.notify_gui("pie " + std::to_string(position[0]) + " "
-        + std::to_string(position[1]) + " 1\n");
 
     // win condition: any team with >= 6 players at level 8
     if (new_level == 8) {
@@ -214,7 +199,6 @@ void Player::incantation(Server &server)
                     count++;
             }
             if (count >= 6) {
-                server.notify_gui("seg " + team->name + "\n");
                 server.running = false;
                 return;
             }
