@@ -62,7 +62,7 @@ class Gui : public Client
         void ebo(int egg_id); //egg hatching (start action)
         void edi(int egg_id); //egg death
         void seg(Server &server); //end of game
-        void smg(Server &server, std::string message); //server message
+        void smg(std::string message); //server message
 
 
 

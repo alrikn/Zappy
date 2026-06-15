@@ -9,6 +9,9 @@
 
 #include "Gui.hpp"
 #include "Player.hpp"
+#include "Server.hpp"
+#include "Team.hpp"
+#include <memory>
 
 //connection of a new player
 //returns: pnw <player id> <x> <y> <orientation> <level> <team name>
@@ -155,6 +158,26 @@ void Gui::edi(int egg_id)
 {
     std::string result = "edi";
     result += " " + std::to_string(egg_id);
+    result += "\n";
+    send_message(result);
+}
+
+void Gui::seg(Server &server)
+{
+    std::string result = "seg";
+
+    std::shared_ptr<Team> winning_team = server.getTeams()[0];
+
+    result += " " + winning_team->name;
+    result += "\n";
+    send_message(result);
+}
+
+void Gui::smg(std::string message)
+{
+    std::string result = "smg";
+
+    result += " " + message;
     result += "\n";
     send_message(result);
 }
