@@ -107,7 +107,7 @@ void Player::eject(Server &server)
             }
             //notify the ejected player with eject: K\n
             //where K is the direction of the tile where the pushed player is coming from. (so reverse of the orientation of the player that is doing the ejecting)
-            player->send_message("eject" + std::to_string((orientation + 2) % 4) + "\n");
+            player->send_message("eject " + std::to_string((orientation + 2) % 4) + "\n");
         }
     }
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);

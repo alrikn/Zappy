@@ -58,6 +58,10 @@ void Gui::pic(int incantaion_level, std::vector<std::shared_ptr<Player>> players
 {
     std::string result = "pic";
 
+    if (players.empty()) {
+        smg("Error: No players found for incantation");
+        return;
+    }
     result += " " + std::to_string(players[0]->getX());
     result += " " + std::to_string(players[0]->getY());
     result += " " + std::to_string(incantaion_level);
