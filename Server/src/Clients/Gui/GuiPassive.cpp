@@ -77,3 +77,14 @@ void Gui::pie(int x, int y, bool succeded)
     result += "\n";
     send_message(result);
 }
+
+//player laying egg (start action)
+//returns: pfk <player id>
+void Gui::pfk(std::shared_ptr<Player> player)
+{
+    std::string result = "pfk";
+
+    result += " " + std::to_string(player->getId());
+    result += "\n";
+    send_message(result);
+}
