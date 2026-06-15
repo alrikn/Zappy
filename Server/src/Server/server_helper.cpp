@@ -5,11 +5,26 @@
 ** server_helper
 */
 
+#include "Player.hpp"
 #include "Server.hpp"
+#include <algorithm>
 #include <cstring>
 #include <memory>
 #include <string>
 #include <unistd.h>
+
+void Server::free_team_slot(std::shared_ptr<Client> client)
+{
+    std::shared_ptr<Player> player = std::dynamic_pointer_cast<Player>(client);
+    if (!player)
+        return;
+    for (auto &team : teams) {
+        if (team->name == player->team_name) {
+            team->spots_left++;
+            return;
+        }
+    }
+}
 
 
 /**
@@ -93,6 +108,7 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
     for (const std::shared_ptr<Team> &team : teams)
         if (team->name == team_name) {
             team_found = true;
+            team->spots_left--;
             if (team->spots_left <= 0)
                 return nullptr;
         }
@@ -101,8 +117,10 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
     //now we create the player. we give him a random non occupied position
 
     std::vector<int> position; //= random_unncoupied_position(team_name);
+    position.push_back(rand() % _map[0].size());
+    position.push_back(rand() % _map.size());
 
-    std::shared_ptr<Player> player = std::make_shared<Player>(client_fd);
+    std::shared_ptr<Player> player = std::make_shared<Player>(_player_subject, client_fd);
 
     player->set_orientation(NORTH)
     .set_team_name(team_name)
@@ -113,6 +131,29 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
 
     write(client_fd, valid_message.c_str(), valid_message.length());
     return player;
+}
+
+std::shared_ptr<Gui> Server::create_gui(int client_fd)
+{
+    std::shared_ptr<Gui> gui = std::make_shared<Gui>(_gui_subject, client_fd);
+    _gui_subject.Attach(gui.get());
+    return gui;
+}
+
+void Server::remove_client(int client_fd)
+{
+    auto it = _clients.find(client_fd);
+    if (it == _clients.end())
+        return;
+
+    it->second->RemoveMeFromList();
+    free_team_slot(it->second);
+    _clients.erase(it);
+
+    _fds.erase(std::remove_if(_fds.begin(), _fds.end(),
+        [client_fd](const pollfd &p) { return p.fd == client_fd; }), _fds.end());
+
+    close(client_fd);
 }
 
 void Server::add_client(std::shared_ptr<Client> client)
@@ -148,10 +189,8 @@ void Server::accept_new_client()
     }
     buffer[bytes_read] = '\0'; //null terminate the buffer to make it a
     if (strcmp(buffer, "GRAPHIC\n") == 0) {
-        //they are a gui
-        //std::shared_ptr<Client> client = std::make_shared<Client>();
-        //client->control_fd = client_fd;
-        //add_client(client);
+        std::shared_ptr<Gui> gui = create_gui(client_fd);
+        add_client(gui);
     } else {
         //they are a player, we need to check if the team they want is a valid one, and if there is still a spot left in that team
         std::string team_name(buffer);

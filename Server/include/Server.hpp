@@ -10,10 +10,12 @@
 
 #include "Client.hpp"
 #include "Egg.hpp"
+#include "Gui.hpp"
 #include "Struct.hpp"
 #include "Player.hpp"
 #include "Team.hpp"
 #include "Tiles.hpp"
+#include "Subject.hpp"
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -30,6 +32,7 @@ class Server
         void remove_client(int client_fd);
         void handle_client_event(int client_fd);
         void handle_event();
+        void free_team_slot(std::shared_ptr<Client> client);
         /*server setup functions*/
         int create_server_socket();
         sockaddr_in bind_socket(int port, int server_fd);
@@ -40,10 +43,16 @@ class Server
         /*game functions*/
         void poll_clients(int timeout);
         std::shared_ptr<Player> create_player(int client_fd, std::string team_name);
+        std::shared_ptr<Gui> create_gui(int client_fd);
 
 
         void populate_map_resources();
         void game_tick();
+
+        /*observer behavioral pattern functions*/
+        void attach(Client *client);
+        void detach(Client *client);
+        void notify();
 
     protected:
     public:
@@ -57,6 +66,9 @@ class Server
 
 
         /*server variables*/
+        //main subject functions from the observer pattern:
+        Subject _gui_subject; //the subject that all gui observe
+        Subject _player_subject; //the subject that all players observe, we may not need this but it could be useful to inform the player of certain events (for example, the result of a command they sent to the server)
         //TODO: there might be a need to make its a shared ptr
         std::vector<std::vector<Tiles>> _map; //map of the game, each cell is like an inventory since it coins resources on that cell
         std::unordered_map<int, std::shared_ptr<Client>> _clients; //map of all connected clients, keyed by client fd
@@ -74,6 +86,15 @@ class Server
         bool running = true;
         /*server functions*/
         void run();
+
+        /*client helper functions*/
+
+        void move_player(Player &player, int x, int y);
+
+        int getMapWidth() const { return _map[0].size(); }
+        int getMapHeight() const { return _map.size(); }
+        std::vector<std::shared_ptr<Team>> getTeams() const { return teams; }
+        long long getTimeUnit() const { return time_unit; }
 
 
 };
