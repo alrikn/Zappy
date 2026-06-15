@@ -112,3 +112,14 @@ void Gui::pgt(std::shared_ptr<Player> player, int resource_type)
     result += "\n";
     send_message(result);
 }
+
+//player death
+//returns: pdi <player id>
+void Gui::pdi(std::shared_ptr<Player> player)
+{
+    std::string result = "pdi";
+
+    result += " " + std::to_string(player->getId());
+    result += "\n";
+    send_message(result);
+}
