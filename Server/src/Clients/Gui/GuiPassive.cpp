@@ -88,3 +88,15 @@ void Gui::pfk(std::shared_ptr<Player> player)
     result += "\n";
     send_message(result);
 }
+
+//player drop
+//returns: pdr <player id> <resource type>
+void Gui::pdr(std::shared_ptr<Player> player, int resource_type)
+{
+    std::string result = "pdr";
+
+    result += " " + std::to_string(player->getId());
+    result += " " + std::to_string(resource_type);
+    result += "\n";
+    send_message(result);
+}
