@@ -48,6 +48,10 @@ void Player::set_down_resource(Server &server, std::vector<std::string> args)
     server._map[position[1]][position[0]].inventory.resources[idx(resource)]++;
     //notify the gui that a resource has been dropped on the tile
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    if (!self) {
+        send_message("ko\n");
+        return;
+    }
     server._gui_subject.Notify([self, resource](Client* c) {
         static_cast<Gui*>(c)->pdr(self, idx(resource));
     });
@@ -71,6 +75,10 @@ void Player::take_resource(Server &server, std::vector<std::string> args)
     server._map[position[1]][position[0]].inventory.resources[idx(resource)]--;
     //notify the gui that a resource has been taken from the tile
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    if (!self) {
+        send_message("ko\n");
+        return;
+    }
     server._gui_subject.Notify([self, resource](Client* c) {
         static_cast<Gui*>(c)->pgt(self, idx(resource));
     });
@@ -103,6 +111,10 @@ void Player::eject(Server &server)
         }
     }
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    if (!self) {
+        send_message("ko\n");
+        return;
+    }
     server._gui_subject.Notify([self](Client* c) {
         static_cast<Gui*>(c)->pex(self);
     });
@@ -122,6 +134,10 @@ void Player::broadcast(Server &server, std::vector<std::string> args)
     send_message("ok\n");
     //notify the gui that a broadcast has been sent
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    if (!self) {
+        send_message("ko\n");
+        return;
+    }
     server._gui_subject.Notify([self, &args](Client* c) {
         static_cast<Gui*>(c)->pbc(self, args[0]);
     });
@@ -133,6 +149,10 @@ void Player::fork(Server &server)
     send_message("ok\n");
     //notify the gui that a new egg has been laid
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    if (!self) {
+        send_message("ko\n");
+        return;
+    }
     server._gui_subject.Notify([self](Client* c) {
         static_cast<Gui*>(c)->pfk(self);
     });
