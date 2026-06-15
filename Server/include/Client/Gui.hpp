@@ -35,6 +35,7 @@ class Gui : public Client
 
         void parse_command(const std::string command, Server &server) override;
 
+        void gui_start(Server &server); //this is called when the gui connects to the server, it will send all the data that the gui needs to know about the current state of the game
         /*these are all the commands that the server can receive from the gui*/
 
         void msz(Server &server); //map size
