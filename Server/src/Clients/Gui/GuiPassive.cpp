@@ -64,3 +64,16 @@ void Gui::pic(int incantaion_level, std::vector<std::shared_ptr<Player>> players
     result += "\n";
     send_message(result);
 }
+
+//player incantation end
+//returns: pie <x> <y> <result> (result is 0 if the incantation failed, 1 if it succeeded)
+void Gui::pie(int x, int y, bool succeded)
+{
+    std::string result = "pie";
+
+    result += " " + std::to_string(x);
+    result += " " + std::to_string(y);
+    result += " " + std::to_string(succeded ? 1 : 0);
+    result += "\n";
+    send_message(result);
+}

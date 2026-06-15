@@ -53,7 +53,7 @@ class Gui : public Client
         void pex(std::shared_ptr<Player> player); //player expulsion
         void pbc(std::shared_ptr<Player> player, std::string message); //player broadcast
         void pic(int incantaion_level, std::vector<std::shared_ptr<Player>> players); //player incantation start
-        void pie(Server &server, std::shared_ptr<Player> player); //player incantation end
+        void pie(int x, int y, bool result); //player incantation end
         void pfk(Server &server, std::shared_ptr<Player> player); //player laying egg (start action)
         void pdr(Server &server, std::shared_ptr<Player> player); //player drop
         void pgt(Server &server); //player take
