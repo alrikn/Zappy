@@ -123,3 +123,17 @@ void Gui::pdi(std::shared_ptr<Player> player)
     result += "\n";
     send_message(result);
 }
+
+//egg laid (end action)
+//returns: enw <player id> <egg id> <x> <y>
+void Gui::enw(std::shared_ptr<Player> player, int egg_id)
+{
+    std::string result = "enw";
+
+    result += " " + std::to_string(player->getId());
+    result += " " + std::to_string(egg_id);
+    result += " " + std::to_string(player->getX());
+    result += " " + std::to_string(player->getY());
+    result += "\n";
+    send_message(result);
+}
