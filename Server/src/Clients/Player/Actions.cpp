@@ -91,6 +91,7 @@ void Player::eject(Server &server)
             player->send_message("eject" + std::to_string((orientation + 2) % 4) + "\n");
         }
     }
+    //we now notify the gui clients that the player has been ejected, so they can update their view of the game.
     send_message("ok\n");
 }
 
