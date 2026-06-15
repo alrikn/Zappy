@@ -120,6 +120,11 @@ void Player::broadcast(Server &server, std::vector<std::string> args)
     //message K, text\n
     //where K is the tile indicating the direction the sound is coming from.
     send_message("ok\n");
+    //notify the gui that a broadcast has been sent
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    server._gui_subject.Notify([self, &args](Client* c) {
+        static_cast<Gui*>(c)->pbc(self, args[0]);
+    });
 }
 
 void Player::fork(Server &server)
