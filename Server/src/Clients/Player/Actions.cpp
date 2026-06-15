@@ -7,6 +7,7 @@
 
 #include "Player.hpp"
 #include "Server.hpp"
+#include "Gui.hpp"
 #include <string>
 #include <tuple>
 #include <vector>
@@ -45,6 +46,15 @@ void Player::set_down_resource(Server &server, std::vector<std::string> args)
 
     inventory.resources[idx(resource)]--;
     server._map[position[1]][position[0]].inventory.resources[idx(resource)]++;
+    //notify the gui that a resource has been dropped on the tile
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    if (!self) {
+        send_message("ko\n");
+        return;
+    }
+    server._gui_subject.Notify([self, resource](Client* c) {
+        static_cast<Gui*>(c)->pdr(self, idx(resource));
+    });
     send_message("ok\n");
 }
 
@@ -63,6 +73,15 @@ void Player::take_resource(Server &server, std::vector<std::string> args)
 
     inventory.resources[idx(resource)]++;
     server._map[position[1]][position[0]].inventory.resources[idx(resource)]--;
+    //notify the gui that a resource has been taken from the tile
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    if (!self) {
+        send_message("ko\n");
+        return;
+    }
+    server._gui_subject.Notify([self, resource](Client* c) {
+        static_cast<Gui*>(c)->pgt(self, idx(resource));
+    });
     send_message("ok\n");
 }
 
@@ -88,9 +107,17 @@ void Player::eject(Server &server)
             }
             //notify the ejected player with eject: K\n
             //where K is the direction of the tile where the pushed player is coming from. (so reverse of the orientation of the player that is doing the ejecting)
-            player->send_message("eject" + std::to_string((orientation + 2) % 4) + "\n");
+            player->send_message("eject " + std::to_string((orientation + 2) % 4) + "\n");
         }
     }
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    if (!self) {
+        send_message("ko\n");
+        return;
+    }
+    server._gui_subject.Notify([self](Client* c) {
+        static_cast<Gui*>(c)->pex(self);
+    });
     send_message("ok\n");
 }
 
@@ -105,12 +132,30 @@ void Player::broadcast(Server &server, std::vector<std::string> args)
     //message K, text\n
     //where K is the tile indicating the direction the sound is coming from.
     send_message("ok\n");
+    //notify the gui that a broadcast has been sent
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    if (!self) {
+        send_message("ko\n");
+        return;
+    }
+    server._gui_subject.Notify([self, &args](Client* c) {
+        static_cast<Gui*>(c)->pbc(self, args[0]);
+    });
 }
 
 void Player::fork(Server &server)
 {
     //TODO: implement egg logic first
     send_message("ok\n");
+    //notify the gui that a new egg has been laid
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    if (!self) {
+        send_message("ko\n");
+        return;
+    }
+    server._gui_subject.Notify([self](Client* c) {
+        static_cast<Gui*>(c)->pfk(self);
+    });
 }
 
 void Player::connect_nbr(Server &server)

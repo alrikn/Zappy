@@ -9,7 +9,7 @@
 #include "Server.hpp"
 #include <string>
 #include <sys/socket.h>
-
+#include "Server.hpp"
 
 /*
 ELEVATION REQUIREMENTS
@@ -55,6 +55,11 @@ void Player::incantation(Server &server)
         send_message("ko\n");
         return;
     }
+    //tell the gui that incant is underway
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    server._gui_subject.Notify([self, &server](Client* c) {
+        static_cast<Gui*>(c)->pic(self->level, server._map[self->position[1]][self->position[0]].players);
+    });
 
     //if they do, we level them up and remove the resources from the tile
     level++;
@@ -99,5 +104,9 @@ void Player::incantation(Server &server)
     send_message("Elevation underway\n");
     //TODO: we need to figure out a way to wait 300 time units here
     send_message("Current level:" + std::to_string(level) + "\n");
+    //notify the gui that the incantation has finished
+    server._gui_subject.Notify([self](Client* c) {
+        static_cast<Gui*>(c)->pie(self->position[0], self->position[1], true);
+    });
 
 }

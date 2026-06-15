@@ -11,6 +11,21 @@
 #include "Parse.hpp"
 #include <sstream>
 
+void Gui::gui_start(Server &server)
+{
+    msz(server);
+    mct(server);
+    tna(server);
+    for (const auto& [fd, client] : server._clients) {
+        if (client->get_type() == client_type::PLAYER) {
+            auto player = std::dynamic_pointer_cast<Player>(client);
+            pnw(player);
+            pin(server, {std::to_string(player->getId())});
+        }
+    }
+    sgt(server);
+}
+
 
 void Gui::parse_command(const std::string raw, Server &server)
 {
