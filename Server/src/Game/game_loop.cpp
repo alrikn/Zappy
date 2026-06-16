@@ -57,6 +57,7 @@ void Server::respawn_resources()
     if (tick - _last_respawn_tick < RESPAWN_TICKS)
         return;
     populate_map_resources();
+    std::cout << "tick: " << tick << std::endl;
     _last_respawn_tick = tick;
 }
 
@@ -130,7 +131,12 @@ void Server::run()
         int timeout = std::chrono::duration_cast<std::chrono::milliseconds>(next_tick - now).count();
         if (timeout < 0)
             timeout = 0;
-        poll_clients(timeout); //blocks until socket activity or the next tick is due
+        try {
+            poll_clients(timeout); //blocks until socket activity or the next tick is due
+        } catch (const std::exception &e) {
+            std::cerr << "Error during poll_clients: " << e.what() << std::endl;
+            continue;
+        }
 
         now = std::chrono::steady_clock::now();
         while (now >= next_tick) { //advance one game tick per elapsed time_unit

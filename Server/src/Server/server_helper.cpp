@@ -210,7 +210,7 @@ void Server::accept_new_client()
     if (team_name.empty()) {
         std::cout << "Client " << client_fd << " disconnected before sending team name." << std::endl;
         remove_client(client_fd);
-        throw std::runtime_error("Client disconnected before sending team name.");
+        return;
     }
     if (strcmp(team_name.c_str(), "GRAPHIC\n") == 0) {
         std::shared_ptr<Gui> gui = create_gui(client_fd);
