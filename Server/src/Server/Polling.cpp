@@ -6,7 +6,6 @@
 */
 
 #include "Server.hpp"
-#include <chrono>
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
@@ -20,12 +19,10 @@ Server::Server(int port_number,
             int num_client_per_team,
             long long trantorian_time_unit)
 {
-    //one time unit (1/f) in milliseconds. every action cost is a multiple of this
-    //(Forward 7tu, Inventory 1tu, Fork 42tu, Incantation 300tu, food drains 1/126tu)
-    this->time_unit = 1000.0 / trantorian_time_unit; //f=100 -> 10ms per time unit
+    this->time_unit = (7.0 / trantorian_time_unit) * 1000; //that just how the pdf want it, divide by 1000 to make mlseconds
+
+    std::cout << "time unit: " << time_unit << std::endl;
     this->tick = 0;
-    this->_next_respawn_at = std::chrono::steady_clock::now()
-        + std::chrono::milliseconds(20 * time_unit);
     this->_port = port_number;
     //we intialise the map with no resources.
     this->_map = std::vector<std::vector<Tiles>>(map_height, std::vector<Tiles>(map_width, Tiles()));
@@ -35,7 +32,7 @@ Server::Server(int port_number,
     }
     _server_fd = set_up_server_socket(_port);
     add_fd(_server_fd);
-    populate_map_resources();
+    populate_map_resources(); //seed the floor so the map isnt empty at startup
 }
 
 void Server::handle_client_event(int client_fd)
@@ -55,7 +52,7 @@ void Server::handle_client_event(int client_fd)
     while (pos != std::string::npos) {
         std::string command = client->ctrl_buffer.substr(0, pos);
         client->ctrl_buffer.erase(0, pos + 1);
-        // Process the command
+        // process the cmd
         client->parse_command(command, *this);
         pos = client->ctrl_buffer.find('\n');
     }
@@ -90,4 +87,3 @@ void Server::poll_clients(int timeout)
     }
     handle_event(); //handle events gets called if poll detected smth
 }
-
