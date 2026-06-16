@@ -8,7 +8,6 @@
 #ifndef INCLUDED_SENDMESSAGEQUEUE_HPP
     #define INCLUDED_SENDMESSAGEQUEUE_HPP
 
-    #include "Server.hpp"
 #include <string>
     #include <vector>
     #include <map>

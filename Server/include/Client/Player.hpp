@@ -90,10 +90,10 @@ std::vector<std::tuple<std::string, int>> give_resources_number(const Inventory&
 
         //all the player commands:
         void move_forward(Server &server);
-        void turn_right();
-        void turn_left();
+        void turn_right(Server &server);
+        void turn_left(Server &server);
         void look(Server &server);
-        void inventory_handle();
+        void inventory_handle(Server &server);
         void set_down_resource(Server &server, std::vector<std::string> args);
         void take_resource(Server &server, std::vector<std::string> args);
         void incantation(Server &server);
