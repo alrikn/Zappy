@@ -7,7 +7,6 @@
 
 #include "Player.hpp"
 #include "Server.hpp"
-#include <chrono>
 #include <memory>
 #include <string>
 #include <vector>
@@ -119,8 +118,8 @@ static void consume_resources(Inventory &inv, int level)
 }
 
 // phase 1: called immediately when incnataton is dequeued in advance_game
-// checks requirements, freezes all same level players on the tile for 300 tu,
-// sends "Elevation underway" to the initiator (self)
+// checks requirements, freezes all same level players on the tile for INCANTATION_TICKS,
+// sends "Elevation underway" to every frozen participant
 // returns false and sends ko if requirements are not met
 bool Player::incantation_start(Server &server)
 {
@@ -136,8 +135,7 @@ bool Player::incantation_start(Server &server)
         return false;
     }
 
-    auto deadline = std::chrono::steady_clock::now()
-        + std::chrono::milliseconds(300 * server.time_unit);
+    long long deadline = server.tick + INCANTATION_TICKS; // long long to be safe idk maybe overkill
 
     for (const auto &p : tile.players) {
         if (p->level == level) {
@@ -188,7 +186,7 @@ void Player::incantation(Server &server)
         p->send_message("Current level: " + std::to_string(new_level) + "\n");
     }
 
-    // win condition: any team with >= 6 players at level 8
+    // win con: any team with >= 6 players at level 8
     if (new_level == 8) {
         for (const auto &team : server.teams) {
             int count = 0;
