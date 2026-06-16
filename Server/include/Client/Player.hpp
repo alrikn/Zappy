@@ -43,8 +43,6 @@ std::vector<std::tuple<std::string, int>> give_resources_number(const Inventory&
         Player(Subject &subject, int control_fd = -1);
         ~Player() = default;
 
-        int getId() const { return player_id; }
-
 
         /*variables that are needed for the player*/
 
@@ -103,6 +101,15 @@ std::vector<std::tuple<std::string, int>> give_resources_number(const Inventory&
         void fork(Server &server);
         void eject(Server &server);
         void connect_nbr(Server &server);
+
+        /*helper funcs for everybody*/
+
+        int getId() const { return player_id; }
+        int getX() const { return position[0]; }
+        int getY() const { return position[1]; }
+        orientation_t getOrientation() const { return orientation; }
+        int getLevel() const { return level; }
+        std::string getTeamName() const { return team_name; }
 
 };
 

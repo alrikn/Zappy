@@ -51,6 +51,7 @@ class AI(InventoryMixin, VisionMixin, CommsMixin, RitualMixin):
         self.clear_read = 0
         self.clear_broadcast = 0
         self.fork = 1
+        self.current_master = 0
 
     # ---- the main step machine ----
 
@@ -149,6 +150,7 @@ class AI(InventoryMixin, VisionMixin, CommsMixin, RitualMixin):
                 self.commands_list = self.commands_list[1:]
             else:
                 self.commands_list = ["Look\n"]
+                self.step = 6  # retry start_incantation after fresh look
         elif self.step == 8:
             self.data_to_write = ""  # frozen during the elevation
         elif self.step == 9:

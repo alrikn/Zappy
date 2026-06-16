@@ -115,7 +115,9 @@ class Client:
                         self.ai.ready_for_incantation = 0
                         self.ai.clear_read = 0
                         self.ai.clear_broadcast = 0
+                        self.ai.current_master = 0
                         self.ai.data_to_write = ""
+                        self.ai.commands_list = []
                     elif self.just_log >= 3 and "message" in elem:
                         if self.ai.clear_read == 1:
                             self.ai.clear_read = 0

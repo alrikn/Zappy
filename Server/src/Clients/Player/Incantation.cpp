@@ -9,6 +9,8 @@
 #include "Server.hpp"
 #include <memory>
 #include <string>
+#include <sys/socket.h>
+#include "Server.hpp"
 #include <vector>
 
 /*
@@ -135,6 +137,12 @@ bool Player::incantation_start(Server &server)
         return false;
     }
 
+    //tell the gui that incant is underway
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    server._gui_subject.Notify([self, &server](Client* c) {
+        static_cast<Gui*>(c)->pic(self->level, server._map[self->position[1]][self->position[0]].players);
+    });
+
     long long deadline = server.tick + INCANTATION_TICKS; // long long to be safe idk maybe overkill
 
     for (const auto &p : tile.players) {
@@ -185,6 +193,12 @@ void Player::incantation(Server &server)
         p->in_incantation = false;
         p->send_message("Current level: " + std::to_string(new_level) + "\n");
     }
+
+    //notify the gui that the incantation has finished
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    server._gui_subject.Notify([self](Client* c) {
+        static_cast<Gui*>(c)->pie(self->position[0], self->position[1], true);
+    });
 
     // win con: any team with >= 6 players at level 8
     if (new_level == 8) {

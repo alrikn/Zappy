@@ -37,6 +37,12 @@ class Subject : public ISubject
             }
         }
 
+        void Notify(std::function<void(Client *)> fn) override {
+            for (auto observer : _observers) {
+                fn(observer);
+            }
+        }
+
         void CreateMessage(std::string message) {
             _message = message;
             Notify();

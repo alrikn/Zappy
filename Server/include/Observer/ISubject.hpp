@@ -9,6 +9,7 @@
     #define INCLUDED_ISUBJECT_HPP
 
 #include "Client.hpp"
+#include <functional>
 
 
 class ISubject
@@ -19,6 +20,7 @@ class ISubject
         virtual void Attach(Client *observer) = 0;
         virtual void Detach(Client *observer) = 0;
         virtual void Notify() = 0;
+        virtual void Notify(std::function<void(Client *)> fn) = 0;
 };
 
 #endif
