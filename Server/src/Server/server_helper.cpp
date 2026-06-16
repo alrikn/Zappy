@@ -155,7 +155,6 @@ std::shared_ptr<Gui> Server::create_gui(int client_fd)
 {
     std::shared_ptr<Gui> gui = std::make_shared<Gui>(_gui_subject, client_fd);
     _gui_subject.Attach(gui.get());
-    gui->initial_state(*this);
     return gui;
 }
 
