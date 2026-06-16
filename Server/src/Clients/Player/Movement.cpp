@@ -128,5 +128,5 @@ void Player::look(Server &server)
         }
     }
     final_response += "]\n";
-    send_message(final_response);
+    server.send_message_queue.add_message(server, control_fd, final_response, 7);
 }

@@ -3,6 +3,7 @@
     - [x] Implement GUI client handling in the server
     - [x] Implement client disconnection handling in the server
     - [ ] figure out which team won to send seg message to GUI clients
+    - [ ] Fix the incantation actions alongside their delay
     - [ ] figure out how to deal with client dealy for a same command. (for example, if a player starts an incant, we send hime the incant start message, we wait 300 time units, then we send him the incant end message. problem is, this needs to be non blocking, so we need to figure out how to do this without blocking the server)
     - [ ] send all gui notifications as result of an action
       - [x] pex (player ejected)
