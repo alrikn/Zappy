@@ -25,7 +25,13 @@ std::string Client::receive_message()
         return "";
     }
     buffer[bytes_read] = '\0'; // Null-terminate the string
-    return std::string(buffer);
+    //now we will remove any \r in the buffer, because the gui sends \r\n and we only want \n
+    std::string new_buffer(buffer);
+    std::string::size_type pos = 0;
+    while ((pos = new_buffer.find('\r', pos)) != std::string::npos) {
+        new_buffer.erase(pos, 1);
+    }
+    return new_buffer;
 }
 
 void Client::Update(std::string message)

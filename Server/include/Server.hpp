@@ -32,6 +32,7 @@ class Server
         void handle_client_event(int client_fd);
         void handle_event();
         void free_team_slot(std::shared_ptr<Client> client);
+        std::string read_from_client(int client_fd);
         /*server setup functions*/
         int create_server_socket();
         sockaddr_in bind_socket(int port, int server_fd);

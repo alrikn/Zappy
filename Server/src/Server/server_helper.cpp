@@ -9,6 +9,7 @@
 #include "Server.hpp"
 #include <algorithm>
 #include <cstring>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <unistd.h>
@@ -96,7 +97,7 @@ void Server::add_fd(int fd)
 {
     pollfd p;
     p.fd = fd;
-    p.events = POLLIN; //tell me when smth is availabe to read?
+    p.events = POLLIN; //tell me when smth is availabe to readd?
     p.revents = 0;
     _fds.push_back(p);
 }
@@ -105,14 +106,19 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
 {
     //first we check if team name is valid and if there is still a spot left in that team
     std::shared_ptr<Team> matched_team;
-    for (const std::shared_ptr<Team> &team : teams)
+
+    std::cout << "Client " << client_fd << " requested team: " << team_name << std::endl;
+    for (const std::shared_ptr<Team> &team : teams) {
+        std::cout << "team :" << team->name << " spots left: " << team->spots_left << std::endl;
         if (team->name == team_name) {
             matched_team = team;
             break;
         }
+    }
     if (!matched_team || matched_team->spots_left <= 0)
         return nullptr;
     matched_team->spots_left--;
+    std::cout << "Client " << client_fd << " joined team: " << team_name << std::endl;
 
     // hatch from a forked egg if one exists, otherwise random spawn
     std::vector<int> position;
@@ -126,7 +132,6 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
     }
 
     std::shared_ptr<Player> player = std::make_shared<Player>(_player_subject, client_fd);
-
     player->set_orientation(NORTH)
     .set_team_name(team_name)
     .set_level(1)
@@ -196,24 +201,22 @@ void Server::accept_new_client()
     int client_fd = accept(_server_fd, (struct sockaddr*)&client_addr, &client_len);
 
     add_fd(client_fd);
+    std::cout << "New client connected: " << client_fd << std::endl;
 
     //we now need to check if they are a gui or a player
     write(client_fd, "WELCOME\n", 8); //we send them the welcome message
     //now we wait for reply:
-    char buffer[1024];
-    ssize_t bytes_read = read(client_fd, buffer, sizeof(buffer) - 1);
-    if (bytes_read < 0) {
-        perror("read");
-        close(client_fd);
+    std::string team_name = read_from_client(client_fd);
+    if (team_name.empty()) {
+        std::cout << "Client " << client_fd << " disconnected before sending team name." << std::endl;
+        remove_client(client_fd);
         return;
     }
-    buffer[bytes_read] = '\0'; //null terminate the buffer to make it a
-    if (strcmp(buffer, "GRAPHIC\n") == 0) {
+    if (strcmp(team_name.c_str(), "GRAPHIC\n") == 0) {
         std::shared_ptr<Gui> gui = create_gui(client_fd);
         add_client(gui);
     } else {
         //they are a player, we need to check if the team they want is a valid one, and if there is still a spot left in that team
-        std::string team_name(buffer);
         team_name.pop_back(); //remove the newline character
         std::shared_ptr<Player> player = create_player(client_fd, team_name);
         if (player) {
@@ -221,7 +224,7 @@ void Server::accept_new_client()
         } else {
             //invalid team or no spot left, we disconnect the client
             //write(client_fd, "ko\n", 3);
-            close(client_fd);
+            remove_client(client_fd);
         }
     }
 
