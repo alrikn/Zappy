@@ -136,8 +136,8 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
     _map[position[1]][position[0]].players.push_back(player);
 
     // protocol: line1 = remaining team slots, line2 = map dimensions (width height)
-    std::string valid_message = std::to_string(matched_team->spots_left) + "\n"
-        + std::to_string(getMapWidth()) + " " + std::to_string(getMapHeight()) + "\n";
+    std::string valid_message = std::to_string(matched_team->spots_left) + "\n" // CLIENT-NUM\n (the lsot line)
+        + std::to_string(getMapWidth()) + " " + std::to_string(getMapHeight()) + "\n"; // X Y\n
 
     write(client_fd, valid_message.c_str(), valid_message.length());
 
