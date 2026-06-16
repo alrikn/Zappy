@@ -141,14 +141,6 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
 
     write(client_fd, valid_message.c_str(), valid_message.length());
 
-    // notify all connected GUIs of the new player (pnw = player new)
-    // orientation is 1 too 4 in the protocol (our enum is 0-3, so +1)
-    notify_gui("pnw " + std::to_string(player->getId())
-        + " " + std::to_string(position[0])
-        + " " + std::to_string(position[1])
-        + " " + std::to_string(static_cast<int>(NORTH) + 1)
-        + " 1 " + team_name + "\n");
-
     return player;
 }
 
