@@ -16,7 +16,6 @@
 #include "Team.hpp"
 #include "Tiles.hpp"
 #include "Subject.hpp"
-#include <chrono>
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -47,6 +46,11 @@ class Server
         void populate_map_resources();
         void game_tick();
         void advance_game();
+        // advance_game helpers, split out so each does one thing (see game_loop.cpp)
+        void respawn_resources();
+        void drain_food(std::shared_ptr<Player> player,
+            std::vector<std::shared_ptr<Player>> &to_kill);
+        void step_player_action(std::shared_ptr<Player> player);
         void kill_player(std::shared_ptr<Player> player);
 
         /*observer behavioral pattern functions*/
@@ -74,7 +78,7 @@ class Server
         std::unordered_map<int, std::shared_ptr<Client>> _clients; //map of all connected clients, keyed by client fd
         long long time_unit = 1000;
         long long tick = 0;
-        std::chrono::steady_clock::time_point _next_respawn_at;
+        long long _last_respawn_tick = 0; //tick of the most recent resource respawn
 
         std::vector<std::shared_ptr<Team>> teams; //the teams of the game.
 
