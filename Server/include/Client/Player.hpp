@@ -14,7 +14,6 @@
 #include "Parse.hpp"
 
 #include <array>
-#include <chrono>
 #include <deque>
 #include <string>
 #include <tuple>
@@ -59,12 +58,13 @@ std::vector<std::tuple<std::string, int>> give_resources_number(const Inventory&
         //command is received/validated here but only executed by the game loop
         std::deque<std::pair<PlayerCommands, std::vector<std::string>>> cmd_queue;
 
-        //timing of the action currently running. while busy the player is blocked
-        //(only itself), its effect fires when action_done_at is reached
+        //timing of the action currently running, counted in game ticks, while busy
+        //the player is blocked (only itself), its effect fires once the server tick
+        //reaches action_done_at
         bool busy = false;
-        std::chrono::steady_clock::time_point action_done_at;
+        long long action_done_at = 0;
         std::pair<PlayerCommands, std::vector<std::string>> running_cmd;
-        std::chrono::steady_clock::time_point next_food_at = {};
+        long long next_food_at = 0; //tick of the next food drain (0 = not yet armed)
         bool in_incantation = false;
 
 
