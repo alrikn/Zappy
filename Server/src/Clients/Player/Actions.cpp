@@ -53,7 +53,6 @@ void Player::set_down_resource(Server &server, std::vector<std::string> args)
     auto &tile = server._map[position[1]][position[0]];
     tile.inventory.resources[idx(resource)]++;
     send_message("ok\n");
-    server.notify_gui(bct_msg(position[0], position[1], tile.inventory));
 }
 
 void Player::take_resource(Server &server, std::vector<std::string> args)
@@ -73,7 +72,6 @@ void Player::take_resource(Server &server, std::vector<std::string> args)
     inventory.resources[idx(resource)]++;
     tile.inventory.resources[idx(resource)]--;
     send_message("ok\n");
-    server.notify_gui(bct_msg(position[0], position[1], tile.inventory));
 }
 
 void Player::eject(Server &server)
@@ -163,12 +161,8 @@ void Player::fork(Server &server)
         if (team->name != team_name) continue;
         auto egg = std::make_shared<Egg>(team_name,
             std::vector<int>{position[0], position[1]});
-        int eid = egg->id;
         team->eggs.push_back(egg);
         team->spots_left++;
-        server.notify_gui("enw " + std::to_string(eid) + " "
-            + std::to_string(getId()) + " "
-            + std::to_string(position[0]) + " " + std::to_string(position[1]) + "\n");
         break;
     }
     send_message("ok\n");
