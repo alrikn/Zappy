@@ -8,8 +8,9 @@
 #include "Player.hpp"
 #include "Server.hpp"
 #include "Gui.hpp"
+#include "Egg.hpp"
+#include <memory>
 #include <string>
-#include <tuple>
 #include <vector>
 
 
@@ -17,17 +18,22 @@
 
 void Player::inventory_handle()
 {
+    // protocol format: "[ food N, linemate N, ... thystame N ]\n"
+    // space after [ and before ] so the AI parser's [1:]/[:-1] strips the spaces,
+    // not letters/digits. all 7 resources always listed (zero counts included)
+    static const char *names[] = {
+        "food", "linemate", "deraumere", "sibur", "mendiane", "phiras", "thystame"
+    };
     std::string response = "[";
-
-    std::vector<std::tuple<std::string, int>> resources = give_resources_number(inventory);
-    for (size_t i = 0; i < resources.size(); i++) {
-        const auto &resource = resources[i];
-        response += std::get<0>(resource) + " " + std::to_string(std::get<1>(resource));
-        if (i < resources.size() - 1) {
-            response += ", ";
-        }
+    for (size_t i = 0; i < static_cast<size_t>(Resource::Count); i++) {
+        response += " ";
+        response += names[i];
+        response += " ";
+        response += std::to_string(inventory.resources[i]);
+        if (i < static_cast<size_t>(Resource::Count) - 1)
+            response += ",";
     }
-    response += "]\n";
+    response += " ]\n";
     send_message(response);
 }
 
@@ -45,7 +51,8 @@ void Player::set_down_resource(Server &server, std::vector<std::string> args)
     }
 
     inventory.resources[idx(resource)]--;
-    server._map[position[1]][position[0]].inventory.resources[idx(resource)]++;
+    auto &tile = server._map[position[1]][position[0]];
+    tile.inventory.resources[idx(resource)]++;
     //notify the gui that a resource has been dropped on the tile
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
     if (!self) {
@@ -66,13 +73,14 @@ void Player::take_resource(Server &server, std::vector<std::string> args)
     }
 
     Resource resource = parse_resource(args[0]);
-    if (server._map[position[1]][position[0]].inventory.resources[idx(resource)] <= 0) {
+    auto &tile = server._map[position[1]][position[0]];
+    if (tile.inventory.resources[idx(resource)] <= 0) {
         send_message("ko\n");
         return;
     }
 
     inventory.resources[idx(resource)]++;
-    server._map[position[1]][position[0]].inventory.resources[idx(resource)]--;
+    tile.inventory.resources[idx(resource)]--;
     //notify the gui that a resource has been taken from the tile
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
     if (!self) {
@@ -87,28 +95,25 @@ void Player::take_resource(Server &server, std::vector<std::string> args)
 
 void Player::eject(Server &server)
 {
-    Tiles &current_tile = server._map[position[1]][position[0]];
+    // snapshot: move_player modifies the tiles players vector mid iteration
+    std::vector<std::shared_ptr<Player>> to_eject;
+    for (const auto &p : server._map[position[1]][position[0]].players)
+        if (p->getId() != player_id)
+            to_eject.push_back(p);
 
-    for (const auto &player : current_tile.players) {
-        if (player->getId() != player_id) { //don't eject yourself
-            switch (orientation) {
-                case NORTH:
-                    player->set_position(player->position[0], (player->position[1] - 1 + server.getMapHeight()) % server.getMapHeight());
-                    break;
-                case EAST:
-                    player->set_position((player->position[0] + 1) % server.getMapWidth(), player->position[1]);
-                    break;
-                case SOUTH:
-                    player->set_position(player->position[0], (player->position[1] + 1) % server.getMapHeight());
-                    break;
-                case WEST:
-                    player->set_position((player->position[0] - 1 + server.getMapWidth()) % server.getMapWidth(), player->position[1]);
-                    break;
-            }
-            //notify the ejected player with eject: K\n
-            //where K is the direction of the tile where the pushed player is coming from. (so reverse of the orientation of the player that is doing the ejecting)
-            player->send_message("eject " + std::to_string((orientation + 2) % 4) + "\n");
+    // K is the diction from whic h the ejected player was pushed (opposite of ejectors facing)
+    int k = (static_cast<int>(orientation) + 2) % 4 + 1;
+
+    for (const auto &p : to_eject) {
+        int nx = p->position[0], ny = p->position[1];
+        switch (orientation) {
+            case NORTH: ny = (ny - 1 + server.getMapHeight()) % server.getMapHeight(); break;
+            case EAST:  nx = (nx + 1) % server.getMapWidth();  break;
+            case SOUTH: ny = (ny + 1) % server.getMapHeight(); break;
+            case WEST:  nx = (nx - 1 + server.getMapWidth()) % server.getMapWidth();  break;
         }
+        server.move_player(*p, nx, ny);
+        p->send_message("eject " + std::to_string(k) + "\n");
     }
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
     if (!self) {
@@ -121,16 +126,59 @@ void Player::eject(Server &server)
     send_message("ok\n");
 }
 
+// K (0-8): torus direction from receiver to sender in receiver's local frame
+// K=0 same tile, K=1 straight ahead, K=2 front-right ... K=8 front-left
+static int broadcast_dir(int sx, int sy, int rx, int ry,
+                          orientation_t orient, int W, int H)
+{
+    int dx = sx - rx;
+    int dy = sy - ry;
+    if (2 * dx >  W) dx -= W;
+    if (2 * dx < -W) dx += W;
+    if (2 * dy >  H) dy -= H;
+    if (2 * dy < -H) dy += H;
+    if (dx == 0 && dy == 0) return 0;
+    // rotate world delta into receiver's local frame (+ly = forward, +lx = right)
+    int lx, ly;
+    switch (orient) {
+        case NORTH: lx =  dx; ly = -dy; break;
+        case EAST:  lx =  dy; ly =  dx; break;
+        case SOUTH: lx = -dx; ly =  dy; break;
+        case WEST:  lx = -dy; ly = -dx; break;
+        default:    lx =  dx; ly = -dy; break;
+    }
+    if (lx == 0 && ly > 0) return 1;
+    if (lx < 0  && ly > 0) return 2;
+    if (lx < 0  && ly == 0) return 3;
+    if (lx < 0  && ly < 0) return 4;
+    if (lx == 0 && ly < 0) return 5;
+    if (lx > 0  && ly < 0) return 6;
+    if (lx > 0  && ly == 0) return 7;
+    return 8; // lx > 0 && ly > 0
+}
+
 void Player::broadcast(Server &server, std::vector<std::string> args)
 {
-    if (args.empty() || args.size() != 1) {
+    if (args.empty()) {
         send_message("ko\n");
         return;
     }
-
-    //he server will then send the following line to all of its clients (except the one that sent it):
-    //message K, text\n
-    //where K is the tile indicating the direction the sound is coming from.
+    std::string text;
+    for (size_t i = 0; i < args.size(); i++) {
+        if (i > 0) text += " ";
+        text += args[i];
+    }
+    int W = server.getMapWidth();
+    int H = server.getMapHeight();
+    for (auto &[fd, client] : server._clients) {
+        if (client->get_type() != PLAYER) continue;
+        auto p = std::dynamic_pointer_cast<Player>(client);
+        if (!p || p.get() == this) continue;
+        int k = broadcast_dir(position[0], position[1],
+                               p->position[0], p->position[1],
+                               p->orientation, W, H);
+        p->send_message("message " + std::to_string(k) + ", " + text + "\n");
+    }
     send_message("ok\n");
     //notify the gui that a broadcast has been sent
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
@@ -145,7 +193,14 @@ void Player::broadcast(Server &server, std::vector<std::string> args)
 
 void Player::fork(Server &server)
 {
-    //TODO: implement egg logic first
+    for (auto &team : server.teams) {
+        if (team->name != team_name) continue;
+        auto egg = std::make_shared<Egg>(team_name,
+            std::vector<int>{position[0], position[1]});
+        team->eggs.push_back(egg);
+        team->spots_left++;
+        break;
+    }
     send_message("ok\n");
     //notify the gui that a new egg has been laid
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
@@ -169,5 +224,5 @@ void Player::connect_nbr(Server &server)
             break;
         }
     }
-    send_message("connect_nbr " + std::to_string(slots_left) + "\n");
+    send_message(std::to_string(slots_left) + "\n");
 }

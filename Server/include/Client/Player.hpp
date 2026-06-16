@@ -11,10 +11,13 @@
 
 #include "Client.hpp"
 #include "Struct.hpp"
+#include "Parse.hpp"
 
 #include <array>
+#include <deque>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 typedef enum orientation{
@@ -45,9 +48,22 @@ std::vector<std::tuple<std::string, int>> give_resources_number(const Inventory&
 
         std::array<int, 2> position; //x and y position of the player on the map
         orientation_t orientation; //the direction the player is facing (0 = north, 1 = east, 2 = south, 3 = west)
-        int level = 0; //the level of the player
+        int level = 1; //the level of the player
         std::string team_name; //the name of the team the player belongs to
         Inventory inventory; //the inventory of the player, it contains the number of each resource the player has
+
+        //buffered commands waiting to be executed (subject: up to 10, FIFO), a
+        //command is received/validated here but only executed by the game loop
+        std::deque<std::pair<PlayerCommands, std::vector<std::string>>> cmd_queue;
+
+        //timing of the action currently running, counted in game ticks, while busy
+        //the player is blocked (only itself), its effect fires once the server tick
+        //reaches action_done_at
+        bool busy = false;
+        long long action_done_at = 0;
+        std::pair<PlayerCommands, std::vector<std::string>> running_cmd;
+        long long next_food_at = 0; //tick of the next food drain (0 = not yet armed)
+        bool in_incantation = false;
 
 
         Player& set_position(int x, int y) {position[0] = x;position[1] = y; return *this;}
@@ -63,8 +79,14 @@ std::vector<std::tuple<std::string, int>> give_resources_number(const Inventory&
         // and also be able to send commands to the server when the player wants to do something.
 
 
+        //receives a cmd off the socket: validates the verb and pushes it onto
+        //cmd_queue doesnt run itt the game loop runs it later via execute_command
         void parse_command(const std::string command, Server &server) override;
 
+        void execute_command(PlayerCommands verb, std::vector<std::string> args,
+            Server &server);
+        // phase 1 of incantation: check requirements, freeze participants, return false on ko
+        bool incantation_start(Server &server);
 
         //all the player commands:
         void move_forward(Server &server);

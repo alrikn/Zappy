@@ -124,7 +124,7 @@ void Player::look(Server &server)
     for (size_t i = 0; i < response_parts.size(); i++) {
         final_response += response_parts[i];
         if (i != response_parts.size() - 1) {
-            final_response += ",";
+            final_response += ", ";
         }
     }
     final_response += "]\n";
