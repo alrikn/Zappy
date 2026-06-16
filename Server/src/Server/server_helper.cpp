@@ -97,7 +97,7 @@ void Server::add_fd(int fd)
 {
     pollfd p;
     p.fd = fd;
-    p.events = POLLIN; //tell me when smth is availabe to read?
+    p.events = POLLIN; //tell me when smth is availabe to readd?
     p.revents = 0;
     _fds.push_back(p);
 }
@@ -206,20 +206,17 @@ void Server::accept_new_client()
     //we now need to check if they are a gui or a player
     write(client_fd, "WELCOME\n", 8); //we send them the welcome message
     //now we wait for reply:
-    char buffer[1024];
-    ssize_t bytes_read = read(client_fd, buffer, sizeof(buffer) - 1);
-    if (bytes_read < 0) {
-        perror("read");
-        close(client_fd);
-        return;
+    std::string team_name = read_from_client(client_fd);
+    if (team_name.empty()) {
+        std::cout << "Client " << client_fd << " disconnected before sending team name." << std::endl;
+        remove_client(client_fd);
+        throw std::runtime_error("Client disconnected before sending team name.");
     }
-    buffer[bytes_read] = '\0'; //null terminate the buffer to make it a
-    if (strcmp(buffer, "GRAPHIC\n") == 0) {
+    if (strcmp(team_name.c_str(), "GRAPHIC\n") == 0) {
         std::shared_ptr<Gui> gui = create_gui(client_fd);
         add_client(gui);
     } else {
         //they are a player, we need to check if the team they want is a valid one, and if there is still a spot left in that team
-        std::string team_name(buffer);
         team_name.pop_back(); //remove the newline character
         std::shared_ptr<Player> player = create_player(client_fd, team_name);
         if (player) {
@@ -227,7 +224,7 @@ void Server::accept_new_client()
         } else {
             //invalid team or no spot left, we disconnect the client
             //write(client_fd, "ko\n", 3);
-            close(client_fd);
+            remove_client(client_fd);
         }
     }
 
