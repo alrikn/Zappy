@@ -33,19 +33,19 @@ void Player::move_forward(Server &server)
             break;
     }
     server.move_player(*this, new_x, new_y);
-    send_message("ok\n");
+    server.send_message_queue.add_message(server, control_fd, "ok\n", 7);
 }
 
-void Player::turn_right()
+void Player::turn_right(Server &server)
 {
     orientation = static_cast<orientation_t>((orientation + 1) % 4);
-    send_message("ok\n");
+    server.send_message_queue.add_message(server, control_fd, "ok\n", 7);
 }
 
-void Player::turn_left()
+void Player::turn_left(Server &server)
 {
     orientation = static_cast<orientation_t>((orientation + 3) % 4);
-    send_message("ok\n");
+    server.send_message_queue.add_message(server, control_fd, "ok\n", 7);
 }
 
 

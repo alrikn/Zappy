@@ -92,10 +92,7 @@ void Server::step_player_action(std::shared_ptr<Player> player)
     if (!player->busy && !player->in_incantation && !player->cmd_queue.empty()) {
         auto [verb, args] = player->cmd_queue.front();
         player->cmd_queue.pop_front();
-        if (verb == INCANTATION)
-            player->incantation_start(*this);
-        else
-            player->execute_command(verb, args, *this);
+        player->execute_command(verb, args, *this);
     }
 }
 

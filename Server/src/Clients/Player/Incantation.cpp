@@ -14,17 +14,15 @@
 #include <vector>
 
 /*
-ELEVATION REQUIREMENTS
-
-1->2 : 1 player, 1 linemate
-2->3 : 2 players, 1 linemate, 1 deraumere, 1 sibur
-3->4 : 2 players, 2 linemate, 1 sibur, 2 phiras
-4->5 : 4 players, 1 linemate, 1 deraumere, 2 sibur, 1 phiras
-5->6 : 4 players, 1 linemate, 2 deraumere, 1 sibur, 3 mendiane
-6->7 : 6 players, 1 linemate, 2 deraumere, 3 sibur, 1 phiras
-7->8 : 6 players, 2 linemate, 2 deraumere, 2 sibur, 2 mendiane, 2 phiras, 1 thystame
+** ELEVATION REQUIREMENTS
+** 1->2 : 1 player, 1 linemate
+** 2->3 : 2 players, 1 linemate, 1 deraumere, 1 sibur
+** 3->4 : 2 players, 2 linemate, 1 sibur, 2 phiras
+** 4->5 : 4 players, 1 linemate, 1 deraumere, 2 sibur, 1 phiras
+** 5->6 : 4 players, 1 linemate, 2 deraumere, 1 sibur, 3 mendiane
+** 6->7 : 6 players, 1 linemate, 2 deraumere, 3 sibur, 1 phiras
+** 7->8 : 6 players, 2 linemate, 2 deraumere, 2 sibur, 2 mendiane, 2 phiras, 1 thystame
 */
-
 static bool check_requirements(int level, int players, const Inventory &inv)
 {
     switch (level) {
@@ -133,7 +131,7 @@ bool Player::incantation_start(Server &server)
             players_at_level++;
 
     if (!check_requirements(level, players_at_level, tile.inventory)) {
-        send_message("ko\n");
+        server.send_message_queue.add_message(server, control_fd, "ko\n");
         return false;
     }
 
@@ -151,7 +149,7 @@ bool Player::incantation_start(Server &server)
             p->busy = true;
             p->running_cmd = {INCANTATION, {}};
             p->action_done_at = deadline;
-            p->send_message("Elevation underway\n");
+            server.send_message_queue.add_message(server, p->control_fd, "Elevation underway\n");
         }
     }
     return true;
@@ -169,6 +167,8 @@ void Player::incantation(Server &server)
 
     auto &tile = server._map[position[1]][position[0]];
 
+    //TODO: put incantation start here
+
     // gather participants still alive on tile
     std::vector<std::shared_ptr<Player>> participants;
     for (const auto &p : tile.players)
@@ -177,7 +177,7 @@ void Player::incantation(Server &server)
 
     if (!check_requirements(level, static_cast<int>(participants.size()), tile.inventory)) {
         for (const auto &p : participants) {
-            p->send_message("ko\n");
+            server.send_message_queue.add_message(server, p->control_fd, "ko\n");
             p->in_incantation = false;
         }
         return;
@@ -188,10 +188,11 @@ void Player::incantation(Server &server)
 
     consume_resources(tile.inventory, old_level);
 
+    std::string response = "Current level: " + std::to_string(new_level) + "\n";
     for (const auto &p : participants) {
         p->level = new_level;
         p->in_incantation = false;
-        p->send_message("Current level: " + std::to_string(new_level) + "\n");
+        server.send_message_queue.add_message(server, p->control_fd, response, 300);
     }
 
     //notify the gui that the incantation has finished

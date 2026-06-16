@@ -107,9 +107,7 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
     //first we check if team name is valid and if there is still a spot left in that team
     std::shared_ptr<Team> matched_team;
 
-    std::cout << "Client " << client_fd << " requested team: " << team_name << std::endl;
     for (const std::shared_ptr<Team> &team : teams) {
-        std::cout << "team :" << team->name << " spots left: " << team->spots_left << std::endl;
         if (team->name == team_name) {
             matched_team = team;
             break;
@@ -118,7 +116,6 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
     if (!matched_team || matched_team->spots_left <= 0)
         return nullptr;
     matched_team->spots_left--;
-    std::cout << "Client " << client_fd << " joined team: " << team_name << std::endl;
 
     // hatch from a forked egg if one exists, otherwise random spawn
     std::vector<int> position;
@@ -201,14 +198,12 @@ void Server::accept_new_client()
     int client_fd = accept(_server_fd, (struct sockaddr*)&client_addr, &client_len);
 
     add_fd(client_fd);
-    std::cout << "New client connected: " << client_fd << std::endl;
 
     //we now need to check if they are a gui or a player
     write(client_fd, "WELCOME\n", 8); //we send them the welcome message
     //now we wait for reply:
     std::string team_name = read_from_client(client_fd);
     if (team_name.empty()) {
-        std::cout << "Client " << client_fd << " disconnected before sending team name." << std::endl;
         remove_client(client_fd);
         return;
     }

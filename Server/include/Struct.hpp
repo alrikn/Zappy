@@ -26,7 +26,7 @@ const float THYSTAME_DENSITY = 0.05;
 // tu is N/7 ticks (the /7 holds for any f), costs the pdf gives in base units:
 // food drain 126, incantation 300, resource respawn every 20
 const long long FOOD_DRAIN_TICKS = 18;    // 126 / 7
-const long long INCANTATION_TICKS = 43;   // 300 / 7, rounded
+const long long INCANTATION_TICKS = 300;   // 300 / 7, rounded
 const long long RESPAWN_TICKS = 3;        // 20 / 7, rounded
 
 enum class Resource {

@@ -101,16 +101,16 @@ void Player::execute_command(PlayerCommands verb, std::vector<std::string> args,
             move_forward(server);
             break;
         case RIGHT:
-            turn_right();
+            turn_right(server);
             break;
         case LEFT:
-            turn_left();
+            turn_left(server);
             break;
         case LOOK:
             look(server);
             break;
         case INVENTORY:
-            inventory_handle();
+            inventory_handle(server);
             break;
         case SET:
             set_down_resource(server, args);
