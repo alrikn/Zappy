@@ -21,7 +21,13 @@ Player::Player(Subject &subject, int control_fd) :Client(PLAYER, subject, contro
     inventory.resources[static_cast<size_t>(Resource::Food)] = 10;
 }
 
+void Player::command_failed(Server &server, PlayerCommands verb)
+{
+    std::string response = "ko\n";
+    server.send_message_queue.add_message(server, control_fd, response);
 
+    std::cout << "Player " << player_id << " command failed: " << ClientCommandReverseMap.at(verb) << std::endl;
+}
 
 std::vector<std::tuple<std::string, int>> Player::give_resources_number(const Inventory &inventory)
 {

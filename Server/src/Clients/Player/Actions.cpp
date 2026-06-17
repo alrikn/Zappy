@@ -41,13 +41,13 @@ void Player::inventory_handle(Server &server)
 void Player::set_down_resource(Server &server, std::vector<std::string> args)
 {
     if (args.size() != 1) {
-        server.send_message_queue.add_message(server, control_fd, "ko\n");
+        command_failed(server, SET);
         return;
     }
 
     Resource resource = parse_resource(args[0]);
     if (inventory.resources[idx(resource)] <= 0) {
-        server.send_message_queue.add_message(server, control_fd, "ko\n");
+        command_failed(server, SET);
         return;
     }
 
@@ -57,7 +57,8 @@ void Player::set_down_resource(Server &server, std::vector<std::string> args)
     //notify the gui that a resource has been dropped on the tile
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
     if (!self) {
-        server.send_message_queue.add_message(server, control_fd, "ko\n");
+        command_failed(server, SET);
+        return;
         return;
     }
     server._gui_subject.Notify([self, resource](Client* c) {
@@ -69,14 +70,14 @@ void Player::set_down_resource(Server &server, std::vector<std::string> args)
 void Player::take_resource(Server &server, std::vector<std::string> args)
 {
     if (args.size() != 1) {
-        server.send_message_queue.add_message(server, control_fd, "ko\n");
+        command_failed(server, TAKE);
         return;
     }
 
     Resource resource = parse_resource(args[0]);
     auto &tile = server._map[position[1]][position[0]];
     if (tile.inventory.resources[idx(resource)] <= 0) {
-        server.send_message_queue.add_message(server, control_fd, "ko\n");
+        command_failed(server, TAKE);
         return;
     }
 
@@ -85,7 +86,7 @@ void Player::take_resource(Server &server, std::vector<std::string> args)
     //notify the gui that a resource has been taken from the tile
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
     if (!self) {
-        server.send_message_queue.add_message(server, control_fd, "ko\n");
+        command_failed(server, TAKE);
         return;
     }
     server._gui_subject.Notify([self, resource](Client* c) {
@@ -118,7 +119,7 @@ void Player::eject(Server &server)
     }
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
     if (!self) {
-        server.send_message_queue.add_message(server, control_fd, "ko\n");
+        command_failed(server, EJECT);
         return;
     }
     server._gui_subject.Notify([self](Client* c) {
@@ -161,7 +162,7 @@ static int broadcast_dir(int sx, int sy, int rx, int ry,
 void Player::broadcast(Server &server, std::vector<std::string> args)
 {
     if (args.empty()) {
-        send_message("ko\n");
+        command_failed(server, BROADCAST);
         return;
     }
     std::string text;
@@ -183,7 +184,7 @@ void Player::broadcast(Server &server, std::vector<std::string> args)
     //notify the gui that a broadcast has been sent
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
     if (!self) {
-        server.send_message_queue.add_message(server, control_fd, "ko\n");
+        command_failed(server, BROADCAST);
         return;
     }
     server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(BROADCAST));
@@ -205,7 +206,7 @@ void Player::fork(Server &server)
     //notify the gui that a new egg has been laid
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
     if (!self) {
-        server.send_message_queue.add_message(server, control_fd, "ko\n");
+        command_failed(server, FORK);
         return;
     }
     server._gui_subject.Notify([self](Client* c) {

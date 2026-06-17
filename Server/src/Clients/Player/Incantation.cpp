@@ -131,7 +131,7 @@ bool Player::incantation_start(Server &server)
             players_at_level++;
 
     if (!check_requirements(level, players_at_level, tile.inventory)) {
-        server.send_message_queue.add_message(server, control_fd, "ko\n");
+        command_failed(server, INCANTATION);
         return false;
     }
 
@@ -177,7 +177,7 @@ void Player::incantation(Server &server)
 
     if (!check_requirements(level, static_cast<int>(participants.size()), tile.inventory)) {
         for (const auto &p : participants) {
-            server.send_message_queue.add_message(server, p->control_fd, "ko\n");
+            command_failed(server, INCANTATION);
             p->in_incantation = false;
         }
         return;
