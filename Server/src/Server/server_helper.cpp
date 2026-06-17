@@ -165,6 +165,8 @@ std::shared_ptr<Gui> Server::create_gui(int client_fd)
 void Server::remove_client(int client_fd)
 {
     auto it = _clients.find(client_fd);
+
+    close(client_fd); //very important, because if we do not close somebody that has been accepted it leads to weird stuff
     if (it == _clients.end())
         return;
 
@@ -175,8 +177,6 @@ void Server::remove_client(int client_fd)
 
     _fds.erase(std::remove_if(_fds.begin(), _fds.end(),
         [client_fd](const pollfd &p) { return p.fd == client_fd; }), _fds.end());
-
-    close(client_fd);
 }
 
 void Server::add_client(std::shared_ptr<Client> client)
@@ -197,6 +197,11 @@ void Server::accept_new_client()
     //accept removes the request(client) from the queue
     //and a new socket is created, and from all this we got a  new file descriptor
     int client_fd = accept(_server_fd, (struct sockaddr*)&client_addr, &client_len);
+
+    if (client_fd < 0) {
+        perror("accept");
+        return;
+    }
 
     add_fd(client_fd);
 

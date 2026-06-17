@@ -47,7 +47,11 @@ void Server::handle_client_event(int client_fd)
     }
 
     std::shared_ptr<Client> client = _clients[client_fd];
-    client->ctrl_buffer.append(buf, n);
+    if (!client) {
+        std::cout << "Error: client not found for fd " << client_fd << std::endl;
+        return;
+    }
+    client->ctrl_buffer.append(buf, n); //we crash here if client is not in client map.
     pos = client->ctrl_buffer.find('\n');
     while (pos != std::string::npos) {
         std::string command = client->ctrl_buffer.substr(0, pos);
