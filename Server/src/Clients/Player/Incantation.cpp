@@ -7,7 +7,6 @@
 
 #include "Parse.hpp"
 #include "Player.hpp"
-#include "Server.hpp"
 #include <memory>
 #include <string>
 #include <sys/socket.h>
@@ -170,8 +169,6 @@ void Player::incantation_end(Server &server)
 
     auto &tile = server._map[position[1]][position[0]];
 
-    //TODO: put incantation start here
-
     // gather participants still alive on tile
     std::vector<std::shared_ptr<Player>> participants;
     for (const auto &p : tile.players)
@@ -180,8 +177,9 @@ void Player::incantation_end(Server &server)
 
     if (!check_requirements(level, static_cast<int>(participants.size()), tile.inventory)) {
         for (const auto &p : participants) {
-            command_failed(server, INCANTATION);
+            p->command_failed(server, INCANTATION);
             p->in_incantation = false;
+            p->busy = false;
         }
         return;
     }
