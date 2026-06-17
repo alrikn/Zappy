@@ -5,6 +5,7 @@
 ** Actions
 */
 
+#include "Parse.hpp"
 #include "Player.hpp"
 #include "Server.hpp"
 #include "Gui.hpp"
@@ -62,7 +63,7 @@ void Player::set_down_resource(Server &server, std::vector<std::string> args)
     server._gui_subject.Notify([self, resource](Client* c) {
         static_cast<Gui*>(c)->pdr(self, idx(resource));
     });
-    server.send_message_queue.add_message(server, control_fd, "ok\n", 7);
+    server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(SET));
 }
 
 void Player::take_resource(Server &server, std::vector<std::string> args)
@@ -90,7 +91,7 @@ void Player::take_resource(Server &server, std::vector<std::string> args)
     server._gui_subject.Notify([self, resource](Client* c) {
         static_cast<Gui*>(c)->pgt(self, idx(resource));
     });
-    server.send_message_queue.add_message(server, control_fd, "ok\n", 7);
+    server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(TAKE));
 }
 
 void Player::eject(Server &server)
@@ -123,7 +124,7 @@ void Player::eject(Server &server)
     server._gui_subject.Notify([self](Client* c) {
         static_cast<Gui*>(c)->pex(self);
     });
-    server.send_message_queue.add_message(server, control_fd, "ok\n", 7);
+    server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(EJECT));
 }
 
 // K (0-8): torus direction from receiver to sender in receiver's local frame
@@ -185,7 +186,7 @@ void Player::broadcast(Server &server, std::vector<std::string> args)
         server.send_message_queue.add_message(server, control_fd, "ko\n");
         return;
     }
-    server.send_message_queue.add_message(server, control_fd, "ok\n", 7);
+    server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(BROADCAST));
     server._gui_subject.Notify([self, &args](Client* c) {
         static_cast<Gui*>(c)->pbc(self, args[0]);
     });
@@ -210,7 +211,7 @@ void Player::fork(Server &server)
     server._gui_subject.Notify([self](Client* c) {
         static_cast<Gui*>(c)->pfk(self);
     });
-    server.send_message_queue.add_message(server, control_fd, "ok\n", 42);
+    server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(FORK));
 }
 
 void Player::connect_nbr(Server &server)
@@ -225,5 +226,5 @@ void Player::connect_nbr(Server &server)
         }
     }
     std::string response = std::to_string(slots_left) + "\n";
-    server.send_message_queue.add_message(server, control_fd, response);
+    server.send_message_queue.add_message(server, control_fd, response, ClientCommandDelayMap.at(CONNECT_NBR));
 }
