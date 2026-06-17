@@ -193,7 +193,8 @@ void Player::incantation_end(Server &server)
     for (const auto &p : participants) {
         p->level = new_level;
         p->in_incantation = false;
-        server.send_message_queue.add_message(server, p->control_fd, response, ClientCommandDelayMap.at(INCANTATION));
+        p->busy = false;
+        server.send_message_queue.add_message(server, p->control_fd, response); //since this is at the end of the incantation, we can send the message immediately
     }
 
     //notify the gui that the incantation has finished
