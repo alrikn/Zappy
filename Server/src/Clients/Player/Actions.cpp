@@ -210,7 +210,7 @@ void Player::fork(Server &server)
     server._gui_subject.Notify([self](Client* c) {
         static_cast<Gui*>(c)->pfk(self);
     });
-    server.send_message_queue.add_message(server, control_fd, "ok\n", 7);
+    server.send_message_queue.add_message(server, control_fd, "ok\n", 42);
 }
 
 void Player::connect_nbr(Server &server)
