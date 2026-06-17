@@ -22,9 +22,13 @@ void SendMessageQueue::add_message(Server &server, int client_fd,
 
 void SendMessageQueue::send_messages(long long current_tick)
 {
+    size_t write_size = 0;
     for (auto it = _messages.begin(); it != _messages.end();) {
         if (it->tick <= current_tick) {
-            write(it->client_fd, it->message.c_str(), it->message.length());
+            write_size = write(it->client_fd, it->message.c_str(), it->message.length());
+            if (write_size < it->message.length()) {
+                perror("write");
+            }
             it = _messages.erase(it);
         } else {
             it++;

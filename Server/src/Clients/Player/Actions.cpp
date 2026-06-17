@@ -179,13 +179,13 @@ void Player::broadcast(Server &server, std::vector<std::string> args)
                                p->orientation, W, H);
         p->send_message("message " + std::to_string(k) + ", " + text + "\n");
     }
-    server.send_message_queue.add_message(server, control_fd, "ok\n", 7);
     //notify the gui that a broadcast has been sent
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
     if (!self) {
         server.send_message_queue.add_message(server, control_fd, "ko\n");
         return;
     }
+    server.send_message_queue.add_message(server, control_fd, "ok\n", 7);
     server._gui_subject.Notify([self, &args](Client* c) {
         static_cast<Gui*>(c)->pbc(self, args[0]);
     });

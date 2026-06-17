@@ -27,7 +27,7 @@ SRC = main.cpp \
 OBJ = $(SRC:.cpp=.o)
 CXX = clang++
 CXXFLAGS = -std=c++20 -Wall -Wextra -g -O2 -fno-omit-frame-pointer
-CPPFLAGS = -I include -I include/Observer -I include/Client -I include/Map -I include/Team -I include/Queue -I include/Server -I include/Queue
+CPPFLAGS = -I include -I include/Observer -I include/Client -I include/Map -I include/Team -I include/Queue -I include/Server
 
 all: $(NAME)
 

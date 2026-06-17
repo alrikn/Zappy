@@ -169,6 +169,7 @@ void Server::remove_client(int client_fd)
         return;
 
     it->second->RemoveMeFromList();
+    send_message_queue.clear_messages_for_client(client_fd);
     free_team_slot(it->second);
     _clients.erase(it);
 
