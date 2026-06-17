@@ -37,6 +37,10 @@ $(NAME): $(OBJ)
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 
+#adding debug option for valgrind
+debug: CXXFLAGS = -std=c++20 -Wall -Wextra -g3 -O0 -fno-omit-frame-pointer
+debug: re
+
 clean:
 	rm -f $(OBJ) $(CONVERT_OBJ)
 
@@ -45,4 +49,4 @@ fclean: clean
 
 re: fclean all
 
-.PHONY: all clean fclean re
+.PHONY: all clean fclean re debug
