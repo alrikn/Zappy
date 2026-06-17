@@ -15,3 +15,7 @@ zappy_ai
 *.txt
 *.log
 *.json
+
+#this one is for pr issue
+
+ISSUES.md

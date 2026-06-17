@@ -16,7 +16,7 @@
 
 
 
-void Player::inventory_handle()
+void Player::inventory_handle(Server &server)
 {
     // protocol format: "[ food N, linemate N, ... thystame N ]\n"
     // space after [ and before ] so the AI parser's [1:]/[:-1] strips the spaces,
@@ -34,19 +34,19 @@ void Player::inventory_handle()
             response += ",";
     }
     response += " ]\n";
-    send_message(response);
+    server.send_message_queue.add_message(server, control_fd, response);
 }
 
 void Player::set_down_resource(Server &server, std::vector<std::string> args)
 {
     if (args.size() != 1) {
-        send_message("ko\n");
+        server.send_message_queue.add_message(server, control_fd, "ko\n");
         return;
     }
 
     Resource resource = parse_resource(args[0]);
     if (inventory.resources[idx(resource)] <= 0) {
-        send_message("ko\n");
+        server.send_message_queue.add_message(server, control_fd, "ko\n");
         return;
     }
 
@@ -56,26 +56,26 @@ void Player::set_down_resource(Server &server, std::vector<std::string> args)
     //notify the gui that a resource has been dropped on the tile
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
     if (!self) {
-        send_message("ko\n");
+        server.send_message_queue.add_message(server, control_fd, "ko\n");
         return;
     }
     server._gui_subject.Notify([self, resource](Client* c) {
         static_cast<Gui*>(c)->pdr(self, idx(resource));
     });
-    send_message("ok\n");
+    server.send_message_queue.add_message(server, control_fd, "ok\n", 7);
 }
 
 void Player::take_resource(Server &server, std::vector<std::string> args)
 {
     if (args.size() != 1) {
-        send_message("ko\n");
+        server.send_message_queue.add_message(server, control_fd, "ko\n");
         return;
     }
 
     Resource resource = parse_resource(args[0]);
     auto &tile = server._map[position[1]][position[0]];
     if (tile.inventory.resources[idx(resource)] <= 0) {
-        send_message("ko\n");
+        server.send_message_queue.add_message(server, control_fd, "ko\n");
         return;
     }
 
@@ -84,13 +84,13 @@ void Player::take_resource(Server &server, std::vector<std::string> args)
     //notify the gui that a resource has been taken from the tile
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
     if (!self) {
-        send_message("ko\n");
+        server.send_message_queue.add_message(server, control_fd, "ko\n");
         return;
     }
     server._gui_subject.Notify([self, resource](Client* c) {
         static_cast<Gui*>(c)->pgt(self, idx(resource));
     });
-    send_message("ok\n");
+    server.send_message_queue.add_message(server, control_fd, "ok\n", 7);
 }
 
 void Player::eject(Server &server)
@@ -117,13 +117,13 @@ void Player::eject(Server &server)
     }
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
     if (!self) {
-        send_message("ko\n");
+        server.send_message_queue.add_message(server, control_fd, "ko\n");
         return;
     }
     server._gui_subject.Notify([self](Client* c) {
         static_cast<Gui*>(c)->pex(self);
     });
-    send_message("ok\n");
+    server.send_message_queue.add_message(server, control_fd, "ok\n", 7);
 }
 
 // K (0-8): torus direction from receiver to sender in receiver's local frame
@@ -179,13 +179,13 @@ void Player::broadcast(Server &server, std::vector<std::string> args)
                                p->orientation, W, H);
         p->send_message("message " + std::to_string(k) + ", " + text + "\n");
     }
-    send_message("ok\n");
     //notify the gui that a broadcast has been sent
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
     if (!self) {
-        send_message("ko\n");
+        server.send_message_queue.add_message(server, control_fd, "ko\n");
         return;
     }
+    server.send_message_queue.add_message(server, control_fd, "ok\n", 7);
     server._gui_subject.Notify([self, &args](Client* c) {
         static_cast<Gui*>(c)->pbc(self, args[0]);
     });
@@ -201,16 +201,16 @@ void Player::fork(Server &server)
         team->spots_left++;
         break;
     }
-    send_message("ok\n");
     //notify the gui that a new egg has been laid
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
     if (!self) {
-        send_message("ko\n");
+        server.send_message_queue.add_message(server, control_fd, "ko\n");
         return;
     }
     server._gui_subject.Notify([self](Client* c) {
         static_cast<Gui*>(c)->pfk(self);
     });
+    server.send_message_queue.add_message(server, control_fd, "ok\n", 7);
 }
 
 void Player::connect_nbr(Server &server)
@@ -224,5 +224,6 @@ void Player::connect_nbr(Server &server)
             break;
         }
     }
-    send_message(std::to_string(slots_left) + "\n");
+    std::string response = std::to_string(slots_left) + "\n";
+    server.send_message_queue.add_message(server, control_fd, response);
 }

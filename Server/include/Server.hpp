@@ -11,6 +11,7 @@
 #include "Client.hpp"
 #include "Egg.hpp"
 #include "Gui.hpp"
+#include "SendMessageQueue.hpp"
 #include "Struct.hpp"
 #include "Player.hpp"
 #include "Team.hpp"
@@ -102,6 +103,9 @@ class Server
         int getMapHeight() const { return _map.size(); }
         std::vector<std::shared_ptr<Team>> getTeams() const { return teams; }
         long long getTimeUnit() const { return time_unit; }
+
+        /*queue for sending messages to clients*/
+        SendMessageQueue send_message_queue;
 
 
 };

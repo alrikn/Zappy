@@ -46,7 +46,7 @@ std::string Server::read_from_client(int client_fd)
         remove_client(client_fd);
         return "";
     }
-    buffer[n] = '\0'; // Null-terminate the string
+    buffer[n] = '\0';
     //now we remove any \r in the buffer, because the gui sends \r\n and we only want \n
     std::string new_buffer(buffer);
     std::string::size_type pos = 0;
