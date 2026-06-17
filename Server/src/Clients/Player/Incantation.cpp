@@ -133,6 +133,8 @@ bool Player::incantation_start(Server &server)
 
     if (!check_requirements(level, players_at_level, tile.inventory)) {
         command_failed(server, INCANTATION);
+        busy = false;
+        in_incantation = false;
         return false;
     }
 
