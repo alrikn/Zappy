@@ -86,11 +86,11 @@ void Server::step_player_action(std::shared_ptr<Player> player)
     //first we undo buisness if the player is not done
     if (player->busy && tick >= player->action_done_at) {
         player->busy = false;
-        player->in_incantation = false;
         std::cout << "player " << player->getId() << " no longer busy." << std::endl;
+        if (player->in_incantation) {
+            player->incantation_end(*this);
+        }
     }
-
-    //TODO: special logic for incantation
 
     //then we check if the player is free to execute a new command
     if (!player->busy && !player->cmd_queue.empty()) {

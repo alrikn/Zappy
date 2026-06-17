@@ -128,7 +128,7 @@ void Player::execute_command(PlayerCommands verb, std::vector<std::string> args,
             broadcast(server, args);
             break;
         case INCANTATION:
-            incantation(server);
+            incantation_start(server);
             break;
         case FORK:
             fork(server);

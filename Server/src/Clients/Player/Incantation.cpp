@@ -5,8 +5,8 @@
 ** Incantation
 */
 
+#include "Parse.hpp"
 #include "Player.hpp"
-#include "Server.hpp"
 #include <memory>
 #include <string>
 #include <sys/socket.h>
@@ -132,6 +132,8 @@ bool Player::incantation_start(Server &server)
 
     if (!check_requirements(level, players_at_level, tile.inventory)) {
         command_failed(server, INCANTATION);
+        busy = false;
+        in_incantation = false;
         return false;
     }
 
@@ -141,7 +143,7 @@ bool Player::incantation_start(Server &server)
         static_cast<Gui*>(c)->pic(self->level, server._map[self->position[1]][self->position[0]].players);
     });
 
-    long long deadline = server.tick + INCANTATION_TICKS; // long long to be safe idk maybe overkill
+    long long deadline = server.tick + ClientCommandDelayMap.at(INCANTATION);
 
     for (const auto &p : tile.players) {
         if (p->level == level) {
@@ -160,14 +162,12 @@ bool Player::incantation_start(Server &server)
 // if the check passes: consumes stones, levels up all participants, unfreezes
 // early returns if in_incantation is already false, means this participant was
 // already processed by the first participant's finish call in the same loop iteration
-void Player::incantation(Server &server)
+void Player::incantation_end(Server &server)
 {
     if (!in_incantation)
         return;
 
     auto &tile = server._map[position[1]][position[0]];
-
-    //TODO: put incantation start here
 
     // gather participants still alive on tile
     std::vector<std::shared_ptr<Player>> participants;
@@ -177,8 +177,9 @@ void Player::incantation(Server &server)
 
     if (!check_requirements(level, static_cast<int>(participants.size()), tile.inventory)) {
         for (const auto &p : participants) {
-            command_failed(server, INCANTATION);
+            p->command_failed(server, INCANTATION);
             p->in_incantation = false;
+            p->busy = false;
         }
         return;
     }
@@ -192,7 +193,8 @@ void Player::incantation(Server &server)
     for (const auto &p : participants) {
         p->level = new_level;
         p->in_incantation = false;
-        server.send_message_queue.add_message(server, p->control_fd, response, ClientCommandDelayMap.at(INCANTATION));
+        p->busy = false;
+        server.send_message_queue.add_message(server, p->control_fd, response); //since this is at the end of the incantation, we can send the message immediately
     }
 
     //notify the gui that the incantation has finished
