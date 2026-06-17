@@ -5,6 +5,7 @@
 ** main_loop
 */
 
+#include "Parse.hpp"
 #include "Server.hpp"
 #include "Struct.hpp"
 
@@ -79,20 +80,26 @@ void Server::drain_food(std::shared_ptr<Player> player,
     }
 }
 
-// finish a running incantation once its deadline tick is reached, then start the
-// next queued cmd, only the incantation is delayed (it arms a deadline in
-// incantation_start); every other cmd runs immediately
+// we check buisiness here.
 void Server::step_player_action(std::shared_ptr<Player> player)
 {
+    //first we undo buisness if the player is not done
     if (player->busy && tick >= player->action_done_at) {
         player->busy = false;
-        player->execute_command(player->running_cmd.first,
-            player->running_cmd.second, *this);
+        player->in_incantation = false;
+        std::cout << "player " << player->getId() << " no longer busy." << std::endl;
     }
-    if (!player->busy && !player->in_incantation && !player->cmd_queue.empty()) {
-        auto [verb, args] = player->cmd_queue.front();
+
+    //TODO: special logic for incantation
+
+    //then we check if the player is free to execute a new command
+    if (!player->busy && !player->cmd_queue.empty()) {
+        player->running_cmd = player->cmd_queue.front();
         player->cmd_queue.pop_front();
-        player->execute_command(verb, args, *this);
+        player->busy = true;
+        player->action_done_at = tick + ClientCommandDelayMap.at(player->running_cmd.first);
+        std::cout << "player " << player->getId() << " will be busy for " << ClientCommandDelayMap.at(player->running_cmd.first) << " ticks." << std::endl;
+        player->execute_command(player->running_cmd.first, player->running_cmd.second, *this);
     }
 }
 

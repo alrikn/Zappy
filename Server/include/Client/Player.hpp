@@ -102,6 +102,9 @@ std::vector<std::tuple<std::string, int>> give_resources_number(const Inventory&
         void eject(Server &server);
         void connect_nbr(Server &server);
 
+        //returns ko to the client and debug server.
+        void command_failed(Server &server, PlayerCommands verb);
+
         /*helper funcs for everybody*/
 
         int getId() const { return player_id; }

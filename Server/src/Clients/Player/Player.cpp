@@ -21,7 +21,13 @@ Player::Player(Subject &subject, int control_fd) :Client(PLAYER, subject, contro
     inventory.resources[static_cast<size_t>(Resource::Food)] = 10;
 }
 
+void Player::command_failed(Server &server, PlayerCommands verb)
+{
+    std::string response = "ko\n";
+    server.send_message_queue.add_message(server, control_fd, response);
 
+    std::cout << "Player " << player_id << " command failed: " << ClientCommandReverseMap.at(verb) << std::endl;
+}
 
 std::vector<std::tuple<std::string, int>> Player::give_resources_number(const Inventory &inventory)
 {
@@ -83,9 +89,6 @@ void Player::parse_command(const std::string raw, Server &server)
     while (ss >> arg) {
         args.push_back(arg);
     }
-    // frozen during incantation ritual: drop silently
-    if (in_incantation)
-        return;
     //subject: a client can buffer up to 10 requests, anything over is dropped
     //we only enqueue here, the game loop executes it once its time has elapsed
     if (cmd_queue.size() >= 10)
