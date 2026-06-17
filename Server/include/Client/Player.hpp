@@ -96,7 +96,7 @@ std::vector<std::tuple<std::string, int>> give_resources_number(const Inventory&
         void inventory_handle(Server &server);
         void set_down_resource(Server &server, std::vector<std::string> args);
         void take_resource(Server &server, std::vector<std::string> args);
-        void incantation(Server &server);
+        void incantation_end(Server &server);
         void broadcast(Server &server, std::vector<std::string> args);
         void fork(Server &server);
         void eject(Server &server);

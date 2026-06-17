@@ -5,6 +5,7 @@
 ** Incantation
 */
 
+#include "Parse.hpp"
 #include "Player.hpp"
 #include "Server.hpp"
 #include <memory>
@@ -141,7 +142,7 @@ bool Player::incantation_start(Server &server)
         static_cast<Gui*>(c)->pic(self->level, server._map[self->position[1]][self->position[0]].players);
     });
 
-    long long deadline = server.tick + INCANTATION_TICKS; // long long to be safe idk maybe overkill
+    long long deadline = server.tick + ClientCommandDelayMap.at(INCANTATION);
 
     for (const auto &p : tile.players) {
         if (p->level == level) {
@@ -160,7 +161,7 @@ bool Player::incantation_start(Server &server)
 // if the check passes: consumes stones, levels up all participants, unfreezes
 // early returns if in_incantation is already false, means this participant was
 // already processed by the first participant's finish call in the same loop iteration
-void Player::incantation(Server &server)
+void Player::incantation_end(Server &server)
 {
     if (!in_incantation)
         return;
