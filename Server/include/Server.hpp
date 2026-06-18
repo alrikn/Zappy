@@ -28,6 +28,8 @@ class Server
     private:
         /*client facing functions*/
         void accept_new_client();
+        void handle_pending_client(int client_fd);
+        void finalize_client(int client_fd, std::string team_name);
         void add_client(std::shared_ptr<Client> client);
         void remove_client(int client_fd);
         void handle_client_event(int client_fd);
@@ -78,6 +80,7 @@ class Server
         //TODO: there might be a need to make its a shared ptr
         std::vector<std::vector<Tiles>> _map; //map of the game, each cell is like an inventory since it coins resources on that cell
         std::unordered_map<int, std::shared_ptr<Client>> _clients; //map of all connected clients, keyed by client fd
+        std::unordered_map<int, std::string> _pending_clients; //fds that sent WELCOME but haven't sent their team name yet
         long long time_unit = 1000;
         long long tick = 0;
         long long _last_respawn_tick = 0; //tick of the most recent resource respawn

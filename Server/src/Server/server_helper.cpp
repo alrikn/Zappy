@@ -187,47 +187,58 @@ void Server::add_client(std::shared_ptr<Client> client)
 
 void Server::accept_new_client()
 {
-    //whats going on:
-    //Takes the first waiting client from the queue
-    //Creates a new socket dedicated to that client
-    //Returns a new file descriptor
     sockaddr_in client_addr;
     socklen_t client_len = sizeof(client_addr);
 
-    //accept removes the request(client) from the queue
-    //and a new socket is created, and from all this we got a  new file descriptor
     int client_fd = accept(_server_fd, (struct sockaddr*)&client_addr, &client_len);
-
     if (client_fd < 0) {
         perror("accept");
         return;
     }
 
     add_fd(client_fd);
+    write(client_fd, "WELCOME\n", 8);
+    _pending_clients[client_fd] = "";
+}
 
-    //we now need to check if they are a gui or a player
-    write(client_fd, "WELCOME\n", 8); //we send them the welcome message
-    //now we wait for reply:
-    std::string team_name = read_from_client(client_fd);
-    if (team_name.empty()) {
+void Server::handle_pending_client(int client_fd)
+{
+    char buf[4096];
+    ssize_t n = read(client_fd, buf, sizeof(buf));
+    if (n <= 0) {
+        _pending_clients.erase(client_fd);
         remove_client(client_fd);
         return;
     }
-    if (strcmp(team_name.c_str(), "GRAPHIC\n") == 0) {
+
+    _pending_clients[client_fd].append(buf, n);
+
+    size_t pos = _pending_clients[client_fd].find('\n');
+    if (pos == std::string::npos)
+        return;
+
+    std::string team_name = _pending_clients[client_fd].substr(0, pos + 1);
+    _pending_clients.erase(client_fd);
+
+    //strip \r\n to normalise
+    while (!team_name.empty() && (team_name.back() == '\n' || team_name.back() == '\r'))
+        team_name.pop_back();
+
+    finalize_client(client_fd, team_name);
+}
+
+void Server::finalize_client(int client_fd, std::string team_name)
+{
+    if (team_name == "GRAPHIC") {
         std::shared_ptr<Gui> gui = create_gui(client_fd);
         add_client(gui);
     } else {
-        //they are a player, we need to check if the team they want is a valid one, and if there is still a spot left in that team
-        team_name.pop_back(); //remove the newline character
         std::shared_ptr<Player> player = create_player(client_fd, team_name);
         if (player) {
             add_client(player);
         } else {
-            //invalid team or no spot left, we disconnect the client
-            //write(client_fd, "ko\n", 3);
             remove_client(client_fd);
         }
     }
-
 }
 

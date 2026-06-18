@@ -72,7 +72,10 @@ void Server::handle_event()
             accept_new_client();
         } else {
             size_t prev_size = _fds.size();
-            handle_client_event(_fds[i].fd);
+            if (_pending_clients.count(_fds[i].fd))
+                handle_pending_client(_fds[i].fd);
+            else
+                handle_client_event(_fds[i].fd);
             if (_fds.size() < prev_size && i > 0)
                 i--; // fd was removed during handling, recheck this index
         }
