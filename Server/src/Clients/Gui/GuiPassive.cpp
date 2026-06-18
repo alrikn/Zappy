@@ -19,7 +19,7 @@ void Gui::pnw(std::shared_ptr<Player> player)
 {
     std::string result = "pnw";
 
-    result += " " + std::to_string(player->getId());
+    result += " #" + std::to_string(player->getId());
     result += " " + std::to_string(player->getX());
     result += " " + std::to_string(player->getY());
     result += " " + std::to_string(player->getOrientation());
@@ -35,7 +35,7 @@ void Gui::pex(std::shared_ptr<Player> player)
 {
     std::string result = "pex";
 
-    result += " " + std::to_string(player->getId());
+    result += " #" + std::to_string(player->getId());
     result += "\n";
     send_message(result);
 }
@@ -46,7 +46,7 @@ void Gui::pbc(std::shared_ptr<Player> player, std::string message)
 {
     std::string result = "pbc";
 
-    result += " " + std::to_string(player->getId());
+    result += " #" + std::to_string(player->getId());
     result += " " + message;
     result += "\n";
     send_message(result);
@@ -66,7 +66,7 @@ void Gui::pic(int incantaion_level, std::vector<std::shared_ptr<Player>> players
     result += " " + std::to_string(players[0]->getY());
     result += " " + std::to_string(incantaion_level);
     for (const auto& player : players) {
-        result += " " + std::to_string(player->getId());
+        result += " #" + std::to_string(player->getId());
     }
     result += "\n";
     send_message(result);
@@ -91,7 +91,7 @@ void Gui::pfk(std::shared_ptr<Player> player)
 {
     std::string result = "pfk";
 
-    result += " " + std::to_string(player->getId());
+    result += " #" + std::to_string(player->getId());
     result += "\n";
     send_message(result);
 }
@@ -102,7 +102,7 @@ void Gui::pdr(std::shared_ptr<Player> player, int resource_type)
 {
     std::string result = "pdr";
 
-    result += " " + std::to_string(player->getId());
+    result += " #" + std::to_string(player->getId());
     result += " " + std::to_string(resource_type);
     result += "\n";
     send_message(result);
@@ -114,7 +114,7 @@ void Gui::pgt(std::shared_ptr<Player> player, int resource_type)
 {
     std::string result = "pgt";
 
-    result += " " + std::to_string(player->getId());
+    result += " #" + std::to_string(player->getId());
     result += " " + std::to_string(resource_type);
     result += "\n";
     send_message(result);
@@ -126,7 +126,7 @@ void Gui::pdi(std::shared_ptr<Player> player)
 {
     std::string result = "pdi";
 
-    result += " " + std::to_string(player->getId());
+    result += " #" + std::to_string(player->getId());
     result += "\n";
     send_message(result);
 }
@@ -137,7 +137,7 @@ void Gui::enw(std::shared_ptr<Player> player, int egg_id)
 {
     std::string result = "enw";
 
-    result += " " + std::to_string(player->getId());
+    result += " #" + std::to_string(player->getId());
     result += " " + std::to_string(egg_id);
     result += " " + std::to_string(player->getX());
     result += " " + std::to_string(player->getY());
