@@ -234,11 +234,10 @@ void Server::finalize_client(int client_fd, std::string team_name)
         add_client(gui);
     } else {
         std::shared_ptr<Player> player = create_player(client_fd, team_name);
-        if (player) {
+        if (player)
             add_client(player);
-        } else {
+        else
             remove_client(client_fd);
-        }
     }
 }
 
