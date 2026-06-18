@@ -26,8 +26,8 @@ private:
     static constexpr int SUBDIVISIONS_PER_TILE = 2; ///< Mesh subdivisions per tile.
     static constexpr int MAX_SUBDIVISIONS = 200;    ///< Clamp for very large maps.
 
-    int _gridWidth = 20;  ///< Map width in tiles, set by set_grid_size().
-    int _gridHeight = 20; ///< Map height in tiles, set by set_grid_size().
+    int _gridWidth = 50;  ///< Map width in tiles, set by set_grid_size().
+    int _gridHeight = 50; ///< Map height in tiles, set by set_grid_size().
 
     Ref<FastNoiseLite> noise; ///< Noise source for terrain displacement; may be null (flat terrain).
     double height = 64.0;     ///< Vertical scale applied to the noise sample.

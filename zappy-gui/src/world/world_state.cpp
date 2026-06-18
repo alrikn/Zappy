@@ -77,10 +77,13 @@ void WorldState::apply(const ServerMessage& msg)
     }, msg);
 }
 
-const world_types::Player* WorldState::find_player(uint32_t id) const noexcept
+std::optional<std::reference_wrapper<const world_types::Player>> WorldState::find_player(uint32_t id) const noexcept
 {
     const auto it = _players.find(id);
-    return it != _players.end() ? &it->second : nullptr;
+    if (it == _players.end()) {
+        return std::nullopt;
+    }
+    return std::cref(it->second);
 }
 
 /**

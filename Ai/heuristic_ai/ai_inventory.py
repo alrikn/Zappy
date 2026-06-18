@@ -16,32 +16,20 @@ class InventoryMixin:
     """inventory / incantation reasoning (uses the POOLED team inventory)"""
 
     def check_incantation(self) -> bool:
-        """can the team (pooled) elevate the current level once we add the object we
-        just picked up to the shared total?"""
+        """can this bot solo elevate? fires only when own inventory has all needed stones
+        parse_inventory already ran at step 0 so self.inventory is current, no +1 needed"""
         required = LVLS[self.level].copy()
-        inventory = {}
-        if "total" in self.shared_inventory:
-            inventory = self.shared_inventory["total"].copy()
-        if self.to_search in inventory:
-            inventory[self.to_search] += 1
-        else:
-            inventory[self.to_search] = 1
         for k in required:
-            if required[k] > inventory.get(k, 0):
+            if required[k] > self.inventory.get(k, 0):
                 return False
         return True
 
     def search_good_ressources(self) -> str:
-        """pick a stone the TEAM still needs (so gatherers spread out), food if none"""
+        """pick a stone tihs bot still needs to solo declare; food when the bot has all"""
         required = LVLS[self.level].copy()
         liste = []
-        if "total" in self.shared_inventory:
-            inventory = self.shared_inventory["total"].copy()
-        else:
-            inventory = {r: 0 for r in RESOURCES}
-            inventory["food"] = 0
         for k in required:
-            if k not in inventory or required[k] > inventory[k]:
+            if required[k] > self.inventory.get(k, 0):
                 liste.append(k)
         if not liste:
             return "food"

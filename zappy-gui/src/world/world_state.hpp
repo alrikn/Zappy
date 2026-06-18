@@ -19,6 +19,8 @@
 #include "world/world_types.hpp"
 
 #include <cstdint>
+#include <functional>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -61,8 +63,8 @@ public:
     [[nodiscard]] bool is_game_over() const noexcept { return _gameOver; }
     [[nodiscard]] const std::string& winning_team() const noexcept { return _winningTeam; }
 
-    /// Look up a single player by id. Returns nullptr if not found.
-    [[nodiscard]] const world_types::Player* find_player(uint32_t id) const noexcept;
+    /// Look up a single player by id. Returns nullopt if not found.
+    [[nodiscard]] std::optional<std::reference_wrapper<const world_types::Player>> find_player(uint32_t id) const noexcept;
 
 private:
     uint32_t _width{0};  ///< Map width in tiles; set by onMapSize().
