@@ -76,7 +76,7 @@ void Gui::ppo(Server &server, std::vector<std::string> args)
         if (client->get_type() == client_type::PLAYER) {
             auto player = std::dynamic_pointer_cast<Player>(client);
             if (player->getId() == player_id) {
-                std::string result = "ppo " + std::to_string(player_id) + " " + std::to_string(player->position[0]) + " " + std::to_string(player->position[1]) + " " + std::to_string(static_cast<int>(player->orientation)) + "\n";
+                std::string result = "ppo #" + std::to_string(player_id) + " " + std::to_string(player->position[0]) + " " + std::to_string(player->position[1]) + " " + std::to_string(static_cast<int>(player->orientation)) + "\n";
                 send_message(result);
                 return;
             }
@@ -97,7 +97,7 @@ void Gui::plv(Server &server, std::vector<std::string> args)
         if (client->get_type() == client_type::PLAYER) {
             auto player = std::dynamic_pointer_cast<Player>(client);
             if (player->getId() == player_id) {
-                std::string result = "plv " + std::to_string(player_id) + " " + std::to_string(player->level) + "\n";
+                std::string result = "plv #" + std::to_string(player_id) + " " + std::to_string(player->level) + "\n";
                 send_message(result);
                 return;
             }
@@ -118,7 +118,7 @@ void Gui::pin(Server &server, std::vector<std::string> args)
         if (client->get_type() == client_type::PLAYER) {
             auto player = std::dynamic_pointer_cast<Player>(client);
             if (player->getId() == player_id) {
-                std::string result = "pin " + std::to_string(player_id) + " " + std::to_string(player->position[0]) + " " + std::to_string(player->position[1]);
+                std::string result = "pin #" + std::to_string(player_id) + " " + std::to_string(player->position[0]) + " " + std::to_string(player->position[1]);
                 for (size_t i = 0; i < static_cast<size_t>(Resource::Count); i++) {
                     result += " " + std::to_string(player->inventory.resources[i]);
                 }
