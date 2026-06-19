@@ -23,7 +23,7 @@ def test_graphical(socket_file):
         if not response:
             break
         # print the response to a file called "graphical_test_output.txt"
-        with open("graphical_test_output.txt", "a") as f:
+        with open("our_server_output.txt", "a") as f:
             f.write(response)
         time.sleep(0.01)
 
