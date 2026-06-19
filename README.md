@@ -9,7 +9,7 @@ To test the AI with the reference server, open **3 separate terminals** and run:
 **Terminal 1 — Server:**
 
 ```bash
-./zappy_ref-v3.0.1/linux/zappy_server -p 4242 -x 20 -y 20 -n team1 -c 6 -f 100 --auto-start on </dev/null
+./Server/zappy_server -p 4242 -x 20 -y 20 -n team1 -c 6 -f 100
 ```
 
 **Terminal 2 — GUI:**
@@ -21,7 +21,7 @@ To test the AI with the reference server, open **3 separate terminals** and run:
 **Terminal 3 — AI** (launch ONE, it self-replicates to a full team of 6 via forking):
 
 ```bash
-./Ai/zappy_ai -p 4242 -n team1 -h localhost
+./Ai/zappy_ai -p 4242 -n team1 -h localhost 2>&1
 ```
 
 to kill the process

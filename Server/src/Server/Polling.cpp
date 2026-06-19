@@ -19,7 +19,7 @@ Server::Server(int port_number,
             int num_client_per_team,
             long long trantorian_time_unit)
 {
-    this->time_unit = (7.0 / trantorian_time_unit) * 1000; //that just how the pdf want it, divide by 1000 to make milliseconds
+    this->time_unit = (7.0 / trantorian_time_unit) * 1000; //that just how the pdf want it, divide by 1000 to make mlseconds
 
     std::cout << "time unit: " << time_unit << std::endl;
     this->tick = 0;
@@ -32,6 +32,7 @@ Server::Server(int port_number,
     }
     _server_fd = set_up_server_socket(_port);
     add_fd(_server_fd);
+    populate_map_resources(); //seed the floor so the map isnt empty at startup
 }
 
 void Server::handle_client_event(int client_fd)
@@ -46,12 +47,16 @@ void Server::handle_client_event(int client_fd)
     }
 
     std::shared_ptr<Client> client = _clients[client_fd];
-    client->ctrl_buffer.append(buf, n);
+    if (!client) {
+        std::cout << "Error: client not found for fd " << client_fd << std::endl;
+        return;
+    }
+    client->ctrl_buffer.append(buf, n); //we crash here if client is not in client map.
     pos = client->ctrl_buffer.find('\n');
     while (pos != std::string::npos) {
         std::string command = client->ctrl_buffer.substr(0, pos);
         client->ctrl_buffer.erase(0, pos + 1);
-        // Process the command
+        // process the cmd
         client->parse_command(command, *this);
         pos = client->ctrl_buffer.find('\n');
     }
@@ -67,7 +72,10 @@ void Server::handle_event()
             accept_new_client();
         } else {
             size_t prev_size = _fds.size();
-            handle_client_event(_fds[i].fd);
+            if (_pending_clients.count(_fds[i].fd))
+                handle_pending_client(_fds[i].fd);
+            else
+                handle_client_event(_fds[i].fd);
             if (_fds.size() < prev_size && i > 0)
                 i--; // fd was removed during handling, recheck this index
         }
@@ -86,4 +94,3 @@ void Server::poll_clients(int timeout)
     }
     handle_event(); //handle events gets called if poll detected smth
 }
-

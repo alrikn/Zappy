@@ -42,6 +42,37 @@ const std::unordered_map<std::string, PlayerCommands> ClientCommandMap = {
     {"Incantation", INCANTATION},
 };
 
+const std::unordered_map<PlayerCommands, std::string> ClientCommandReverseMap = {
+    {FORWARD, "Forward"},
+    {RIGHT, "Right"},
+    {LEFT, "Left"},
+    {LOOK, "Look"},
+    {INVENTORY, "Inventory"},
+    {BROADCAST, "Broadcast"},
+    {CONNECT_NBR, "Connect_nbr"},
+    {FORK, "Fork"},
+    {EJECT, "Eject"},
+    {TAKE, "Take"},
+    {SET, "Set"},
+    {INCANTATION, "Incantation"}
+};
+
+//some player commands have a delay, so we need to define a delay map
+const std::unordered_map<PlayerCommands, int> ClientCommandDelayMap = {
+    {FORWARD, 7},
+    {RIGHT, 7},
+    {LEFT, 7},
+    {LOOK, 7},
+    {INVENTORY, 1},
+    {BROADCAST, 7},
+    {CONNECT_NBR, 0},
+    {FORK, 42},
+    {EJECT, 7},
+    {TAKE, 7},
+    {SET, 7},
+    {INCANTATION, 300}
+};
+
 //Commands that the GUI can send to the server
 enum GuiCommands {
     MSZ, //map size

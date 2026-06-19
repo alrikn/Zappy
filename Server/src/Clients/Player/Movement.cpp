@@ -33,19 +33,19 @@ void Player::move_forward(Server &server)
             break;
     }
     server.move_player(*this, new_x, new_y);
-    send_message("ok\n");
+    server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(FORWARD));
 }
 
-void Player::turn_right()
+void Player::turn_right(Server &server)
 {
     orientation = static_cast<orientation_t>((orientation + 1) % 4);
-    send_message("ok\n");
+    server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(RIGHT));
 }
 
-void Player::turn_left()
+void Player::turn_left(Server &server)
 {
     orientation = static_cast<orientation_t>((orientation + 3) % 4);
-    send_message("ok\n");
+    server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(LEFT));
 }
 
 
@@ -124,9 +124,9 @@ void Player::look(Server &server)
     for (size_t i = 0; i < response_parts.size(); i++) {
         final_response += response_parts[i];
         if (i != response_parts.size() - 1) {
-            final_response += ",";
+            final_response += ", ";
         }
     }
     final_response += "]\n";
-    send_message(final_response);
+    server.send_message_queue.add_message(server, control_fd, final_response, ClientCommandDelayMap.at(LOOK));
 }
