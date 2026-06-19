@@ -38,13 +38,13 @@ void Player::move_forward(Server &server)
 
 void Player::turn_right(Server &server)
 {
-    orientation = static_cast<orientation_t>((orientation + 1) % 4);
+    orientation = static_cast<orientation_t>((orientation % 4) + 1);
     server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(RIGHT));
 }
 
 void Player::turn_left(Server &server)
 {
-    orientation = static_cast<orientation_t>((orientation + 3) % 4);
+    orientation = static_cast<orientation_t>((orientation + 2) % 4 + 1);
     server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(LEFT));
 }
 
@@ -71,7 +71,7 @@ void Player::look(Server &server)
 
     std::vector<std::vector<int>> tiles_to_look_at;
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 1; i < 5; i++) { //cus direction now starts at 1
         for (int j = -i; j <= i; j++) {
             int tile_x, tile_y;
             switch (orientation) {
@@ -91,6 +91,8 @@ void Player::look(Server &server)
                     tile_x = (position[0] - i + server.getMapWidth()) % server.getMapWidth();
                     tile_y = (position[1] + j + server.getMapHeight()) % server.getMapHeight();
                     break;
+                default:
+                    throw std::runtime_error("Invalid orientation");
             }
             tiles_to_look_at.push_back({tile_x, tile_y});
         }

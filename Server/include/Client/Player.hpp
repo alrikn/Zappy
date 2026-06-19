@@ -47,7 +47,7 @@ std::vector<std::tuple<std::string, int>> give_resources_number(const Inventory&
         /*variables that are needed for the player*/
 
         std::array<int, 2> position; //x and y position of the player on the map
-        orientation_t orientation; //the direction the player is facing (0 = north, 1 = east, 2 = south, 3 = west)
+        orientation_t orientation = NORTH; //the direction the player is facing (0 = north, 1 = east, 2 = south, 3 = west)
         int level = 1; //the level of the player
         std::string team_name; //the name of the team the player belongs to
         Inventory inventory; //the inventory of the player, it contains the number of each resource the player has
