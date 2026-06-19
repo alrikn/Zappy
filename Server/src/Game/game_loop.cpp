@@ -73,6 +73,9 @@ void Server::drain_food(std::shared_ptr<Player> player,
         if (player->inventory.resources[static_cast<size_t>(Resource::Food)] > 0) {
             player->inventory.resources[static_cast<size_t>(Resource::Food)]--;
             player->next_food_at += FOOD_DRAIN_TICKS;
+            _gui_subject.Notify([player, this](Client* c) {
+                static_cast<Gui*>(c)->pin(*this, {std::to_string(player->getId())});
+            });
         } else {
             to_kill.push_back(player);
             break;
@@ -141,6 +144,7 @@ void Server::run()
             poll_clients(timeout); //blocks until socket activity or the next tick is due
         } catch (const std::exception &e) {
             std::cerr << "Error during poll_clients: " << e.what() << std::endl;
+            throw e; //for for testing purposes
             continue;
         }
 

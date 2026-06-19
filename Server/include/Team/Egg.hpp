@@ -27,6 +27,11 @@ class Egg
         std::string team_name;
         std::vector<int> position;
 
+        /*getters*/
+        int getId() const { return id; }
+        std::string getTeamName() const { return team_name; }
+        std::vector<int> getPosition() const { return position; }
+
 };
 
 

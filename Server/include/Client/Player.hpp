@@ -51,6 +51,7 @@ std::vector<std::tuple<std::string, int>> give_resources_number(const Inventory&
         int level = 1; //the level of the player
         std::string team_name; //the name of the team the player belongs to
         Inventory inventory; //the inventory of the player, it contains the number of each resource the player has
+        int parent_egg_id = -1; //the id of the egg that the player was born from, -1 if the player was not born from an egg
 
         //buffered commands waiting to be executed (subject: up to 10, FIFO), a
         //command is received/validated here but only executed by the game loop
