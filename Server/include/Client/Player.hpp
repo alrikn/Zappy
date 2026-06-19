@@ -21,10 +21,10 @@
 #include <vector>
 
 typedef enum orientation{
-    NORTH = 0,
-    EAST = 1,
-    SOUTH = 2,
-    WEST = 3
+    NORTH = 1,
+    EAST = 2,
+    SOUTH = 3,
+    WEST = 4
 } orientation_t;
 
 class Subject;
