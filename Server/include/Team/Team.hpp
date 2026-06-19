@@ -8,7 +8,10 @@
 #ifndef INCLUDED_TEAM_HPP
     #define INCLUDED_TEAM_HPP
 
+#include "Egg.hpp"
 #include <iostream>
+#include <memory>
+#include <vector>
 
 class Team
 {
@@ -22,8 +25,9 @@ class Team
         }
         ~Team() = default;
 
-        int spots_left; //the number of players that can still join the team, if it reaches 0 no more players can join the team
-        std::string name; //the name of the team
+        int spots_left;
+        std::string name;
+        std::vector<std::shared_ptr<Egg>> eggs;
 
 };
 
