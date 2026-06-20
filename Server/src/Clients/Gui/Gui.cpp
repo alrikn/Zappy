@@ -44,6 +44,7 @@ void Gui::parse_command(const std::string raw, Server &server)
         send_message("suc\n");
         return;
     }
+    std::cout << "GUI command received: " << verb << std::endl;
     std::vector<std::string> args;
     std::string arg;
     while (ss >> arg) {

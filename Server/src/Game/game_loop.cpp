@@ -89,7 +89,6 @@ void Server::step_player_action(std::shared_ptr<Player> player)
     //first we undo buisness if the player is not done
     if (player->busy && tick >= player->action_done_at) {
         player->busy = false;
-        std::cout << "player " << player->getId() << " no longer busy." << std::endl;
         if (player->in_incantation) {
             player->incantation_end(*this);
         }
@@ -101,7 +100,6 @@ void Server::step_player_action(std::shared_ptr<Player> player)
         player->cmd_queue.pop_front();
         player->busy = true;
         player->action_done_at = tick + ClientCommandDelayMap.at(player->running_cmd.first);
-        std::cout << "player " << player->getId() << " will be busy for " << ClientCommandDelayMap.at(player->running_cmd.first) << " ticks." << std::endl;
         player->execute_command(player->running_cmd.first, player->running_cmd.second, *this);
     }
 }
