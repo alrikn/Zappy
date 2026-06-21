@@ -11,6 +11,7 @@
 #include "Client.hpp"
 #include "Egg.hpp"
 #include "Gui.hpp"
+#include "SendMessageQueue.hpp"
 #include "Struct.hpp"
 #include "Player.hpp"
 #include "Team.hpp"
@@ -21,18 +22,20 @@
 #include <vector>
 #include <netinet/in.h>
 #include <sys/poll.h>
-#include <memory>
 
 class Server
 {
     private:
         /*client facing functions*/
         void accept_new_client();
+        void handle_pending_client(int client_fd);
+        void finalize_client(int client_fd, std::string team_name);
         void add_client(std::shared_ptr<Client> client);
         void remove_client(int client_fd);
         void handle_client_event(int client_fd);
         void handle_event();
         void free_team_slot(std::shared_ptr<Client> client);
+        std::string read_from_client(int client_fd);
         /*server setup functions*/
         int create_server_socket();
         sockaddr_in bind_socket(int port, int server_fd);
@@ -44,10 +47,15 @@ class Server
         void poll_clients(int timeout);
         std::shared_ptr<Player> create_player(int client_fd, std::string team_name);
         std::shared_ptr<Gui> create_gui(int client_fd);
-
-
         void populate_map_resources();
         void game_tick();
+        void advance_game();
+        // advance_game helpers, split out so each does one thing (see game_loop.cpp)
+        void respawn_resources();
+        void drain_food(std::shared_ptr<Player> player,
+            std::vector<std::shared_ptr<Player>> &to_kill);
+        void step_player_action(std::shared_ptr<Player> player);
+        void kill_player(std::shared_ptr<Player> player);
 
         /*observer behavioral pattern functions*/
         void attach(Client *client);
@@ -72,8 +80,10 @@ class Server
         //TODO: there might be a need to make its a shared ptr
         std::vector<std::vector<Tiles>> _map; //map of the game, each cell is like an inventory since it coins resources on that cell
         std::unordered_map<int, std::shared_ptr<Client>> _clients; //map of all connected clients, keyed by client fd
-        long long time_unit = 1000; //time unit in milliseconds (how long between each tick)
-        long long tick = 0; //the current tick of the game, starts at 0 and increments by 1 every time_unit milliseconds
+        std::unordered_map<int, std::string> _pending_clients; //fds that sent WELCOME but haven't sent their team name yet
+        long long time_unit = 1000;
+        long long tick = 0;
+        long long _last_respawn_tick = 0; //tick of the most recent resource respawn
 
         std::vector<std::shared_ptr<Team>> teams; //the teams of the game.
 
@@ -90,11 +100,15 @@ class Server
         /*client helper functions*/
 
         void move_player(Player &player, int x, int y);
+        void notify_gui(const std::string &message);
 
         int getMapWidth() const { return _map[0].size(); }
         int getMapHeight() const { return _map.size(); }
         std::vector<std::shared_ptr<Team>> getTeams() const { return teams; }
         long long getTimeUnit() const { return time_unit; }
+
+        /*queue for sending messages to clients*/
+        SendMessageQueue send_message_queue;
 
 
 };

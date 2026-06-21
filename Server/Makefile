@@ -15,8 +15,10 @@ SRC = main.cpp \
 	src/Clients/Player/Incantation.cpp \
 	src/Clients/Gui/Gui.cpp \
 	src/Clients/Gui/GuiCommands.cpp \
+	src/Clients/Gui/GuiPassive.cpp \
 	src/Game/game_loop.cpp \
 	src/Game/Tiles.cpp \
+	src/Queue/Queue.cpp \
 	src/Server/Polling.cpp \
 	src/Server/server_helper.cpp \
 	src/Server/client_helpers.cpp \
@@ -25,7 +27,7 @@ SRC = main.cpp \
 OBJ = $(SRC:.cpp=.o)
 CXX = clang++
 CXXFLAGS = -std=c++20 -Wall -Wextra -g -O2 -fno-omit-frame-pointer
-CPPFLAGS = -I include -I include/Observer -I include/Client -I include/Map -I include/Team
+CPPFLAGS = -I include -I include/Observer -I include/Client -I include/Map -I include/Team -I include/Queue -I include/Server
 
 all: $(NAME)
 
@@ -35,6 +37,10 @@ $(NAME): $(OBJ)
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 
+#adding debug option for valgrind
+debug: CXXFLAGS = -std=c++20 -Wall -Wextra -g3 -O0 -fno-omit-frame-pointer
+debug: re
+
 clean:
 	rm -f $(OBJ) $(CONVERT_OBJ)
 
@@ -43,4 +49,4 @@ fclean: clean
 
 re: fclean all
 
-.PHONY: all clean fclean re
+.PHONY: all clean fclean re debug
