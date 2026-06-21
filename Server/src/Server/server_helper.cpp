@@ -5,6 +5,7 @@
 ** server_helper
 */
 
+#include "Gui.hpp"
 #include "Player.hpp"
 #include "Server.hpp"
 #include <algorithm>
@@ -238,10 +239,19 @@ void Server::finalize_client(int client_fd, std::string team_name)
         add_client(gui);
     } else {
         std::shared_ptr<Player> player = create_player(client_fd, team_name);
-        if (player)
-            add_client(player);
-        else
+        if (player) {
+            int egg_id = player->parent_egg_id;
+            add_client(player); // must be in _clients before pin searches for it
+            _gui_subject.Notify([player, egg_id, this](Client* c) {
+                auto gui = static_cast<Gui*>(c);
+                gui->pnw(player);
+                gui->pin(*this, {std::to_string(player->getId())});
+                if (egg_id != -1)
+                    gui->ebo(egg_id);
+            });
+        } else {
             remove_client(client_fd);
+        }
     }
 }
 

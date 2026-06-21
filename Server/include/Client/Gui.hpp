@@ -59,6 +59,8 @@ class Gui : public Client
         void pdr(std::shared_ptr<Player> player, int resource_type); //player drop
         void pgt(std::shared_ptr<Player> player, int resource_type); //player take
         void pdi(std::shared_ptr<Player> player); //player death
+        void ppo(std::shared_ptr<Player> player); //passive position update (after movement)
+        void plv(std::shared_ptr<Player> player); //passive level update (after level-up or gui_start)
         void enw(int egg_id, int player_id, int x, int y); //egg laid (end action)
         void ebo(int egg_id); //egg hatching (start action)
         void edi(int egg_id); //egg death

@@ -16,7 +16,7 @@
 int Player::player_num = 0; //initialize the static player_num variable
 
 
-Player::Player(Subject &subject, int control_fd) :Client(PLAYER, subject, control_fd), player_id(++player_num)
+Player::Player(Subject &subject, int control_fd) :Client(PLAYER, subject, control_fd), player_id(player_num++)
 {
     inventory.resources[static_cast<size_t>(Resource::Food)] = 10;
     orientation = NORTH; //initialize orientation to NORTH

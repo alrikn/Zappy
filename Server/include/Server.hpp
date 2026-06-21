@@ -82,6 +82,7 @@ class Server
         std::unordered_map<int, std::shared_ptr<Client>> _clients; //map of all connected clients, keyed by client fd
         std::unordered_map<int, std::string> _pending_clients; //fds that sent WELCOME but haven't sent their team name yet
         long long time_unit = 1000;
+        long long _freq = 100;
         long long tick = 0;
         long long _last_respawn_tick = 0; //tick of the most recent resource respawn
 
@@ -106,6 +107,7 @@ class Server
         int getMapHeight() const { return _map.size(); }
         std::vector<std::shared_ptr<Team>> getTeams() const { return teams; }
         long long getTimeUnit() const { return time_unit; }
+        long long getFreq() const { return _freq; }
 
         /*queue for sending messages to clients*/
         SendMessageQueue send_message_queue;
