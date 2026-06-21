@@ -1,16 +1,23 @@
 ##
 ## zappy-gui — Makefile front-end for the CMake presets (CMakePresets.json)
 ##
-## Default target builds linux-debug. Other platform/config combos and the
-## docs target are available as explicit targets below.
+## Default target builds the debug preset matching the host OS (linux-debug
+## or windows-debug). Other platform/config combos and the docs target are
+## available as explicit targets below.
 ##
 
 PRESETS    := linux-debug linux-release windows-debug windows-release
 JOBS       ?= $(shell nproc 2>/dev/null || echo 1)
 
+ifeq ($(OS),Windows_NT)
+    HOST_DEBUG_PRESET := windows-debug
+else
+    HOST_DEBUG_PRESET := linux-debug
+endif
+
 .PHONY: all $(PRESETS) docs clean fclean re help
 
-all: linux-debug
+all: $(HOST_DEBUG_PRESET)
 
 $(PRESETS):
 	cmake --preset $@
@@ -32,7 +39,7 @@ re: fclean all
 
 help:
 	@echo "Targets:"
-	@echo "  make [all]          build linux-debug (default)"
+	@echo "  make [all]           build debug preset for host OS (default: $(HOST_DEBUG_PRESET))"
 	@echo "  make linux-release   build release for Linux"
 	@echo "  make windows-debug   cross-compile debug for Windows (mingw)"
 	@echo "  make windows-release cross-compile release for Windows (mingw)"
