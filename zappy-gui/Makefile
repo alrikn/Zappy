@@ -32,8 +32,11 @@ docs:
 clean:
 	rm -rf build/linux-debug build/linux-release build/windows-debug build/windows-release
 
+## Only removes the compiled libraries, never bin/zappy_gui.gdextension(.uid) —
+## those are checked-in manifest files Godot needs, not build output.
 fclean: clean
-	rm -rf bin docs/doxygen
+	rm -f bin/libzappy_gui.*
+	rm -rf docs/doxygen
 
 re: fclean all
 
@@ -45,5 +48,5 @@ help:
 	@echo "  make windows-release cross-compile release for Windows (mingw)"
 	@echo "  make docs            generate Doxygen HTML docs"
 	@echo "  make clean           remove build/<preset> directories"
-	@echo "  make fclean          clean + remove bin/ and docs/doxygen"
+	@echo "  make fclean          clean + remove compiled libs and docs/doxygen"
 	@echo "  make re              fclean + all"
