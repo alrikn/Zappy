@@ -4,19 +4,115 @@
  *        line and fills the matching ServerMessage alternative.
  * @details Exception-free (see protocol_parser.hpp): every failure path returns
  *          std::nullopt instead of throwing.
+ *
+ *          Tokenizing and numeric parsing deliberately avoid std::istringstream's
+ *          operator>>: in this GDExtension, that path was observed to silently
+ *          mis-parse digits (e.g. "40" read back as 0) specifically when running
+ *          inside a windowed Godot process with its rendering/audio/shader threads
+ *          active, while always parsing correctly in --headless runs. Tokenizing by
+ *          hand and converting digits over string_view indices (no streams, no
+ *          locale) sidesteps whatever that interaction is.
  */
 
 #include "network/protocol_parser.hpp"
 
 #include <array>
-#include <charconv>
 #include <cstdint>
-#include <sstream>
+#include <limits>
 #include <string>
 
 namespace zappy {
 
 namespace {
+
+/// True for the byte separators used between protocol tokens.
+constexpr bool is_space(char c) noexcept
+{
+    return c == ' ' || c == '\t';
+}
+
+/**
+ * @brief Hand-rolled whitespace tokenizer over a single protocol line.
+ * @details Replaces std::istringstream::operator>> for splitting; see the file-level
+ *          comment for why.
+ */
+class Tokenizer {
+public:
+    explicit Tokenizer(std::string_view text) noexcept : _rest(text) {}
+
+    /// Return the next whitespace-delimited token, or std::nullopt if exhausted.
+    std::optional<std::string_view> next() noexcept
+    {
+        std::size_t i = 0;
+        while (i < _rest.size() && is_space(_rest[i])) {
+            ++i;
+        }
+        if (i >= _rest.size()) {
+            _rest = {};
+            return std::nullopt;
+        }
+        std::size_t j = i;
+        while (j < _rest.size() && !is_space(_rest[j])) {
+            ++j;
+        }
+        const std::string_view tok = _rest.substr(i, j - i);
+        _rest.remove_prefix(j);
+        return tok;
+    }
+
+    /// Everything after the last token returned by next(), with leading whitespace
+    /// trimmed but internal whitespace preserved. Used for free-form trailing text
+    /// (broadcast/server messages) that may itself contain spaces.
+    [[nodiscard]] std::string_view remainder_trimmed() const noexcept
+    {
+        std::size_t i = 0;
+        while (i < _rest.size() && is_space(_rest[i])) {
+            ++i;
+        }
+        return _rest.substr(i);
+    }
+
+private:
+    std::string_view _rest;
+};
+
+/**
+ * @brief Parse a whole token as an unsigned integer.
+ * @details Requires every character to be an ASCII digit and the accumulated value
+ *          to fit in T; otherwise returns std::nullopt. Pure index-based scanning
+ *          over the string_view — no pointers, no locale, no streams.
+ */
+template<typename T>
+std::optional<T> parse_uint(std::string_view token) noexcept
+{
+    if (token.empty()) {
+        return std::nullopt;
+    }
+    T value{};
+    for (std::size_t i = 0; i < token.size(); ++i) {
+        const char c = token[i];
+        if (c < '0' || c > '9') {
+            return std::nullopt;
+        }
+        const T digit = static_cast<T>(c - '0');
+        if (value > (std::numeric_limits<T>::max() - digit) / 10) {
+            return std::nullopt; // would overflow T
+        }
+        value = static_cast<T>(value * 10 + digit);
+    }
+    return value;
+}
+
+/// Read the next token from `tok` and parse it as an unsigned integer.
+template<typename T>
+std::optional<T> next_uint(Tokenizer& tok) noexcept
+{
+    const auto token = tok.next();
+    if (!token) {
+        return std::nullopt;
+    }
+    return parse_uint<T>(*token);
+}
 
 /**
  * @brief Parse a player/egg ID token that the protocol prefixes with '#'.
@@ -24,51 +120,38 @@ namespace {
  * @return Parsed numeric ID, or std::nullopt if the token is not '#'-prefixed
  *         or not entirely numeric after the '#'.
  */
-std::optional<uint32_t> read_id(std::string_view token)
+std::optional<uint32_t> read_id(std::string_view token) noexcept
 {
     if (token.empty() || token[0] != '#') {
         return std::nullopt;
     }
-    const std::string_view digits = token.substr(1);
-    if (digits.empty()) {
-        return std::nullopt;
-    }
-    uint32_t value = 0;
-    const auto* begin  = digits.data();
-    const auto* end    = digits.data() + digits.size();
-    const auto  result = std::from_chars(begin, end, value);
-    if (result.ec != std::errc{} || result.ptr != end) {
-        return std::nullopt;
-    }
-    return value;
+    return parse_uint<uint32_t>(token.substr(1));
 }
 
-/**
- * @brief Read a '#'-prefixed ID token from a stream.
- * @return Parsed numeric ID, or std::nullopt if the stream has no more tokens or
- *         the token is malformed.
- */
-std::optional<uint32_t> read_id_from_stream(std::istringstream& ss)
+/// Read the next '#'-prefixed ID token from `tok`.
+std::optional<uint32_t> next_id(Tokenizer& tok) noexcept
 {
-    std::string tok;
-    if (!(ss >> tok)) {
+    const auto token = tok.next();
+    if (!token) {
         return std::nullopt;
     }
-    return read_id(tok);
+    return read_id(*token);
 }
 
 /**
- * @brief Read a 7-element resource array from a stream.
- * @param ss Input stream positioned just before the first resource quantity.
+ * @brief Read a 7-element resource array from `tok`.
+ * @param tok Tokenizer positioned just before the first resource quantity.
  * @param arr Output array to fill.
  * @return true if all 7 values were read successfully.
  */
-bool read_resources(std::istringstream& ss, std::array<uint32_t, 7>& arr)
+bool read_resources(Tokenizer& tok, std::array<uint32_t, 7>& arr) noexcept
 {
     for (auto& slot : arr) {
-        if (!(ss >> slot)) {
+        const auto value = next_uint<uint32_t>(tok);
+        if (!value) {
             return false;
         }
+        slot = *value;
     }
     return true;
 }
@@ -77,97 +160,121 @@ bool read_resources(std::istringstream& ss, std::array<uint32_t, 7>& arr)
 
 std::optional<ServerMessage> parse_line(std::string_view line)
 {
-    std::string        lineStr(line);
-    std::istringstream ss(lineStr);
-    std::string        cmd;
+    Tokenizer tok(line);
 
-    if (!(ss >> cmd)) {
+    const auto cmdTok = tok.next();
+    if (!cmdTok) {
         return std::nullopt;
     }
+    const std::string_view cmd = *cmdTok;
 
     // ── Map size ─────────────────────────────────────────────────────────────
     if (cmd == "msz") {
         MsgMapSize m{};
-        if (!(ss >> m.x >> m.y)) {
+        const auto x = next_uint<uint32_t>(tok);
+        const auto y = next_uint<uint32_t>(tok);
+        if (!x || !y) {
             return std::nullopt;
         }
+        m.x = *x;
+        m.y = *y;
         return m;
     }
 
     // ── Tile content ─────────────────────────────────────────────────────────
     if (cmd == "bct") {
         MsgTileContent m{};
-        if (!(ss >> m.x >> m.y) || !read_resources(ss, m.resources)) {
+        const auto x = next_uint<uint32_t>(tok);
+        const auto y = next_uint<uint32_t>(tok);
+        if (!x || !y || !read_resources(tok, m.resources)) {
             return std::nullopt;
         }
+        m.x = *x;
+        m.y = *y;
         return m;
     }
 
     // ── Team name ────────────────────────────────────────────────────────────
     if (cmd == "tna") {
         MsgTeamName m{};
-        if (!(ss >> m.name)) {
+        const auto name = tok.next();
+        if (!name) {
             return std::nullopt;
         }
+        m.name = std::string(*name);
         return m;
     }
 
     // ── New player ───────────────────────────────────────────────────────────
     if (cmd == "pnw") {
         MsgPlayerNew m{};
-        const auto id = read_id_from_stream(ss);
-        uint32_t   orientation = 0;
-        uint32_t   level       = 0;
-        if (!id || !(ss >> m.x >> m.y >> orientation >> level >> m.team)) {
+        const auto id          = next_id(tok);
+        const auto x           = next_uint<uint32_t>(tok);
+        const auto y           = next_uint<uint32_t>(tok);
+        const auto orientation = next_uint<uint32_t>(tok);
+        const auto level       = next_uint<uint32_t>(tok);
+        const auto team        = tok.next();
+        if (!id || !x || !y || !orientation || !level || !team) {
             return std::nullopt;
         }
         m.id          = *id;
-        m.orientation = static_cast<uint8_t>(orientation);
-        m.level       = static_cast<uint8_t>(level);
+        m.x           = *x;
+        m.y           = *y;
+        m.orientation = static_cast<uint8_t>(*orientation);
+        m.level       = static_cast<uint8_t>(*level);
+        m.team        = std::string(*team);
         return m;
     }
 
     // ── Player position ──────────────────────────────────────────────────────
     if (cmd == "ppo") {
         MsgPlayerPosition m{};
-        const auto id = read_id_from_stream(ss);
-        uint32_t   orientation = 0;
-        if (!id || !(ss >> m.x >> m.y >> orientation)) {
+        const auto id          = next_id(tok);
+        const auto x           = next_uint<uint32_t>(tok);
+        const auto y           = next_uint<uint32_t>(tok);
+        const auto orientation = next_uint<uint32_t>(tok);
+        if (!id || !x || !y || !orientation) {
             return std::nullopt;
         }
         m.id          = *id;
-        m.orientation = static_cast<uint8_t>(orientation);
+        m.x           = *x;
+        m.y           = *y;
+        m.orientation = static_cast<uint8_t>(*orientation);
         return m;
     }
 
     // ── Player level ─────────────────────────────────────────────────────────
     if (cmd == "plv") {
         MsgPlayerLevel m{};
-        const auto id    = read_id_from_stream(ss);
-        uint32_t   level = 0;
-        if (!id || !(ss >> level)) {
+        const auto id    = next_id(tok);
+        const auto level = next_uint<uint32_t>(tok);
+        if (!id || !level) {
             return std::nullopt;
         }
         m.id    = *id;
-        m.level = static_cast<uint8_t>(level);
+        m.level = static_cast<uint8_t>(*level);
         return m;
     }
 
     // ── Player inventory ─────────────────────────────────────────────────────
     if (cmd == "pin") {
         MsgPlayerInventory m{};
-        const auto id = read_id_from_stream(ss);
-        if (!id || !(ss >> m.x >> m.y) || !read_resources(ss, m.resources)) {
+        const auto id = next_id(tok);
+        const auto x  = next_uint<uint32_t>(tok);
+        const auto y  = next_uint<uint32_t>(tok);
+        if (!id || !x || !y || !read_resources(tok, m.resources)) {
             return std::nullopt;
         }
         m.id = *id;
+        m.x  = *x;
+        m.y  = *y;
         return m;
     }
 
     // ── Player expulsion ─────────────────────────────────────────────────────
     if (cmd == "pex") {
         MsgPlayerExpulsion m{};
-        const auto id = read_id_from_stream(ss);
+        const auto id = next_id(tok);
         if (!id) {
             return std::nullopt;
         }
@@ -178,21 +285,21 @@ std::optional<ServerMessage> parse_line(std::string_view line)
     // ── Player broadcast ─────────────────────────────────────────────────────
     if (cmd == "pbc") {
         MsgPlayerBroadcast m{};
-        const auto id = read_id_from_stream(ss);
+        const auto id = next_id(tok);
         if (!id) {
             return std::nullopt;
         }
         m.id = *id;
-        // The message text may contain spaces; std::getline reads the rest of the line.
-        // We skip any leading whitespace between the ID and the message with std::ws.
-        std::getline(ss >> std::ws, m.message);
+        // The message text may contain spaces; everything after the id token is the
+        // message, leading whitespace trimmed.
+        m.message = std::string(tok.remainder_trimmed());
         return m;
     }
 
     // ── Player death ─────────────────────────────────────────────────────────
     if (cmd == "pdi") {
         MsgPlayerDeath m{};
-        const auto id = read_id_from_stream(ss);
+        const auto id = next_id(tok);
         if (!id) {
             return std::nullopt;
         }
@@ -203,15 +310,18 @@ std::optional<ServerMessage> parse_line(std::string_view line)
     // ── Incantation start ────────────────────────────────────────────────────
     if (cmd == "pic") {
         MsgIncantationStart m{};
-        uint32_t level = 0;
-        if (!(ss >> m.x >> m.y >> level)) {
+        const auto x     = next_uint<uint32_t>(tok);
+        const auto y     = next_uint<uint32_t>(tok);
+        const auto level = next_uint<uint32_t>(tok);
+        if (!x || !y || !level) {
             return std::nullopt;
         }
-        m.level = static_cast<uint8_t>(level);
+        m.x     = *x;
+        m.y     = *y;
+        m.level = static_cast<uint8_t>(*level);
         // Read variable number of participating player IDs.
-        std::string tok;
-        while (ss >> tok) {
-            const auto id = read_id(tok);
+        while (const auto token = tok.next()) {
+            const auto id = read_id(*token);
             if (!id) {
                 return std::nullopt;
             }
@@ -226,13 +336,17 @@ std::optional<ServerMessage> parse_line(std::string_view line)
     // ── Incantation end ──────────────────────────────────────────────────────
     if (cmd == "pie") {
         MsgIncantationEnd m{};
-        std::string result;
-        if (!(ss >> m.x >> m.y >> result)) {
+        const auto x      = next_uint<uint32_t>(tok);
+        const auto y      = next_uint<uint32_t>(tok);
+        const auto result = tok.next();
+        if (!x || !y || !result) {
             return std::nullopt;
         }
-        if (result == "ok") {
+        m.x = *x;
+        m.y = *y;
+        if (*result == "ok") {
             m.result = true;
-        } else if (result == "ko") {
+        } else if (*result == "ko") {
             m.result = false;
         } else {
             return std::nullopt;
@@ -243,7 +357,7 @@ std::optional<ServerMessage> parse_line(std::string_view line)
     // ── Egg laying start ─────────────────────────────────────────────────────
     if (cmd == "pfk") {
         MsgEggLaying m{};
-        const auto id = read_id_from_stream(ss);
+        const auto id = next_id(tok);
         if (!id) {
             return std::nullopt;
         }
@@ -254,46 +368,50 @@ std::optional<ServerMessage> parse_line(std::string_view line)
     // ── Resource drop ────────────────────────────────────────────────────────
     if (cmd == "pdr") {
         MsgResourceDrop m{};
-        const auto id  = read_id_from_stream(ss);
-        uint32_t   res = 0;
-        if (!id || !(ss >> res)) {
+        const auto id  = next_id(tok);
+        const auto res = next_uint<uint32_t>(tok);
+        if (!id || !res) {
             return std::nullopt;
         }
         m.playerId = *id;
-        m.resource = static_cast<uint8_t>(res);
+        m.resource = static_cast<uint8_t>(*res);
         return m;
     }
 
     // ── Resource collect ─────────────────────────────────────────────────────
     if (cmd == "pgt") {
         MsgResourceCollect m{};
-        const auto id  = read_id_from_stream(ss);
-        uint32_t   res = 0;
-        if (!id || !(ss >> res)) {
+        const auto id  = next_id(tok);
+        const auto res = next_uint<uint32_t>(tok);
+        if (!id || !res) {
             return std::nullopt;
         }
         m.playerId = *id;
-        m.resource = static_cast<uint8_t>(res);
+        m.resource = static_cast<uint8_t>(*res);
         return m;
     }
 
     // ── Egg laid at position ─────────────────────────────────────────────────
     if (cmd == "enw") {
         MsgEggLaid m{};
-        const auto eggId    = read_id_from_stream(ss);
-        const auto playerId = read_id_from_stream(ss);
-        if (!eggId || !playerId || !(ss >> m.x >> m.y)) {
+        const auto eggId    = next_id(tok);
+        const auto playerId = next_id(tok);
+        const auto x        = next_uint<uint32_t>(tok);
+        const auto y        = next_uint<uint32_t>(tok);
+        if (!eggId || !playerId || !x || !y) {
             return std::nullopt;
         }
         m.eggId    = *eggId;
         m.playerId = *playerId;
+        m.x        = *x;
+        m.y        = *y;
         return m;
     }
 
     // ── Player connected via egg ─────────────────────────────────────────────
     if (cmd == "ebo") {
         MsgEggConnection m{};
-        const auto eggId = read_id_from_stream(ss);
+        const auto eggId = next_id(tok);
         if (!eggId) {
             return std::nullopt;
         }
@@ -304,7 +422,7 @@ std::optional<ServerMessage> parse_line(std::string_view line)
     // ── Egg death ────────────────────────────────────────────────────────────
     if (cmd == "edi") {
         MsgEggDeath m{};
-        const auto eggId = read_id_from_stream(ss);
+        const auto eggId = next_id(tok);
         if (!eggId) {
             return std::nullopt;
         }
@@ -315,35 +433,41 @@ std::optional<ServerMessage> parse_line(std::string_view line)
     // ── Time unit query response ─────────────────────────────────────────────
     if (cmd == "sgt") {
         MsgTimeUnit m{};
-        if (!(ss >> m.t)) {
+        const auto t = next_uint<uint32_t>(tok);
+        if (!t) {
             return std::nullopt;
         }
+        m.t = *t;
         return m;
     }
 
     // ── Time unit changed ────────────────────────────────────────────────────
     if (cmd == "sst") {
         MsgTimeUnitSet m{};
-        if (!(ss >> m.t)) {
+        const auto t = next_uint<uint32_t>(tok);
+        if (!t) {
             return std::nullopt;
         }
+        m.t = *t;
         return m;
     }
 
     // ── End of game ──────────────────────────────────────────────────────────
     if (cmd == "seg") {
         MsgEndGame m{};
-        if (!(ss >> m.team)) {
+        const auto team = tok.next();
+        if (!team) {
             return std::nullopt;
         }
+        m.team = std::string(*team);
         return m;
     }
 
     // ── Server message ───────────────────────────────────────────────────────
     if (cmd == "smg") {
         MsgServerMessage m{};
-        // Free-form text; may contain spaces. Read the rest of the line.
-        std::getline(ss >> std::ws, m.message);
+        // Free-form text; may contain spaces. Everything after "smg " is the message.
+        m.message = std::string(tok.remainder_trimmed());
         return m;
     }
 
