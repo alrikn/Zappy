@@ -199,6 +199,7 @@ void Player::fork(Server &server)
         if (team->name != team_name) continue;
         auto egg = std::make_shared<Egg>(team_name,
             std::vector<int>{position[0], position[1]});
+        egg->parent_player_id = player_id;
         team->eggs.push_back(egg);
         team->spots_left++;
         break;

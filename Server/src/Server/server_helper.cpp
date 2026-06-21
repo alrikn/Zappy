@@ -119,10 +119,12 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
 
     // hatch from a forked egg if one exists, otherwise random spawn
     std::vector<int> position;
+    int egg_id = -1;
     if (!matched_team->eggs.empty()) {
         auto egg = matched_team->eggs.back();
         matched_team->eggs.pop_back();
         position = egg->position;
+        egg_id = egg->getId();
     } else {
         position.push_back(rand() % _map[0].size());
         position.push_back(rand() % _map.size());
@@ -133,6 +135,8 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
     .set_team_name(team_name)
     .set_level(1)
     .set_position(position[0], position[1]);
+
+    player->parent_egg_id = egg_id;
 
     // add to initial tile so tile scanning (incantation, eject, look) finds the player
     _map[position[1]][position[0]].players.push_back(player);

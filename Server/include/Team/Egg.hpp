@@ -24,6 +24,7 @@ class Egg
         inline static int egg_counter = 0;
 
         int id;
+        int parent_player_id = -1; //the id of the player that laid the egg, -1 if the egg was not laid by a player
         std::string team_name;
         std::vector<int> position;
 

@@ -44,12 +44,16 @@ void Gui::parse_command(const std::string raw, Server &server)
         send_message("suc\n");
         return;
     }
-    std::cout << "GUI command received: " << verb << std::endl;
     std::vector<std::string> args;
     std::string arg;
     while (ss >> arg) {
         args.push_back(arg);
     }
+    std::cout << "Gui Com: " << verb << " args: ";
+    for (const auto& a : args) {
+        std::cout << a << " ";
+    }
+    std::cout << std::endl;
     switch (it->second) {
         case GuiCommands::MSZ:
             msz(server);
