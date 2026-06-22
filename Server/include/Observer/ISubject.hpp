@@ -10,6 +10,7 @@
 
 #include "Client.hpp"
 #include <functional>
+#include <memory>
 
 
 class ISubject
@@ -17,7 +18,7 @@ class ISubject
     protected:
     public:
         virtual ~ISubject() = default;
-        virtual void Attach(Client *observer) = 0;
+        virtual void Attach(std::shared_ptr<Client> observer) = 0;
         virtual void Detach(Client *observer) = 0;
         virtual void Notify() = 0;
         virtual void Notify(std::function<void(Client *)> fn) = 0;
