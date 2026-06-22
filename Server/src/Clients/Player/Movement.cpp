@@ -90,7 +90,10 @@ void Player::look(Server &server)
 
     std::vector<std::vector<int>> tiles_to_look_at;
 
-    for (int i = 1; i < 5; i++) { //cus direction now starts at 1
+    // own tile first
+    tiles_to_look_at.push_back({position[0], position[1]});
+
+    for (int i = 1; i <= level; i++) {
         for (int j = -i; j <= i; j++) {
             int tile_x, tile_y;
             switch (orientation) {
