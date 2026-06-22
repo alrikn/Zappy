@@ -155,6 +155,10 @@ void Server::kill_player(std::shared_ptr<Player> player)
 {
     player->send_message("dead\n");
     _map[player->position[1]][player->position[0]].remove_specific_client(player->getId());
+    //send message to gui about player death
+    _gui_subject.Notify([player](Client* c) {
+        static_cast<Gui*>(c)->pdi(player);
+    });
     remove_client(player->control_fd);
 }
 
