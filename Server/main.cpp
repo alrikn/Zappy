@@ -70,8 +70,8 @@ Server handle_arguments(int argc, char **argv)
 int main(int argc, char **argv)
 {
     std::signal(SIGINT, signal_handler);
-    Server server = handle_arguments(argc, argv);
     try {
+        Server server = handle_arguments(argc, argv);
         server.run();
     } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << std::endl;
