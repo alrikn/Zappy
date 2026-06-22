@@ -3,8 +3,8 @@
     - [x] Implement GUI client handling in the server
     - [x] Implement client disconnection handling in the server
     - [ ] figure out which team won to send seg message to GUI clients
-    - [ ] Fix the incantation actions alongside their delay
-    - [ ] figure out how to deal with client dealy for a same command. (for example, if a player starts an incant, we send hime the incant start message, we wait 300 time units, then we send him the incant end message. problem is, this needs to be non blocking, so we need to figure out how to do this without blocking the server)
+    - [x] Fix the incantation actions alongside their delay
+    - [x] figure out how to deal with client dealy for a same command. (for example, if a player starts an incant, we send hime the incant start message, we wait 300 time units, then we send him the incant end message. problem is, this needs to be non blocking, so we need to figure out how to do this without blocking the server)
     - [ ] send all gui notifications as result of an action
       - [x] pex (player ejected)
       - [x] pdr (player dropped resource)
@@ -14,8 +14,14 @@
       - [x] pic (player incantation start)
       - [x] pie (player incantation end)
       - [ ] pfk (player laying egg)
-      - [ ] pdi (player died)
+      - [x] pdi (player died)
       - [ ] enw (new egg)
       - [ ] ebo (egg hatching)
       - [ ] edi (egg died)
       - [ ] seg (game ended)
+    - [ ] Separate server class in Game class and network class.
+    - [ ] if no egg was laid a a player tries to log in, make a bullshit egg with id -1 and send it to gui.
+    - [x] FIX FUCK TIME TICKS LEGTG
+    - [ ] Observer should not have raw pointers
+    - [ ] make the tiles hold weak pointers maybe (to the players)
+    - [ ] circular buffer for client command parsing.

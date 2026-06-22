@@ -21,10 +21,10 @@
 #include <vector>
 
 typedef enum orientation{
-    NORTH = 0,
-    EAST = 1,
-    SOUTH = 2,
-    WEST = 3
+    NORTH = 1,
+    EAST = 2,
+    SOUTH = 3,
+    WEST = 4
 } orientation_t;
 
 class Subject;
@@ -47,10 +47,11 @@ std::vector<std::tuple<std::string, int>> give_resources_number(const Inventory&
         /*variables that are needed for the player*/
 
         std::array<int, 2> position; //x and y position of the player on the map
-        orientation_t orientation; //the direction the player is facing (0 = north, 1 = east, 2 = south, 3 = west)
+        orientation_t orientation = NORTH; //the direction the player is facing (0 = north, 1 = east, 2 = south, 3 = west)
         int level = 1; //the level of the player
         std::string team_name; //the name of the team the player belongs to
         Inventory inventory; //the inventory of the player, it contains the number of each resource the player has
+        int parent_egg_id = -1; //the id of the egg that the player was born from, -1 if the player was not born from an egg
 
         //buffered commands waiting to be executed (subject: up to 10, FIFO), a
         //command is received/validated here but only executed by the game loop

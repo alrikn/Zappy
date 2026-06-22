@@ -5,6 +5,7 @@
 ** server_helper
 */
 
+#include "Gui.hpp"
 #include "Player.hpp"
 #include "Server.hpp"
 #include <algorithm>
@@ -119,10 +120,12 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
 
     // hatch from a forked egg if one exists, otherwise random spawn
     std::vector<int> position;
+    int egg_id = -1;
     if (!matched_team->eggs.empty()) {
         auto egg = matched_team->eggs.back();
         matched_team->eggs.pop_back();
         position = egg->position;
+        egg_id = egg->getId();
     } else {
         position.push_back(rand() % _map[0].size());
         position.push_back(rand() % _map.size());
@@ -133,6 +136,8 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
     .set_team_name(team_name)
     .set_level(1)
     .set_position(position[0], position[1]);
+
+    player->parent_egg_id = egg_id;
 
     // add to initial tile so tile scanning (incantation, eject, look) finds the player
     _map[position[1]][position[0]].players.push_back(player);
@@ -150,6 +155,10 @@ void Server::kill_player(std::shared_ptr<Player> player)
 {
     player->send_message("dead\n");
     _map[player->position[1]][player->position[0]].remove_specific_client(player->getId());
+    //send message to gui about player death
+    _gui_subject.Notify([player](Client* c) {
+        static_cast<Gui*>(c)->pdi(player);
+    });
     remove_client(player->control_fd);
 }
 
@@ -234,10 +243,19 @@ void Server::finalize_client(int client_fd, std::string team_name)
         add_client(gui);
     } else {
         std::shared_ptr<Player> player = create_player(client_fd, team_name);
-        if (player)
-            add_client(player);
-        else
+        if (player) {
+            int egg_id = player->parent_egg_id;
+            add_client(player); // must be in _clients before pin searches for it
+            _gui_subject.Notify([player, egg_id, this](Client* c) {
+                auto gui = static_cast<Gui*>(c);
+                gui->pnw(player);
+                gui->pin(*this, {std::to_string(player->getId())});
+                if (egg_id != -1)
+                    gui->ebo(egg_id);
+            });
+        } else {
             remove_client(client_fd);
+        }
     }
 }
 

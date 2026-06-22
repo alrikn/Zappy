@@ -19,7 +19,8 @@ Server::Server(int port_number,
             int num_client_per_team,
             long long trantorian_time_unit)
 {
-    this->time_unit = (7.0 / trantorian_time_unit) * 1000; //that just how the pdf want it, divide by 1000 to make mlseconds
+    this->_freq = trantorian_time_unit;
+    this->time_unit = (trantorian_time_unit) * 1000;
 
     std::cout << "time unit: " << time_unit << std::endl;
     this->tick = 0;
@@ -29,6 +30,15 @@ Server::Server(int port_number,
     //initialsie teams
     for (const std::string &team_name : team_names) {
         this->teams.push_back(std::make_shared<Team>(team_name, num_client_per_team));
+    }
+    // create initial eggs for each team slot (random positions, no parent player)
+    for (auto &team : this->teams) {
+        for (int i = 0; i < num_client_per_team; i++) {
+            int x = rand() % map_width;
+            int y = rand() % map_height;
+            auto egg = std::make_shared<Egg>(team->name, std::vector<int>{x, y});
+            team->eggs.push_back(egg);
+        }
     }
     _server_fd = set_up_server_socket(_port);
     add_fd(_server_fd);

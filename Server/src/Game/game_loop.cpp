@@ -5,6 +5,7 @@
 ** main_loop
 */
 
+#include "Gui.hpp"
 #include "Parse.hpp"
 #include "Server.hpp"
 #include "Struct.hpp"
@@ -57,9 +58,28 @@ void Server::respawn_resources()
 {
     if (tick - _last_respawn_tick < RESPAWN_TICKS)
         return;
+
+    // snapshot inventories before adding resources
+    int W = getMapWidth(), H = getMapHeight();
+    std::vector<std::vector<Inventory>> before(H, std::vector<Inventory>(W));
+    for (int y = 0; y < H; y++)
+        for (int x = 0; x < W; x++)
+            before[y][x] = _map[y][x].inventory;
+
     populate_map_resources();
     std::cout << "tick: " << tick << std::endl;
     _last_respawn_tick = tick;
+
+    // notify GUI only for tiles that actually changed
+    for (int x = 0; x < W; x++) {
+        for (int y = 0; y < H; y++) {
+            if (before[y][x].resources != _map[y][x].inventory.resources) {
+                _gui_subject.Notify([this, x, y](Client* c) {
+                    static_cast<Gui*>(c)->bct(*this, {std::to_string(x), std::to_string(y)});
+                });
+            }
+        }
+    }
 }
 
 // one food unit lasts FOOD_DRAIN_TICKS ticks, a player with no food left to drain
@@ -73,6 +93,9 @@ void Server::drain_food(std::shared_ptr<Player> player,
         if (player->inventory.resources[static_cast<size_t>(Resource::Food)] > 0) {
             player->inventory.resources[static_cast<size_t>(Resource::Food)]--;
             player->next_food_at += FOOD_DRAIN_TICKS;
+            _gui_subject.Notify([player, this](Client* c) {
+                static_cast<Gui*>(c)->pin(*this, {std::to_string(player->getId())});
+            });
         } else {
             to_kill.push_back(player);
             break;
@@ -86,7 +109,6 @@ void Server::step_player_action(std::shared_ptr<Player> player)
     //first we undo buisness if the player is not done
     if (player->busy && tick >= player->action_done_at) {
         player->busy = false;
-        std::cout << "player " << player->getId() << " no longer busy." << std::endl;
         if (player->in_incantation) {
             player->incantation_end(*this);
         }
@@ -98,7 +120,6 @@ void Server::step_player_action(std::shared_ptr<Player> player)
         player->cmd_queue.pop_front();
         player->busy = true;
         player->action_done_at = tick + ClientCommandDelayMap.at(player->running_cmd.first);
-        std::cout << "player " << player->getId() << " will be busy for " << ClientCommandDelayMap.at(player->running_cmd.first) << " ticks." << std::endl;
         player->execute_command(player->running_cmd.first, player->running_cmd.second, *this);
     }
 }
@@ -141,6 +162,7 @@ void Server::run()
             poll_clients(timeout); //blocks until socket activity or the next tick is due
         } catch (const std::exception &e) {
             std::cerr << "Error during poll_clients: " << e.what() << std::endl;
+            throw e; //for for testing purposes
             continue;
         }
 
