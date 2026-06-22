@@ -44,8 +44,13 @@ void Player::set_down_resource(Server &server, std::vector<std::string> args)
         command_failed(server, SET);
         return;
     }
-
-    Resource resource = parse_resource(args[0]);
+    Resource resource;
+    try {
+        resource = parse_resource(args[0]);
+    } catch (const std::runtime_error &e) {
+        command_failed(server, SET);
+        return;
+    }
     if (inventory.resources[idx(resource)] <= 0) {
         command_failed(server, SET);
         return;
@@ -77,7 +82,13 @@ void Player::take_resource(Server &server, std::vector<std::string> args)
         return;
     }
 
-    Resource resource = parse_resource(args[0]);
+    Resource resource;
+    try {
+        resource = parse_resource(args[0]);
+    } catch (const std::runtime_error &e) {
+        command_failed(server, TAKE);
+        return;
+    }
     auto &tile = server._map[position[1]][position[0]];
     if (tile.inventory.resources[idx(resource)] <= 0) {
         command_failed(server, TAKE);
@@ -124,7 +135,7 @@ void Player::eject(Server &server)
             case WEST:  nx = (nx - 1 + server.getMapWidth()) % server.getMapWidth();  break;
         }
         server.move_player(*p, nx, ny);
-        p->send_message("eject " + std::to_string(k) + "\n");
+        server.send_message_queue.add_message(server, p->control_fd, "eject " + std::to_string(k) + "\n", ClientCommandDelayMap.at(EJECT));
     }
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
     if (!self) {
@@ -188,7 +199,7 @@ void Player::broadcast(Server &server, std::vector<std::string> args)
         int k = broadcast_dir(position[0], position[1],
                                p->position[0], p->position[1],
                                p->orientation, W, H);
-        p->send_message("message " + std::to_string(k) + ", " + text + "\n");
+        server.send_message_queue.add_message(server, p->control_fd, "message " + std::to_string(k) + ", " + text + "\n");
     }
     //notify the gui that a broadcast has been sent
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);

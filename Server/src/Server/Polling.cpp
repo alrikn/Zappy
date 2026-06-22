@@ -22,6 +22,9 @@ Server::Server(int port_number,
     this->_freq = trantorian_time_unit;
     this->time_unit = (1000.0 / trantorian_time_unit); //time unit is in milliseconds
 
+    if (time_unit < 1) {
+        throw std::runtime_error("Invalid time unit: " + std::to_string(time_unit));
+    }
     std::cout << "time unit: " << time_unit << std::endl;
     this->tick = 0;
     this->_port = port_number;
@@ -56,11 +59,13 @@ void Server::handle_client_event(int client_fd)
         return;
     }
 
-    std::shared_ptr<Client> client = _clients[client_fd];
-    if (!client) {
+    auto client_it = _clients.find(client_fd);
+    if (client_it == _clients.end()) {
         std::cout << "Error: client not found for fd " << client_fd << std::endl;
+        remove_client(client_fd);
         return;
     }
+    auto client = client_it->second;
     client->ctrl_buffer.append(buf, n); //we crash here if client is not in client map.
     pos = client->ctrl_buffer.find('\n');
     while (pos != std::string::npos) {

@@ -41,7 +41,7 @@ Resource parse_resource(const std::string& name)
 std::string Server::read_from_client(int client_fd)
 {
     char buffer[4096];
-    ssize_t n = read(client_fd, buffer, sizeof(buffer));
+    ssize_t n = read(client_fd, buffer, sizeof(buffer) - 1);
     if (n <= 0) {
         remove_client(client_fd);
         return "";

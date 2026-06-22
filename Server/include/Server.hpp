@@ -23,6 +23,8 @@
 #include <netinet/in.h>
 #include <sys/poll.h>
 
+const int MAX_PENDING_CLIENTS = 100; //maximum number of clients that can be pending at any given time, this is the number of clients that have sent WELCOME but haven't sent their team name yet
+
 class Server
 {
     private:

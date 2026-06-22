@@ -151,26 +151,33 @@ void Server::run()
 {
     //the only wall clock in the engine: it paces the tick counter at one tick per
     //time_unit ms, everything downstream (food, incantation, respawn) counts ticks
-    auto next_tick = std::chrono::steady_clock::now();
+    std::chrono::time_point<std::chrono::steady_clock> next_tick = std::chrono::steady_clock::now();
+    std::chrono::time_point<std::chrono::steady_clock> now = std::chrono::steady_clock::now();
+    int timeout = 0;
 
     while (!g_shutdown_requested && running) {
-        auto now = std::chrono::steady_clock::now();
-        int timeout = std::chrono::duration_cast<std::chrono::milliseconds>(next_tick - now).count();
+        now = std::chrono::steady_clock::now();
+        timeout = std::chrono::duration_cast<std::chrono::milliseconds>(next_tick - now).count();
+        //these are noexcept funcs, so there is no point in putting them in try/catch
         if (timeout < 0)
             timeout = 0;
         try {
             poll_clients(timeout); //blocks until socket activity or the next tick is due
         } catch (const std::exception &e) {
             std::cerr << "Error during poll_clients: " << e.what() << std::endl;
-            throw e; //for for testing purposes
             continue;
         }
 
-        now = std::chrono::steady_clock::now();
-        while (now >= next_tick) { //advance one game tick per elapsed time_unit
-            game_tick();
-            advance_game();
-            next_tick += std::chrono::milliseconds(time_unit);
+        try {
+            now = std::chrono::steady_clock::now();
+            while (now >= next_tick) { //advance one game tick per elapsed time_unit
+                game_tick();
+                advance_game();
+                next_tick += std::chrono::milliseconds(time_unit);
+            }
+        } catch (const std::exception &e) {
+            std::cerr << "Error during game tick: " << e.what() << std::endl;
+            continue;
         }
     }
 }

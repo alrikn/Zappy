@@ -205,6 +205,12 @@ void Server::accept_new_client()
         return;
     }
 
+    if (_pending_clients.size() >= MAX_PENDING_CLIENTS) {
+        std::cerr << "Max pending clients reached, rejecting new connection" << std::endl;
+        close(client_fd);
+        return;
+    }
+
     add_fd(client_fd);
     write(client_fd, "WELCOME\n", 8);
     _pending_clients[client_fd] = "";
