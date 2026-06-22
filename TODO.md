@@ -22,6 +22,6 @@
     - [ ] Separate server class in Game class and network class.
     - [ ] if no egg was laid a a player tries to log in, make a bullshit egg with id -1 and send it to gui.
     - [x] FIX FUCK TIME TICKS LEGTG
-    - [ ] Observer should not have raw pointers
-    - [ ] make the tiles hold weak pointers maybe (to the players)
+    - [x] Observer should not have raw pointers
+    - [x] make the tiles hold weak pointers maybe (to the players)
     - [ ] circular buffer for client command parsing.
