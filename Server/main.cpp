@@ -70,6 +70,7 @@ Server handle_arguments(int argc, char **argv)
 int main(int argc, char **argv)
 {
     std::signal(SIGINT, signal_handler);
+    std::signal(SIGPIPE, signal_handler);
     try {
         Server server = handle_arguments(argc, argv);
         server.run();
