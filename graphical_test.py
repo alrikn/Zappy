@@ -22,8 +22,10 @@ def test_graphical(socket_file):
         response = socket_file.recv(1024).decode()
         if not response:
             break
-        # print the response to a file called "graphical_test_output.txt"
-        with open("our_server_output.txt", "a") as f:
+        #with the server befor ai, we launch the server, then this fake gui, and then the ai to see if there is any diiference to
+        # launching the server, then the ai, and then the fake gui
+        #for the my_sever ones, i am using my server indtead of the provided one.
+        with open("gui_output_tests/my_server_before_players.txt", "a") as f:
             f.write(response)
         time.sleep(0.01)
 

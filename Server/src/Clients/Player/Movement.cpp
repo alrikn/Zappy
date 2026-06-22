@@ -5,6 +5,7 @@
 ** Movement
 */
 
+#include "Gui.hpp"
 #include "Player.hpp"
 #include "Server.hpp"
 #include "Struct.hpp"
@@ -33,18 +34,36 @@ void Player::move_forward(Server &server)
             break;
     }
     server.move_player(*this, new_x, new_y);
+    auto self_fwd = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    if (self_fwd) {
+        server._gui_subject.Notify([self_fwd](Client* c) {
+            static_cast<Gui*>(c)->ppo(self_fwd);
+        });
+    }
     server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(FORWARD));
 }
 
 void Player::turn_right(Server &server)
 {
     orientation = static_cast<orientation_t>((orientation % 4) + 1);
+    auto self_r = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    if (self_r) {
+        server._gui_subject.Notify([self_r](Client* c) {
+            static_cast<Gui*>(c)->ppo(self_r);
+        });
+    }
     server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(RIGHT));
 }
 
 void Player::turn_left(Server &server)
 {
     orientation = static_cast<orientation_t>((orientation + 2) % 4 + 1);
+    auto self_l = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    if (self_l) {
+        server._gui_subject.Notify([self_l](Client* c) {
+            static_cast<Gui*>(c)->ppo(self_l);
+        });
+    }
     server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(LEFT));
 }
 
@@ -71,7 +90,10 @@ void Player::look(Server &server)
 
     std::vector<std::vector<int>> tiles_to_look_at;
 
-    for (int i = 1; i < 5; i++) { //cus direction now starts at 1
+    // own tile first
+    tiles_to_look_at.push_back({position[0], position[1]});
+
+    for (int i = 1; i <= level; i++) {
         for (int j = -i; j <= i; j++) {
             int tile_x, tile_y;
             switch (orientation) {

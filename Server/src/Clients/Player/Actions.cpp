@@ -61,8 +61,11 @@ void Player::set_down_resource(Server &server, std::vector<std::string> args)
         return;
         return;
     }
-    server._gui_subject.Notify([self, resource](Client* c) {
-        static_cast<Gui*>(c)->pdr(self, idx(resource));
+    server._gui_subject.Notify([self, resource, &server](Client* c) {
+        auto gui = static_cast<Gui*>(c);
+        gui->pdr(self, idx(resource));
+        gui->pin(server, {std::to_string(self->getId())});
+        gui->bct(server, {std::to_string(self->getX()), std::to_string(self->getY())});
     });
     server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(SET));
 }
@@ -89,8 +92,11 @@ void Player::take_resource(Server &server, std::vector<std::string> args)
         command_failed(server, TAKE);
         return;
     }
-    server._gui_subject.Notify([self, resource](Client* c) {
-        static_cast<Gui*>(c)->pgt(self, idx(resource));
+    server._gui_subject.Notify([self, resource, &server](Client* c) {
+        auto gui = static_cast<Gui*>(c);
+        gui->pgt(self, idx(resource));
+        gui->pin(server, {std::to_string(self->getId())});
+        gui->bct(server, {std::to_string(self->getX()), std::to_string(self->getY())});
     });
     server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(TAKE));
 }
@@ -195,23 +201,36 @@ void Player::broadcast(Server &server, std::vector<std::string> args)
 
 void Player::fork(Server &server)
 {
+    std::shared_ptr<Egg> new_egg;
     for (auto &team : server.teams) {
         if (team->name != team_name) continue;
-        auto egg = std::make_shared<Egg>(team_name,
+        new_egg = std::make_shared<Egg>(team_name,
             std::vector<int>{position[0], position[1]});
-        team->eggs.push_back(egg);
+        new_egg->parent_player_id = player_id;
+        team->eggs.push_back(new_egg);
         team->spots_left++;
         break;
     }
-    //notify the gui that a new egg has been laid
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
     if (!self) {
         command_failed(server, FORK);
         return;
     }
-    server._gui_subject.Notify([self](Client* c) {
-        static_cast<Gui*>(c)->pfk(self);
-    });
+    if (new_egg) {
+        int egg_id = new_egg->getId();
+        int px = position[0];
+        int py = position[1];
+        int pid = player_id;
+        server._gui_subject.Notify([self, egg_id, px, py, pid](Client* c) {
+            auto gui = static_cast<Gui*>(c);
+            gui->pfk(self);
+            gui->enw(egg_id, pid, px, py);
+        });
+    } else {
+        server._gui_subject.Notify([self](Client* c) {
+            static_cast<Gui*>(c)->pfk(self);
+        });
+    }
     server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(FORK));
 }
 
