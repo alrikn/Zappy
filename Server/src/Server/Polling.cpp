@@ -20,7 +20,7 @@ Server::Server(int port_number,
             long long trantorian_time_unit)
 {
     this->_freq = trantorian_time_unit;
-    this->time_unit = (7.0 / trantorian_time_unit) * 1000;
+    this->time_unit = (trantorian_time_unit) * 1000;
 
     std::cout << "time unit: " << time_unit << std::endl;
     this->tick = 0;
