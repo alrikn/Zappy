@@ -32,7 +32,7 @@ class Subject : public ISubject
         void Detach(Client *observer) override {
             _observers.remove_if([observer](const std::weak_ptr<Client>& w) {
                 auto s = w.lock(); //lock works by creating a shared_ptr from the weak_ptr, if the weak_ptr is expired it returns an empty shared_ptr
-                return (!s || s.get() == observer);
+                return (!s || s.get() == observer); //we remove both observer that we want as well as any expired weak_ptrs
             });
         }
 

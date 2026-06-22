@@ -130,8 +130,6 @@ bool Player::incantation_start(Server &server)
         if (auto sp = p.lock())
             if (sp->level == level)
                 players_at_level++;
-        //if (p->level == level)
-        //    players_at_level++;
 
     if (!check_requirements(level, players_at_level, tile.inventory)) {
         command_failed(server, INCANTATION);
@@ -212,6 +210,10 @@ void Player::incantation_end(Server &server)
 
     //notify the gui that the incantation has finished
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    if (!self) {
+        command_failed(server, INCANTATION);
+        return;
+    }
     server._gui_subject.Notify([self](Client* c) {
         static_cast<Gui*>(c)->pie(self->position[0], self->position[1], true);
     });

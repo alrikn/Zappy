@@ -20,12 +20,10 @@ bool Tiles::remove_specific_client(int player_num)
                 players.erase(it);
                 return true;
             }
+        } else {
+            it = players.erase(it);
+            --it; //adjust iterator after erase
         }
-        //std::shared_ptr<Player> player = std::dynamic_pointer_cast<Player>(*it);
-        //if (player && player->getId() == player_num) {
-        //    players.erase(it);
-        //    return true;
-        //}
     }
     return false;
 }
