@@ -165,7 +165,7 @@ void Server::kill_player(std::shared_ptr<Player> player)
 std::shared_ptr<Gui> Server::create_gui(int client_fd)
 {
     std::shared_ptr<Gui> gui = std::make_shared<Gui>(_gui_subject, client_fd);
-    _gui_subject.Attach(gui.get());
+    _gui_subject.Attach(gui);
     //now we write a bunc of stuff to this new gui
     gui->gui_start(*this);
     return gui;

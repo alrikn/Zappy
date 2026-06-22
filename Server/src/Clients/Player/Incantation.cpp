@@ -127,8 +127,9 @@ bool Player::incantation_start(Server &server)
 
     int players_at_level = 0;
     for (const auto &p : tile.players)
-        if (p->level == level)
-            players_at_level++;
+        if (auto sp = p.lock())
+            if (sp->level == level)
+                players_at_level++;
 
     if (!check_requirements(level, players_at_level, tile.inventory)) {
         command_failed(server, INCANTATION);
@@ -139,13 +140,22 @@ bool Player::incantation_start(Server &server)
 
     //tell the gui that incant is underway
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
-    server._gui_subject.Notify([self, &server](Client* c) {
-        static_cast<Gui*>(c)->pic(self->level, server._map[self->position[1]][self->position[0]].players);
+    std::vector<std::weak_ptr<Player>> weak_participants = tile.players; //copy the weak_ptrs to avoid issues with the vector being modified while we iterate
+    std::vector<std::shared_ptr<Player>> participants;
+    for (const auto &wp : weak_participants) {
+        if (auto sp = wp.lock()) {
+            if (sp->level == level)
+                participants.push_back(sp);
+        }
+    }
+    //we have to convert them to shared_ptrs to send them to the gui, but we have to check if they are expired first
+    server._gui_subject.Notify([self, participants](Client* c) {
+        static_cast<Gui*>(c)->pic(self->level, participants);
     });
 
     long long deadline = server.tick + ClientCommandDelayMap.at(INCANTATION);
 
-    for (const auto &p : tile.players) {
+    for (const auto &p : participants) {
         if (p->level == level) {
             p->in_incantation = true;
             p->busy = true;
@@ -172,8 +182,9 @@ void Player::incantation_end(Server &server)
     // gather participants still alive on tile
     std::vector<std::shared_ptr<Player>> participants;
     for (const auto &p : tile.players)
-        if (p->in_incantation && p->level == level)
-            participants.push_back(p);
+        if (auto sp = p.lock())
+            if (sp->in_incantation && sp->level == level)
+                participants.push_back(sp);
 
     if (!check_requirements(level, static_cast<int>(participants.size()), tile.inventory)) {
         for (const auto &p : participants) {
@@ -199,6 +210,10 @@ void Player::incantation_end(Server &server)
 
     //notify the gui that the incantation has finished
     auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    if (!self) {
+        command_failed(server, INCANTATION);
+        return;
+    }
     server._gui_subject.Notify([self](Client* c) {
         static_cast<Gui*>(c)->pie(self->position[0], self->position[1], true);
     });

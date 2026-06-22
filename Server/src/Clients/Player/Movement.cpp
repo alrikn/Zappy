@@ -130,7 +130,9 @@ void Player::look(Server &server)
 
         //first we add the players on the tile
         for (auto player : server._map[y][x].players) {
-            tile_info += "player ";
+            if (auto sp = player.lock()) {
+                tile_info += "player ";
+            }
         }
         //then we add the resources on the tile
         for (const std::string &resource : give_resources_name(server._map[y][x].inventory)) {

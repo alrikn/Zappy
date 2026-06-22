@@ -105,9 +105,12 @@ void Player::eject(Server &server)
 {
     // snapshot: move_player modifies the tiles players vector mid iteration
     std::vector<std::shared_ptr<Player>> to_eject;
-    for (const auto &p : server._map[position[1]][position[0]].players)
-        if (p->getId() != player_id)
-            to_eject.push_back(p);
+    for (const auto &p : server._map[position[1]][position[0]].players) {
+        //since p is now a wak ptr, we have to lock it to get a shared ptr, and check if it is expired
+        if (auto sp = p.lock())
+            if (sp.get() != this)
+                to_eject.push_back(sp);
+        }
 
     // K is the diction from whic h the ejected player was pushed (opposite of ejectors facing)
     int k = (static_cast<int>(orientation) + 2) % 4 + 1;
