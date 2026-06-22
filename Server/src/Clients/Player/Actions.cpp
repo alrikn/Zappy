@@ -49,7 +49,6 @@ void Player::set_down_resource(Server &server, std::vector<std::string> args)
         resource = parse_resource(args[0]);
     } catch (const std::runtime_error &e) {
         command_failed(server, SET);
-        throw std::runtime_error("Invalid resource name: " + args[0]);
         return;
     }
     if (inventory.resources[idx(resource)] <= 0) {
@@ -88,7 +87,7 @@ void Player::take_resource(Server &server, std::vector<std::string> args)
         resource = parse_resource(args[0]);
     } catch (const std::runtime_error &e) {
         command_failed(server, TAKE);
-        throw std::runtime_error("Invalid resource name: " + args[0]);
+        return;
     }
     auto &tile = server._map[position[1]][position[0]];
     if (tile.inventory.resources[idx(resource)] <= 0) {

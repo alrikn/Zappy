@@ -156,15 +156,11 @@ void Server::run()
     int timeout = 0;
 
     while (!g_shutdown_requested && running) {
-        try {
-            now = std::chrono::steady_clock::now();
-            timeout = std::chrono::duration_cast<std::chrono::milliseconds>(next_tick - now).count();
+        now = std::chrono::steady_clock::now();
+        timeout = std::chrono::duration_cast<std::chrono::milliseconds>(next_tick - now).count();
+        //these are noexcept funcs, so there is no point in putting them in try/catch
         if (timeout < 0)
             timeout = 0;
-        } catch (const std::exception &e) {
-            std::cerr << "Error calculating timeout: " << e.what() << std::endl;
-            timeout = 0;
-        }
         try {
             poll_clients(timeout); //blocks until socket activity or the next tick is due
         } catch (const std::exception &e) {

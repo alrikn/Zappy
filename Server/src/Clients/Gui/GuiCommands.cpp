@@ -150,11 +150,11 @@ void Gui::sst(Server &server, std::vector<std::string> args)
         return;
     }
     long long freq = std::stoll(args[0]);
-    server._freq = freq;
     if (freq < 1) {
         send_message("suc\n");
         return;
     }
+    server._freq = freq;
     server.time_unit = static_cast<long long>(1000.0 / freq);
     std::string result = "sst " + std::to_string(server.getFreq()) + "\n";
     send_message(result);
