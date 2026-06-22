@@ -217,7 +217,7 @@ void ZappyWorld::dispatch_signals(const zappy::ServerMessage& msg)
                 static_cast<int>(m.resources[6]));
         },
         [](const MsgPlayerExpulsion&) {
-            // No signal in the Phase 4 plan — purely visual, handled in a later phase.
+            // No signal — purely visual.
         },
         [this](const MsgPlayerBroadcast& m) {
             emit_signal("broadcast", static_cast<int>(m.id), String(m.message.c_str()));
@@ -237,13 +237,13 @@ void ZappyWorld::dispatch_signals(const zappy::ServerMessage& msg)
             emit_signal("incantation_ended", static_cast<int>(m.x), static_cast<int>(m.y), m.result);
         },
         [](const MsgEggLaying&) {
-            // No signal in the Phase 4 plan — purely visual, handled in a later phase.
+            // No signal — purely visual.
         },
         [](const MsgResourceDrop&) {
-            // No signal in the Phase 4 plan — purely visual, handled in a later phase.
+            // No signal — purely visual.
         },
         [](const MsgResourceCollect&) {
-            // No signal in the Phase 4 plan — purely visual, handled in a later phase.
+            // No signal — purely visual.
         },
         [this](const MsgEggLaid& m) {
             emit_signal("egg_laid",
@@ -269,10 +269,10 @@ void ZappyWorld::dispatch_signals(const zappy::ServerMessage& msg)
             emit_signal("server_message", String(m.message.c_str()));
         },
         [](const MsgUnknownCommand&) {
-            // No signal in the Phase 4 plan.
+            // No signal.
         },
         [](const MsgBadParameter&) {
-            // No signal in the Phase 4 plan.
+            // No signal.
         },
     }, msg);
 }

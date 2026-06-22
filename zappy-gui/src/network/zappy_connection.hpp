@@ -68,7 +68,7 @@ public:
     [[nodiscard]] std::vector<ServerMessage> drain();
 
     /**
-     * @brief Send raw bytes to the server (e.g. "ppo\n" style commands in later phases).
+     * @brief Send raw bytes to the server (e.g. "ppo\n" style commands).
      */
     void send_raw(std::string_view data);
 

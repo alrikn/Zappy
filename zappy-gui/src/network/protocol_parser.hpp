@@ -1,7 +1,7 @@
 /**
  * @file network/protocol_parser.hpp
  * @brief Pure-C++ parser turning one protocol line into a ServerMessage.
- * @details No Godot dependencies. ZappyConnection (Phase 3) is the only caller.
+ * @details No Godot dependencies. ZappyConnection is the only caller.
  *
  *          Exceptions are disabled project-wide (godot-cpp is built with
  *          -fno-exceptions, which propagates to this target), so parse_line()

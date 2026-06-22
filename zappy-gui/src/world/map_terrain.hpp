@@ -3,8 +3,8 @@
  * @brief Procedural terrain mesh sized to the server's map dimensions.
  * @details MapTerrain generates a noise-displaced plane mesh covering the
  *          server's map (msz X Y), keeping the same noise-based "smooth hills"
- *          look as the old ProceduralPlane prototype. tile_to_world() lets later
- *          phases place entities/resources on the terrain surface.
+ *          look as the old ProceduralPlane prototype. tile_to_world() is used
+ *          to place entities/resources on the terrain surface.
  */
 
 #pragma once
@@ -17,7 +17,7 @@ namespace godot {
 
 /// Terrain mesh sized to the server's map (msz X Y), keeping the same
 /// noise-based "smooth hills" look as the old ProceduralPlane prototype.
-/// tile_to_world() lets later phases place entities/resources on the terrain.
+/// tile_to_world() is used to place entities/resources on the terrain.
 class MapTerrain : public MeshInstance3D {
     GDCLASS(MapTerrain, MeshInstance3D)
 

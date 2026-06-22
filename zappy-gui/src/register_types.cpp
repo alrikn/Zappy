@@ -9,6 +9,13 @@
 #include "entities/egg_entity.hpp"
 #include "entities/entity_manager.hpp"
 #include "entities/player_entity.hpp"
+#include "ui/broadcast_log.hpp"
+#include "ui/connect_dialog.hpp"
+#include "ui/end_game_overlay.hpp"
+#include "ui/hud_root.hpp"
+#include "ui/inventory_panel.hpp"
+#include "ui/team_panel.hpp"
+#include "ui/time_panel.hpp"
 #include "world/map_terrain.hpp"
 #include "world/tile_markers.hpp"
 
@@ -29,6 +36,13 @@ void initialize_zappy_gui_module(ModuleInitializationLevel p_level)
     ClassDB::register_class<PlayerEntity>();
     ClassDB::register_class<EggEntity>();
     ClassDB::register_class<EntityManager>();
+    ClassDB::register_class<HudRoot>();
+    ClassDB::register_class<ConnectDialog>();
+    ClassDB::register_class<TimePanel>();
+    ClassDB::register_class<TeamPanel>();
+    ClassDB::register_class<InventoryPanel>();
+    ClassDB::register_class<BroadcastLog>();
+    ClassDB::register_class<EndGameOverlay>();
 }
 
 void uninitialize_zappy_gui_module(ModuleInitializationLevel p_level)

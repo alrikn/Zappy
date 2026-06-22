@@ -61,7 +61,14 @@ add_library(zappy_gui SHARED
     src/world/tile_markers.cpp
     src/entities/player_entity.cpp
     src/entities/egg_entity.cpp
-    src/entities/entity_manager.cpp)
+    src/entities/entity_manager.cpp
+    src/ui/hud_root.cpp
+    src/ui/connect_dialog.cpp
+    src/ui/time_panel.cpp
+    src/ui/team_panel.cpp
+    src/ui/inventory_panel.cpp
+    src/ui/broadcast_log.cpp
+    src/ui/end_game_overlay.cpp)
 
 target_include_directories(zappy_gui PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src)
