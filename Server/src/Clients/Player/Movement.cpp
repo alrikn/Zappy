@@ -34,37 +34,37 @@ void Player::move_forward(Server &server)
             break;
     }
     server.move_player(*this, new_x, new_y);
-    auto self_fwd = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    auto self_fwd = std::dynamic_pointer_cast<Player>(server._clients[get_fd()]);
     if (self_fwd) {
         server._gui_subject.Notify([self_fwd](Client* c) {
             static_cast<Gui*>(c)->ppo(self_fwd);
         });
     }
-    server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(FORWARD));
+    server.send_message_queue.add_message(server, get_fd(), "ok\n", ClientCommandDelayMap.at(FORWARD));
 }
 
 void Player::turn_right(Server &server)
 {
     orientation = static_cast<orientation_t>((orientation % 4) + 1);
-    auto self_r = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    auto self_r = std::dynamic_pointer_cast<Player>(server._clients[get_fd()]);
     if (self_r) {
         server._gui_subject.Notify([self_r](Client* c) {
             static_cast<Gui*>(c)->ppo(self_r);
         });
     }
-    server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(RIGHT));
+    server.send_message_queue.add_message(server, get_fd(), "ok\n", ClientCommandDelayMap.at(RIGHT));
 }
 
 void Player::turn_left(Server &server)
 {
     orientation = static_cast<orientation_t>((orientation + 2) % 4 + 1);
-    auto self_l = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    auto self_l = std::dynamic_pointer_cast<Player>(server._clients[get_fd()]);
     if (self_l) {
         server._gui_subject.Notify([self_l](Client* c) {
             static_cast<Gui*>(c)->ppo(self_l);
         });
     }
-    server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(LEFT));
+    server.send_message_queue.add_message(server, get_fd(), "ok\n", ClientCommandDelayMap.at(LEFT));
 }
 
 
@@ -154,5 +154,5 @@ void Player::look(Server &server)
         }
     }
     final_response += "]\n";
-    server.send_message_queue.add_message(server, control_fd, final_response, ClientCommandDelayMap.at(LOOK));
+    server.send_message_queue.add_message(server, get_fd(), final_response, ClientCommandDelayMap.at(LOOK));
 }
