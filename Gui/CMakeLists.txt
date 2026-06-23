@@ -41,6 +41,20 @@ endif()
 # an extension built against an older API works in a newer editor as long as
 # compatibility_minimum in the .gdextension file is satisfied. Bump GIT_TAG to
 # a 4.6 tag once godot-cpp publishes one.
+#
+# GODOTCPP_TARGET is godot-cpp's own build-config switch (template_debug /
+# template_release / editor) and defaults to template_debug regardless of
+# CMAKE_BUILD_TYPE. Left unset, every preset — including linux-release —
+# silently links our optimized Release extension code against a debug-ABI
+# godot-cpp core (mismatched DEBUG_FEATURES defines), which corrupts the heap
+# inside godot-cpp's MethodBind registration at Release optimization levels.
+# Must be set before FetchContent_MakeAvailable(godot-cpp) below.
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(GODOTCPP_TARGET "template_release" CACHE STRING "" FORCE)
+else()
+    set(GODOTCPP_TARGET "template_debug" CACHE STRING "" FORCE)
+endif()
+
 include(FetchContent)
 set(FETCHCONTENT_QUIET ON)
 

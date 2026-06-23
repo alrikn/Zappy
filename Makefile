@@ -17,8 +17,10 @@
 # zappy_gui on Linux).
 ifeq ($(OS),Windows_NT)
     GUI_BIN := zappy_gui.exe
+    GUI_LIB := libzappy_gui.windows.release.x86_64.dll
 else
     GUI_BIN := zappy_gui
+    GUI_LIB := libzappy_gui.linux.release.x86_64.so
 endif
 
 all:
@@ -26,6 +28,8 @@ all:
 	$(MAKE) -C Gui bin
 	cp Server/zappy_server .
 	cp Gui/$(GUI_BIN) .
+	cp Gui/zappy_gui.pck .
+	cp Gui/$(GUI_LIB) .
 	cp Ai/zappy_ai .
 
 
@@ -36,6 +40,7 @@ clean:
 fclean:	clean
 	$(MAKE) -C Server fclean
 	$(MAKE) -C Gui fclean
-	rm -f zappy_server zappy_gui zappy_gui.exe zappy_ai
+	rm -f zappy_server zappy_gui zappy_gui.exe zappy_gui.pck zappy_ai
+	rm -f libzappy_gui.linux.release.x86_64.so libzappy_gui.windows.release.x86_64.dll
 
 re:	fclean all
