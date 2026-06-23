@@ -81,6 +81,11 @@ public:
     /// Fix a team's palette slot even before any of its players spawn.
     void on_team_registered(const String& name);
 
+    /// Free every live player and egg and forget all team-color assignments.
+    /// Called when a new connection starts, so a previous session's entities
+    /// don't linger once their server-assigned ids are reused by a new game.
+    void clear_all();
+
     /// Instantiate a PlayerEntity for a newly spawned player.
     void on_player_spawned(int id, int x, int y, int orientation, int level, const String& team);
     /// Move/turn an existing player.

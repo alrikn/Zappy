@@ -2,9 +2,8 @@
  * @file world/map_terrain.hpp
  * @brief Procedural terrain mesh sized to the server's map dimensions.
  * @details MapTerrain generates a noise-displaced plane mesh covering the
- *          server's map (msz X Y), keeping the same noise-based "smooth hills"
- *          look as the old ProceduralPlane prototype. tile_to_world() is used
- *          to place entities/resources on the terrain surface.
+ *          server's map (msz X Y) with a noise-based "smooth hills" look.
+ *          tile_to_world() is used to place entities/resources on the terrain surface.
  */
 
 #pragma once
@@ -15,9 +14,8 @@
 
 namespace godot {
 
-/// Terrain mesh sized to the server's map (msz X Y), keeping the same
-/// noise-based "smooth hills" look as the old ProceduralPlane prototype.
-/// tile_to_world() is used to place entities/resources on the terrain.
+/// Terrain mesh sized to the server's map (msz X Y) with a noise-based
+/// "smooth hills" look. tile_to_world() is used to place entities/resources on the terrain.
 class MapTerrain : public MeshInstance3D {
     GDCLASS(MapTerrain, MeshInstance3D)
 
@@ -45,6 +43,10 @@ protected:
     static void _bind_methods();
 
 public:
+    /// World units per map tile, shared with anything that needs to convert
+    /// between tile coordinates and world space (e.g. RtsCamera's pan clamp).
+    static double get_tile_size() { return TILE_SIZE; }
+
     /// Resize the terrain to width x height tiles (called on map_initialized).
     void set_grid_size(int width, int height);
 

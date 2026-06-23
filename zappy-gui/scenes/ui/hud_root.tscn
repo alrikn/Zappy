@@ -17,6 +17,7 @@ mouse_filter = 2
 
 [node name="ConnectDialog" parent="." unique_id=128239779 instance=ExtResource("1_connect")]
 layout_mode = 1
+world_path = NodePath("../../..")
 
 [node name="TimePanel" parent="." unique_id=2088867204 instance=ExtResource("2_time")]
 layout_mode = 0

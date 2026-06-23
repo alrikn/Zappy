@@ -95,6 +95,8 @@ void ZappyWorld::_bind_methods()
     ADD_SIGNAL(MethodInfo("game_over", PropertyInfo(Variant::STRING, "team")));
 
     ADD_SIGNAL(MethodInfo("connection_error", PropertyInfo(Variant::STRING, "message")));
+
+    ADD_SIGNAL(MethodInfo("world_reset"));
 }
 
 /// Default-constructs the connection and world state; no connection is opened yet.
@@ -143,6 +145,8 @@ void ZappyWorld::_process(double)
 void ZappyWorld::connect_to_server(const String& host, int port)
 {
     _errorEmitted = false;
+    _world.reset();
+    emit_signal("world_reset");
     _connection.connect_to_host(host, port);
 }
 

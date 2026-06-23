@@ -77,6 +77,19 @@ void WorldState::apply(const ServerMessage& msg)
     }, msg);
 }
 
+void WorldState::reset() noexcept
+{
+    _width  = 0;
+    _height = 0;
+    _tiles.clear();
+    _players.clear();
+    _eggs.clear();
+    _teams.clear();
+    _timeUnit    = 0;
+    _gameOver    = false;
+    _winningTeam.clear();
+}
+
 std::optional<std::reference_wrapper<const world_types::Player>> WorldState::find_player(uint32_t id) const noexcept
 {
     const auto it = _players.find(id);

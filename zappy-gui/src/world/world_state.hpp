@@ -52,6 +52,14 @@ public:
      */
     void apply(const ServerMessage& msg);
 
+    /**
+     * @brief Discard all accumulated state, returning to the post-construction state.
+     * @details Call before starting a new connection so a previous session's players,
+     *          eggs, tiles, and team names don't linger once the new server's bootstrap
+     *          messages start arriving with their own (likely overlapping) IDs.
+     */
+    void reset() noexcept;
+
     // ── Accessors ────────────────────────────────────────────────────────────
     [[nodiscard]] uint32_t width() const noexcept { return _width; }
     [[nodiscard]] uint32_t height() const noexcept { return _height; }

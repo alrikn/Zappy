@@ -13,3 +13,7 @@ compile_commands.json
 
 # Generated Doxygen documentation (rebuilt via `cmake --build <build-dir> --target docs`)
 docs/doxygen/
+
+
+# Temp assets
+temp/

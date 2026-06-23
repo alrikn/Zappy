@@ -27,6 +27,7 @@ void EntityManager::_bind_methods()
                   "set_egg_entity_scene", "get_egg_entity_scene");
 
     ClassDB::bind_method(D_METHOD("on_team_registered", "name"), &EntityManager::on_team_registered);
+    ClassDB::bind_method(D_METHOD("clear_all"), &EntityManager::clear_all);
 
     ClassDB::bind_method(D_METHOD("on_player_spawned", "id", "x", "y", "orientation", "level", "team"),
                           &EntityManager::on_player_spawned);
@@ -118,6 +119,22 @@ Vector3 EntityManager::entity_position(int x, int y) const
 void EntityManager::on_team_registered(const String& name)
 {
     (void)team_color(name);
+}
+
+/// Free every live player and egg, then forget all team-color assignments.
+void EntityManager::clear_all()
+{
+    for (auto& pair : _players) {
+        pair.second->queue_free();
+    }
+    _players.clear();
+
+    for (auto& pair : _eggs) {
+        pair.second->queue_free();
+    }
+    _eggs.clear();
+
+    _teamNames.clear();
 }
 
 /// Instantiate a PlayerEntity for a newly spawned player and place it on its tile.

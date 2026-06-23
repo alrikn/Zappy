@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" path="res://scenes/world/tile_markers.tscn" id="2_tilemarkers"]
 [ext_resource type="PackedScene" path="res://scenes/world/entity_manager.tscn" id="3_entitymanager"]
 [ext_resource type="Shader" uid="uid://kgjsu8n7pyom" path="res://temp/shader/main.gdshader" id="4_6m72w"]
-[ext_resource type="PackedScene" path="res://scenes/ui/hud_root.tscn" id="5_hudroot"]
+[ext_resource type="PackedScene" uid="uid://48st4xrlgw0l" path="res://scenes/ui/hud_root.tscn" id="5_hudroot"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_dphjl"]
 frequency = 0.009
@@ -82,22 +82,22 @@ map_terrain_path = NodePath("../MapTerrain")
 [node name="EntityManager" parent="." unique_id=1083520126 instance=ExtResource("3_entitymanager")]
 map_terrain_path = NodePath("../MapTerrain")
 
-[node name="Camera3D" type="Camera3D" parent="." unique_id=1405577229]
-transform = Transform3D(0.16273826, 0.7810473, -0.60289425, -0.24051598, 0.6240101, 0.74348074, 0.9569056, 0.024012934, 0.28940466, -9.851926, 7.765961, 9.458345)
+[node name="RtsCamera" type="RtsCamera" parent="." unique_id=2044167760]
+map_terrain_path = NodePath("../MapTerrain")
 current = true
 
+[node name="SelectionController" type="SelectionController" parent="." unique_id=2021026758]
+camera_path = NodePath("../RtsCamera")
+
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=435059553]
-transform = Transform3D(0.9788322, 0.1705664, 0.11311397, -0.15494601, 0.25650123, 0.9540434, 0.13371384, -0.9513749, 0.27750015, 0, 10, 10)
+transform = Transform3D(0.97537935, 0.07678662, -0.20673437, 0.1753736, 0.29831126, 0.9382188, 0.13371383, -0.9513749, 0.2775002, 0, 10, 10)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="DirectionalLight3D" unique_id=709063444]
 environment = SubResource("Environment_bq33v")
 
-[node name="HudLayer" type="CanvasLayer" parent="."]
+[node name="HudLayer" type="CanvasLayer" parent="." unique_id=55857702]
 
-[node name="HudRoot" parent="HudLayer" instance=ExtResource("5_hudroot")]
-
-[node name="ConnectDialog" parent="HudLayer/HudRoot"]
-world_path = NodePath("../../..")
+[node name="HudRoot" parent="HudLayer" unique_id=830484198 instance=ExtResource("5_hudroot")]
 
 [connection signal="broadcast" from="." to="HudLayer/HudRoot/BroadcastLog" method="on_broadcast"]
 [connection signal="connection_error" from="." to="HudLayer/HudRoot/ConnectDialog" method="on_connection_error"]
@@ -106,23 +106,26 @@ world_path = NodePath("../../..")
 [connection signal="game_over" from="." to="HudLayer/HudRoot/EndGameOverlay" method="on_game_over"]
 [connection signal="incantation_ended" from="." to="EntityManager" method="on_incantation_ended"]
 [connection signal="incantation_started" from="." to="EntityManager" method="on_incantation_started"]
-[connection signal="map_initialized" from="." to="HudLayer/HudRoot/ConnectDialog" method="on_connected"]
 [connection signal="map_initialized" from="." to="MapTerrain" method="set_grid_size"]
 [connection signal="map_initialized" from="." to="TileMarkers" method="initialize"]
+[connection signal="map_initialized" from="." to="RtsCamera" method="on_map_initialized"]
+[connection signal="map_initialized" from="." to="HudLayer/HudRoot/ConnectDialog" method="on_connected"]
 [connection signal="player_died" from="." to="EntityManager" method="on_player_died"]
-[connection signal="player_died" from="." to="HudLayer/HudRoot/InventoryPanel" method="on_player_died"]
 [connection signal="player_died" from="." to="HudLayer/HudRoot/TeamPanel" method="on_player_died"]
+[connection signal="player_died" from="." to="HudLayer/HudRoot/InventoryPanel" method="on_player_died"]
 [connection signal="player_inventory_updated" from="." to="HudLayer/HudRoot/InventoryPanel" method="on_player_inventory_updated"]
 [connection signal="player_leveled" from="." to="EntityManager" method="on_player_leveled"]
-[connection signal="player_leveled" from="." to="HudLayer/HudRoot/InventoryPanel" method="on_player_leveled"]
 [connection signal="player_leveled" from="." to="HudLayer/HudRoot/TeamPanel" method="on_player_leveled"]
+[connection signal="player_leveled" from="." to="HudLayer/HudRoot/InventoryPanel" method="on_player_leveled"]
 [connection signal="player_moved" from="." to="EntityManager" method="on_player_moved"]
 [connection signal="player_moved" from="." to="HudLayer/HudRoot/InventoryPanel" method="on_player_moved"]
 [connection signal="player_spawned" from="." to="EntityManager" method="on_player_spawned"]
-[connection signal="player_spawned" from="." to="HudLayer/HudRoot/InventoryPanel" method="on_player_spawned"]
 [connection signal="player_spawned" from="." to="HudLayer/HudRoot/TeamPanel" method="on_player_spawned"]
+[connection signal="player_spawned" from="." to="HudLayer/HudRoot/InventoryPanel" method="on_player_spawned"]
 [connection signal="server_message" from="." to="HudLayer/HudRoot/BroadcastLog" method="on_server_message"]
 [connection signal="team_registered" from="." to="EntityManager" method="on_team_registered"]
 [connection signal="team_registered" from="." to="HudLayer/HudRoot/TeamPanel" method="on_team_registered"]
 [connection signal="tile_updated" from="." to="TileMarkers" method="update_tile"]
 [connection signal="time_updated" from="." to="HudLayer/HudRoot/TimePanel" method="on_time_updated"]
+[connection signal="world_reset" from="." to="EntityManager" method="clear_all"]
+[connection signal="player_selected" from="SelectionController" to="HudLayer/HudRoot/InventoryPanel" method="select_player"]

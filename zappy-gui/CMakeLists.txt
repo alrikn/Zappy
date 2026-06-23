@@ -68,7 +68,9 @@ add_library(zappy_gui SHARED
     src/ui/team_panel.cpp
     src/ui/inventory_panel.cpp
     src/ui/broadcast_log.cpp
-    src/ui/end_game_overlay.cpp)
+    src/ui/end_game_overlay.cpp
+    src/camera/rts_camera.cpp
+    src/camera/selection_controller.cpp)
 
 target_include_directories(zappy_gui PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src)

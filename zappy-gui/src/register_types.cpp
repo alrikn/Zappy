@@ -6,6 +6,8 @@
 
 #include "register_types.hpp"
 #include "ZappyWorld.hpp"
+#include "camera/rts_camera.hpp"
+#include "camera/selection_controller.hpp"
 #include "entities/egg_entity.hpp"
 #include "entities/entity_manager.hpp"
 #include "entities/player_entity.hpp"
@@ -43,6 +45,8 @@ void initialize_zappy_gui_module(ModuleInitializationLevel p_level)
     ClassDB::register_class<InventoryPanel>();
     ClassDB::register_class<BroadcastLog>();
     ClassDB::register_class<EndGameOverlay>();
+    ClassDB::register_class<RtsCamera>();
+    ClassDB::register_class<SelectionController>();
 }
 
 void uninitialize_zappy_gui_module(ModuleInitializationLevel p_level)
