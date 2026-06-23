@@ -16,15 +16,18 @@
 int Player::player_num = 0; //initialize the static player_num variable
 
 
-Player::Player(Subject &subject, int control_fd) :Client(PLAYER, subject, control_fd), player_id(++player_num)
+Player::Player(Subject &subject, int control_fd) :Client(PLAYER, subject, control_fd), player_id(player_num++)
 {
     inventory.resources[static_cast<size_t>(Resource::Food)] = 10;
+    orientation = NORTH; //initialize orientation to NORTH
+    position[0] = 0;
+    position[1] = 0;
 }
 
 void Player::command_failed(Server &server, PlayerCommands verb)
 {
     std::string response = "ko\n";
-    server.send_message_queue.add_message(server, control_fd, response);
+    server.send_message_queue.add_message(server, get_fd(), response);
 
     std::cout << "Player " << player_id << " command failed: " << ClientCommandReverseMap.at(verb) << std::endl;
 }
@@ -95,6 +98,7 @@ void Player::parse_command(const std::string raw, Server &server)
         return;
     cmd_queue.push_back({it->second, args});
 }
+
 
 void Player::execute_command(PlayerCommands verb, std::vector<std::string> args,
     Server &server)
