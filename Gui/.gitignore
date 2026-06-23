@@ -14,6 +14,12 @@ compile_commands.json
 # Generated Doxygen documentation (rebuilt via `cmake --build <build-dir> --target docs`)
 docs/doxygen/
 
+# Exported runnable binary (built via `make bin`)
+/zappy_gui
+/zappy_gui.exe
+/zappy_gui.pck
+/zappy_gui.console.exe
+
 
 # Temp assets
 temp/
