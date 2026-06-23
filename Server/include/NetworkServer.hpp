@@ -43,10 +43,10 @@ class NetworkServer
         std::unordered_map<int, std::shared_ptr<Client>> _clients;
         SendMessageQueue send_message_queue;
 
-        // hooks wired by Server at construction time
+        //hooks wired by Server at construction time
         std::function<void(int fd, const std::string &team_name)> _on_team_name;
-        std::function<void(int fd, const std::string &cmd)>       _on_command;
-        std::function<void(int fd)>                               _on_disconnect;
+        std::function<void(int fd, const std::string &cmd)> _on_command;
+        std::function<void(int fd)> _on_disconnect;
 
         NetworkServer(int port);
 

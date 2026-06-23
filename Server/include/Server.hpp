@@ -23,7 +23,7 @@
 class Server
 {
     private:
-        // _network MUST be declared before the reference aliases below
+        //_network MUST be declared before the reference aliases below
         NetworkServer _network;
 
         void finalize_client(int client_fd, std::string team_name);
@@ -53,7 +53,7 @@ class Server
         Subject _player_subject;
         std::vector<std::vector<Tiles>> _map;
 
-        // reference aliases into _network — existing code needs no changes
+        //reference aliases into _network
         std::unordered_map<int, std::shared_ptr<Client>> &_clients;
         SendMessageQueue &send_message_queue;
 
