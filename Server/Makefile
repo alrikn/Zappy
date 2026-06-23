@@ -20,6 +20,7 @@ SRC = main.cpp \
 	src/Game/game_loop.cpp \
 	src/Game/Tiles.cpp \
 	src/Queue/Queue.cpp \
+	src/Server/NetworkServer.cpp \
 	src/Server/Polling.cpp \
 	src/Server/server_helper.cpp \
 	src/Server/client_helpers.cpp \

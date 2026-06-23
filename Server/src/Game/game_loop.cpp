@@ -162,7 +162,7 @@ void Server::run()
         if (timeout < 0)
             timeout = 0;
         try {
-            poll_clients(timeout); //blocks until socket activity or the next tick is due
+            _network.poll_clients(timeout); //blocks until socket activity or the next tick is due
         } catch (const std::exception &e) {
             std::cerr << "Error during poll_clients: " << e.what() << std::endl;
             continue;
