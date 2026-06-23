@@ -159,7 +159,7 @@ void Server::kill_player(std::shared_ptr<Player> player)
     _gui_subject.Notify([player](Client* c) {
         static_cast<Gui*>(c)->pdi(player);
     });
-    remove_client(player->control_fd);
+    remove_client(player->get_fd());
 }
 
 std::shared_ptr<Gui> Server::create_gui(int client_fd)
@@ -190,7 +190,7 @@ void Server::remove_client(int client_fd)
 
 void Server::add_client(std::shared_ptr<Client> client)
 {
-    _clients[client->control_fd] = client;
+    _clients[client->get_fd()] = client;
     client_num++;
 }
 

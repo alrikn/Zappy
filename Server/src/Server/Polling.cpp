@@ -66,14 +66,13 @@ void Server::handle_client_event(int client_fd)
         return;
     }
     auto client = client_it->second;
-    client->ctrl_buffer.append(buf, n); //we crash here if client is not in client map.
-    pos = client->ctrl_buffer.find('\n');
+    client->get_buffer().append(buf, n);
+    pos = client->get_buffer().find('\n');
     while (pos != std::string::npos) {
-        std::string command = client->ctrl_buffer.substr(0, pos);
-        client->ctrl_buffer.erase(0, pos + 1);
-        // process the cmd
+        std::string command = client->get_buffer().substr(0, pos);
+        client->get_buffer().erase(0, pos + 1);
         client->parse_command(command, *this);
-        pos = client->ctrl_buffer.find('\n');
+        pos = client->get_buffer().find('\n');
     }
 }
 

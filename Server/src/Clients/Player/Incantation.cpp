@@ -139,7 +139,7 @@ bool Player::incantation_start(Server &server)
     }
 
     //tell the gui that incant is underway
-    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[get_fd()]);
     std::vector<std::weak_ptr<Player>> weak_participants = tile.players; //copy the weak_ptrs to avoid issues with the vector being modified while we iterate
     std::vector<std::shared_ptr<Player>> participants;
     for (const auto &wp : weak_participants) {
@@ -161,7 +161,7 @@ bool Player::incantation_start(Server &server)
             p->busy = true;
             p->running_cmd = {INCANTATION, {}};
             p->action_done_at = deadline;
-            server.send_message_queue.add_message(server, p->control_fd, "Elevation underway\n");
+            server.send_message_queue.add_message(server, p->get_fd(), "Elevation underway\n");
         }
     }
     return true;
@@ -205,11 +205,11 @@ void Player::incantation_end(Server &server)
         p->level = new_level;
         p->in_incantation = false;
         p->busy = false;
-        server.send_message_queue.add_message(server, p->control_fd, response); //since this is at the end of the incantation, we can send the message immediately
+        server.send_message_queue.add_message(server, p->get_fd(), response); //since this is at the end of the incantation, we can send the message immediately
     }
 
     //notify the gui that the incantation has finished
-    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[get_fd()]);
     if (!self) {
         command_failed(server, INCANTATION);
         return;
