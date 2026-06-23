@@ -128,4 +128,5 @@ environment = SubResource("Environment_bq33v")
 [connection signal="tile_updated" from="." to="TileMarkers" method="update_tile"]
 [connection signal="time_updated" from="." to="HudLayer/HudRoot/TimePanel" method="on_time_updated"]
 [connection signal="world_reset" from="." to="EntityManager" method="clear_all"]
+[connection signal="world_reset" from="." to="MapTerrain" method="randomize_seed"]
 [connection signal="player_selected" from="SelectionController" to="HudLayer/HudRoot/InventoryPanel" method="select_player"]

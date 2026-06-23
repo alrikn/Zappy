@@ -58,6 +58,9 @@ public:
     /// Get the noise resource used to displace the terrain.
     Ref<FastNoiseLite> get_noise() const;
 
+    /// Assign a random seed to the noise resource, giving the terrain a new look (purely visual).
+    void randomize_seed();
+
     /// Set the vertical scale applied to the noise sample and rebuild the mesh.
     void set_height(double p_height);
     /// Get the vertical scale applied to the noise sample.

@@ -9,6 +9,7 @@
 #include <godot_cpp/classes/plane_mesh.hpp>
 #include <godot_cpp/classes/shader_material.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
@@ -24,6 +25,8 @@ void MapTerrain::_bind_methods()
 
     ClassDB::bind_method(D_METHOD("set_noise", "noise"), &MapTerrain::set_noise);
     ClassDB::bind_method(D_METHOD("get_noise"), &MapTerrain::get_noise);
+
+    ClassDB::bind_method(D_METHOD("randomize_seed"), &MapTerrain::randomize_seed);
 
     ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "noise", PROPERTY_HINT_RESOURCE_TYPE, "FastNoiseLite"),
                   "set_noise", "get_noise");
@@ -72,6 +75,17 @@ void MapTerrain::set_noise(const Ref<FastNoiseLite> &p_noise)
 Ref<FastNoiseLite> MapTerrain::get_noise() const
 {
     return noise;
+}
+
+/**
+ * @brief Assign a random seed to the noise resource so the terrain looks different each time.
+ * @details Setting the seed fires the noise resource's "changed" signal, which
+ *          set_noise() already connected to update_mesh(), so the mesh rebuilds on its own.
+ */
+void MapTerrain::randomize_seed()
+{
+    if (noise.is_valid())
+        noise->set_seed(UtilityFunctions::randi());
 }
 
 /**
