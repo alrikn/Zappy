@@ -42,12 +42,21 @@ $(PRESETS):
 ## classes during that scan, silently baking placeholder nodes (empty
 ## NodePath exports) into the exported scenes — which crashes at runtime
 ## (e.g. on pressing Connect) instead of failing the build.
+##
+## .godot/ (Godot's local project cache: class name cache, uid cache,
+## previously-exported scene snapshots) is wiped before exporting. It's
+## machine-local and gitignored, so it can silently go stale — observed
+## causing both a duplicate GDExtension class registration and a changed
+## .tscn not getting re-baked into the .pck. Always exporting from a clean
+## cache costs a few seconds of reimport but rules that out for good.
 bin: $(HOST_BIN_TARGET)
 
 bin-linux: linux-debug linux-release
+	rm -rf .godot
 	$(GODOT) --headless --path . --export-release "linux"
 
 bin-windows: windows-debug windows-release
+	rm -rf .godot
 	$(GODOT) --headless --path . --export-release "windows"
 
 ## Doxygen HTML docs → docs/doxygen/html/index.html. Reuses the linux-debug
