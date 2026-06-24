@@ -105,7 +105,10 @@ void NetworkServer::accept_new_client()
         return;
     }
     add_fd(client_fd);
-    write(client_fd, "WELCOME\n", 8);
+    int n = write(client_fd, "WELCOME\n", 8);
+    if (n < 8) {
+        perror("write");
+    }
     _pending_clients[client_fd] = "";
 }
 
