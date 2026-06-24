@@ -3,6 +3,7 @@ __pycache__/
 #these are all binaries and therforeshould not be pushed
 zappy_server
 zappy_gui
+zappy_gui.pck
 #for the ai, jad will have to figure out how to compile it
 zappy_ai
 .vscode
