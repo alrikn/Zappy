@@ -175,13 +175,16 @@ void EntityManager::on_player_leveled(int id, int level)
 }
 
 /// Remove a player that has died; unknown ids are silently ignored.
+/// The entity itself defers its actual removal until its death animation
+/// finishes (or frees immediately if it has none); erasing it from _players
+/// now is what makes the game logic treat it as gone right away.
 void EntityManager::on_player_died(int id)
 {
     auto it = _players.find(id);
     if (it == _players.end()) {
         return;
     }
-    it->second->queue_free();
+    it->second->die();
     _players.erase(it);
 }
 
