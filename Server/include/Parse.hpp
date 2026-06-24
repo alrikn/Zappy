@@ -28,7 +28,7 @@ enum PlayerCommands {
     INCANTATION
 };
 
-const std::unordered_map<std::string, PlayerCommands> ClientCommandMap = {
+inline const std::unordered_map<std::string, PlayerCommands> ClientCommandMap = {
     {"Forward",     FORWARD},
     {"Right",       RIGHT},
     {"Left",        LEFT},
@@ -43,7 +43,7 @@ const std::unordered_map<std::string, PlayerCommands> ClientCommandMap = {
     {"Incantation", INCANTATION},
 };
 
-const std::unordered_map<PlayerCommands, std::string> ClientCommandReverseMap = {
+inline const std::unordered_map<PlayerCommands, std::string> ClientCommandReverseMap = {
     {FORWARD, "Forward"},
     {RIGHT, "Right"},
     {LEFT, "Left"},
@@ -59,7 +59,7 @@ const std::unordered_map<PlayerCommands, std::string> ClientCommandReverseMap = 
 };
 
 //some player commands have a delay, so we need to define a delay map
-const std::unordered_map<PlayerCommands, int> ClientCommandDelayMap = {
+inline const std::unordered_map<PlayerCommands, int> ClientCommandDelayMap = {
     {FORWARD, 7},
     {RIGHT, 7},
     {LEFT, 7},
@@ -87,7 +87,7 @@ enum GuiCommands {
     SST  //set server time
 };
 
-const std::unordered_map<std::string, GuiCommands> GuiCommandMap = {
+inline const std::unordered_map<std::string, GuiCommands> GuiCommandMap = {
     {"msz", MSZ},
     {"bct", BCT},
     {"mct", MCT},
