@@ -20,6 +20,7 @@
   - [x] ebo (egg hatching)
   - [ ] edi (egg died)
   - [ ] seg (game ended)
+  - [x] plv (player level up)
 - [x] Separate server class in Game class and network class.
 - [ ] if no egg was laid a a player tries to log in, make a bullshit egg with id -1 and send it to gui.
 - [x] FIX time tick delay
