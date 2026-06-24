@@ -20,7 +20,7 @@
   - [x] ebo (egg hatching)
   - [ ] edi (egg died)
   - [ ] seg (game ended)
-- [ ] Separate server class in Game class and network class.
+- [x] Separate server class in Game class and network class.
 - [ ] if no egg was laid a a player tries to log in, make a bullshit egg with id -1 and send it to gui.
 - [x] FIX time tick delay
 - [x] Observer should not have raw pointers
@@ -28,7 +28,7 @@
 - [ ] circular buffer for client command parsing. IMPORTANT
 - [ ] check on every single write the pollin and pollout
 - [x] check write output (just logging ok)
-- [ ] rework parameters on the server
+- [x] rework parameters on the server
 ## GUI TODO LIST
 - [ ] rendering better models
 - [ ] animations required for actions.
