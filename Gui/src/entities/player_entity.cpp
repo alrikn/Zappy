@@ -43,6 +43,10 @@ void PlayerEntity::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_death_animation"), &PlayerEntity::get_death_animation);
     ADD_PROPERTY(PropertyInfo(Variant::STRING, "death_animation"), "set_death_animation", "get_death_animation");
 
+    ClassDB::bind_method(D_METHOD("set_walk_animation_speed", "speed"), &PlayerEntity::set_walk_animation_speed);
+    ClassDB::bind_method(D_METHOD("get_walk_animation_speed"), &PlayerEntity::get_walk_animation_speed);
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "walk_animation_speed"), "set_walk_animation_speed", "get_walk_animation_speed");
+
     ClassDB::bind_method(D_METHOD("set_orientation", "orientation"), &PlayerEntity::set_orientation);
     ClassDB::bind_method(D_METHOD("set_level", "level"), &PlayerEntity::set_level);
 
@@ -155,11 +159,21 @@ String PlayerEntity::get_death_animation() const
     return _deathAnimation;
 }
 
+void PlayerEntity::set_walk_animation_speed(float speed)
+{
+    _walkAnimationSpeed = speed;
+}
+
+float PlayerEntity::get_walk_animation_speed() const
+{
+    return _walkAnimationSpeed;
+}
+
 /**
- * @brief Play animation_name on _animationPlayer, unless it's already the
- *        currently-playing animation, or either is unset.
+ * @brief Play animation_name on _animationPlayer at the given speed, unless
+ *        it's already the currently-playing animation, or either is unset.
  */
-void PlayerEntity::_play_clip(const String& animation_name)
+void PlayerEntity::_play_clip(const String& animation_name, float speed)
 {
     if (_animationPlayer == nullptr || animation_name.is_empty()) {
         return;
@@ -167,7 +181,7 @@ void PlayerEntity::_play_clip(const String& animation_name)
     if (_animationPlayer->is_playing() && _animationPlayer->get_current_animation() == animation_name) {
         return;
     }
-    _animationPlayer->play(animation_name);
+    _animationPlayer->play(animation_name, -1.0, speed);
 }
 
 /**
@@ -195,16 +209,20 @@ void PlayerEntity::set_level(int level)
 
 /**
  * @brief Update this entity's position from a new tile coordinate.
- * @details The first call, or any call where the tile moved by more than one
- *          step on either axis (a toroidal wrap-around), places the entity
- *          instantly. Otherwise the move is tweened.
+ * @details The first call, a toroidal wrap-around (tile moved by more than one
+ *          step on either axis), or a same-tile update (a pure turn — the
+ *          server reports turning in place the same way as moving, just with
+ *          an unchanged x/y) places the entity instantly and plays idle_animation
+ *          rather than walk_animation, since nothing actually moved. Otherwise
+ *          the move is tweened.
  */
 void PlayerEntity::update_position(const Vector3& world_pos, int grid_x, int grid_y)
 {
     bool wrapped = _hasPosition &&
         (std::abs(grid_x - _gridX) > 1 || std::abs(grid_y - _gridY) > 1);
+    bool sameTile = _hasPosition && grid_x == _gridX && grid_y == _gridY;
 
-    if (!_hasPosition || wrapped) {
+    if (!_hasPosition || wrapped || sameTile) {
         set_position(world_pos);
         _play_clip(_idleAnimation);
     } else {
@@ -228,7 +246,7 @@ void PlayerEntity::move_to(const Vector3& pos, float duration)
         _activeTween->kill();
     }
 
-    _play_clip(_walkAnimation);
+    _play_clip(_walkAnimation, _walkAnimationSpeed);
 
     _activeTween = create_tween();
     _activeTween->set_trans(Tween::TRANS_SINE);

@@ -59,12 +59,18 @@ private:
     String _incantAnimation;
     String _deathAnimation;
 
+    /// Exported property: playback speed multiplier for walk_animation (default 1.0).
+    /// Lets each character's run/walk cycle be tuned to match the fixed 0.3s
+    /// tile-to-tile tween duration without recompiling.
+    float _walkAnimationSpeed = 1.0f;
+
     bool _hasPosition = false; ///< False until the first update_position() call.
     int  _gridX = 0;           ///< Tile column of the last update_position() call.
     int  _gridY = 0;           ///< Tile row of the last update_position() call.
 
-    /// Play animation_name on _animationPlayer if both are set and it isn't already playing. No-op otherwise.
-    void _play_clip(const String& animation_name);
+    /// Play animation_name on _animationPlayer at the given speed if both are set
+    /// and it isn't already playing. No-op otherwise.
+    void _play_clip(const String& animation_name, float speed = 1.0f);
     /// Tween-finished callback: returns to the idle animation after a move_to() completes.
     void _on_move_finished();
     /// AnimationPlayer-finished callback: frees this node once the death animation completes.
@@ -107,6 +113,11 @@ public:
     void set_death_animation(const String& name);
     /// Get the exported death_animation property.
     String get_death_animation() const;
+
+    /// Set the exported walk_animation_speed property.
+    void set_walk_animation_speed(float speed);
+    /// Get the exported walk_animation_speed property.
+    float get_walk_animation_speed() const;
 
     /// Set this node's Y rotation from a protocol orientation (1=N, 2=E, 3=S, 4=W).
     void set_orientation(int orientation);
