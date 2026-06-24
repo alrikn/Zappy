@@ -3,7 +3,7 @@
 [ext_resource type="Shader" uid="uid://dy2ck7wj6gmv1" path="res://scenes/world/terrain.gdshader" id="1_dphjl"]
 [ext_resource type="PackedScene" path="res://scenes/world/tile_markers.tscn" id="2_tilemarkers"]
 [ext_resource type="PackedScene" path="res://scenes/world/entity_manager.tscn" id="3_entitymanager"]
-[ext_resource type="Shader" uid="uid://kgjsu8n7pyom" path="res://temp/shader/main.gdshader" id="4_6m72w"]
+[ext_resource type="Shader" uid="uid://kgjsu8n7pyom" path="res://scenes/world/sky/main.gdshader" id="4_6m72w"]
 [ext_resource type="PackedScene" uid="uid://48st4xrlgw0l" path="res://scenes/ui/hud_root.tscn" id="5_hudroot"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_dphjl"]

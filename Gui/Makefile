@@ -30,17 +30,24 @@ $(PRESETS):
 	cmake --preset $@
 	cmake --build --preset $@ --parallel $(JOBS)
 
-## Builds the release native library and has Godot export a runnable
-## executable, using the matching preset in export_presets.cfg. `bin` targets
-## the host OS; `bin-linux`/`bin-windows` cross-target explicitly (e.g. to
-## build the Windows exe from WSL once mingw-w64 + Godot export templates for
-## Windows are installed).
+## Builds the native library and has Godot export a runnable executable,
+## using the matching preset in export_presets.cfg. `bin` targets the host
+## OS; `bin-linux`/`bin-windows` cross-target explicitly (e.g. to build the
+## Windows exe from WSL once mingw-w64 + Godot export templates for Windows
+## are installed).
+##
+## Both the debug and release presets are built first: Godot's export step
+## does an internal debug-context project scan before packaging, and without
+## bin/libzappy_gui.*.debug.*.so present it can't resolve the GDExtension
+## classes during that scan, silently baking placeholder nodes (empty
+## NodePath exports) into the exported scenes — which crashes at runtime
+## (e.g. on pressing Connect) instead of failing the build.
 bin: $(HOST_BIN_TARGET)
 
-bin-linux: linux-release
+bin-linux: linux-debug linux-release
 	$(GODOT) --headless --path . --export-release "linux"
 
-bin-windows: windows-release
+bin-windows: windows-debug windows-release
 	$(GODOT) --headless --path . --export-release "windows"
 
 ## Doxygen HTML docs → docs/doxygen/html/index.html. Reuses the linux-debug
