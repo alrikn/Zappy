@@ -37,6 +37,11 @@ class EntityManager : public Node3D {
 private:
     std::unordered_map<int, PlayerEntity*> _players; ///< Live players, keyed by id.
     std::unordered_map<int, EggEntity*> _eggs;        ///< Live eggs, keyed by id.
+    /// Player ids currently incanting, keyed by tile (packed as (x << 32) | (uint32)y).
+    /// Recorded from on_incantation_started's id list so on_incantation_ended can clear
+    /// set_incanting(false) for exactly those players, instead of re-deriving membership
+    /// from each player's current tracked grid position (which can drift out of sync).
+    std::unordered_map<int64_t, std::vector<int>> _incantingByTile;
     std::vector<String> _teamNames;                   ///< Teams in first-seen order, indexes into _palette.
     std::array<Color, 8> _palette;                    ///< Fixed team-color palette.
 

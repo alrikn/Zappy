@@ -7,7 +7,19 @@
 
 #include <godot_cpp/core/class_db.hpp>
 
+#include <cstdint>
+
 using namespace godot;
+
+namespace {
+
+/// Packs a tile coordinate into a single key for _incantingByTile.
+int64_t tile_key(int x, int y)
+{
+    return (static_cast<int64_t>(x) << 32) | static_cast<uint32_t>(y);
+}
+
+} // namespace
 
 void EntityManager::_bind_methods()
 {
@@ -216,24 +228,37 @@ void EntityManager::on_egg_removed(int egg_id)
     _eggs.erase(it);
 }
 
-/// Highlight all players participating in a new incantation.
-void EntityManager::on_incantation_started(int, int, int, const PackedInt32Array& ids)
+/// Highlight all players participating in a new incantation, and remember
+/// exactly which ids they were so on_incantation_ended can clear the
+/// highlight for those same players regardless of any later position drift.
+void EntityManager::on_incantation_started(int x, int y, int, const PackedInt32Array& ids)
 {
+    std::vector<int> incantingIds;
     for (int64_t i = 0; i < ids.size(); i++) {
-        auto it = _players.find(ids[i]);
+        int id = static_cast<int>(ids[i]);
+        incantingIds.push_back(id);
+        auto it = _players.find(id);
         if (it != _players.end()) {
             it->second->set_incanting(true);
         }
     }
+    _incantingByTile[tile_key(x, y)] = std::move(incantingIds);
 }
 
-/// Clear the incantation highlight for all players standing on tile (x, y).
+/// Clear the incantation highlight for exactly the players recorded by the
+/// matching on_incantation_started call for this tile; unknown tiles are
+/// silently ignored.
 void EntityManager::on_incantation_ended(int x, int y, bool)
 {
-    for (const auto& pair : _players) {
-        PlayerEntity* entity = pair.second;
-        if (entity->get_grid_x() == x && entity->get_grid_y() == y) {
-            entity->set_incanting(false);
+    auto it = _incantingByTile.find(tile_key(x, y));
+    if (it == _incantingByTile.end()) {
+        return;
+    }
+    for (int id : it->second) {
+        auto playerIt = _players.find(id);
+        if (playerIt != _players.end()) {
+            playerIt->second->set_incanting(false);
         }
     }
+    _incantingByTile.erase(it);
 }
