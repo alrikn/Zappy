@@ -16,11 +16,15 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="ConnectDialog" parent="." unique_id=128239779 instance=ExtResource("1_connect")]
-layout_mode = 1
 world_path = NodePath("../../..")
+layout_mode = 1
 
 [node name="TimePanel" parent="." unique_id=2088867204 instance=ExtResource("2_time")]
 layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 152.0
+offset_bottom = 32.0
 
 [node name="TeamPanel" parent="." unique_id=1649096623 instance=ExtResource("3_team")]
 layout_mode = 1
@@ -34,10 +38,17 @@ offset_top = -430.0
 offset_right = 255.0
 offset_bottom = -178.0
 
-[node name="BroadcastLog" parent="." unique_id=1864923325 instance=ExtResource("5_broadcast")]
-layout_mode = 0
-anchors_preset = 0
-
 [node name="EndGameOverlay" parent="." unique_id=2141326517 instance=ExtResource("6_endgame")]
 layout_mode = 0
 anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+grow_horizontal = 1
+grow_vertical = 1
+
+[node name="BroadcastLog" parent="." unique_id=1405071704 instance=ExtResource("5_broadcast")]
+layout_mode = 1
+offset_left = 1.0
+offset_top = -122.0
+offset_right = 1.0
+offset_bottom = -2.0
