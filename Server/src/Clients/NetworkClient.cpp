@@ -11,7 +11,11 @@
 
 void NetworkClient::send(const std::string &msg)
 {
-    write(fd, msg.c_str(), msg.length());
+    int n = write(fd, msg.c_str(), msg.length());
+
+    if (n < 0) {
+        perror("write");
+    }
 }
 
 std::string NetworkClient::receive()

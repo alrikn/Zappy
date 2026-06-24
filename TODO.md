@@ -34,4 +34,3 @@ GUI TODO LIST
   - [ ] more info about the map (map size, num total resources)
   - [ ] network layer is split in 2 basic networking utilities and protocol
   - [ ] MUST: 1 interface is for network layer, and an interface for render layer
-  - [ ] 

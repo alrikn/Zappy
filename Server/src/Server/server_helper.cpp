@@ -89,8 +89,7 @@ std::shared_ptr<Player> Server::create_player(int client_fd, std::string team_na
     //protocol: slots remaining, then map dimensions
     std::string msg = std::to_string(matched_team->spots_left) + "\n"
         + std::to_string(getMapWidth()) + " " + std::to_string(getMapHeight()) + "\n";
-    write(client_fd, msg.c_str(), msg.length());
-
+    send_message_queue.add_message(*this, client_fd, msg, 0);
     return player;
 }
 
