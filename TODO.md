@@ -13,20 +13,20 @@
       - [x] pbc (player broadcast)
       - [x] pic (player incantation start)
       - [x] pie (player incantation end)
-      - [ ] pfk (player laying egg)
+      - [x] pfk (player laying egg)
       - [x] pdi (player died)
-      - [ ] enw (new egg)
-      - [ ] ebo (egg hatching)
+      - [x] enw (new egg)
+      - [x] ebo (egg hatching)
       - [ ] edi (egg died)
       - [ ] seg (game ended)
     - [ ] Separate server class in Game class and network class.
     - [ ] if no egg was laid a a player tries to log in, make a bullshit egg with id -1 and send it to gui.
-    - [x] FIX FUCK TIME TICKS LEGTG
+    - [x] FIX time tick delay
     - [x] Observer should not have raw pointers
     - [x] make the tiles hold weak pointers maybe (to the players)
     - [ ] circular buffer for client command parsing. IMPORTANT
     - [ ] check on every single write the pollin and pollout
-    - [ ] check write output (just logging ok)
+    - [x] check write output (just logging ok)
     - [ ] rework parameters on the server
 GUI TODO LIST
   - [ ] rendering better models
