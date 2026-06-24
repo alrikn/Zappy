@@ -21,7 +21,7 @@ jobs:
 
       - name: Compile project
         run: make
-        timeout-minutes: 2
+        timeout-minutes: 15
 
       - name: Verify executable
         run: |
