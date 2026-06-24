@@ -37,6 +37,13 @@ void Server::remove_client(int client_fd)
 {
     auto it = _clients.find(client_fd);
     if (it != _clients.end()) {
+        auto player = std::dynamic_pointer_cast<Player>(it->second);
+        if (player) {
+            _map[player->position[1]][player->position[0]].remove_specific_client(player->getId());
+            _gui_subject.Notify([player](Client *c) {
+                static_cast<Gui *>(c)->pdi(player);
+            });
+        }
         it->second->RemoveMeFromList();
         free_team_slot(it->second);
     }
@@ -127,9 +134,5 @@ void Server::finalize_client(int client_fd, std::string team_name)
 void Server::kill_player(std::shared_ptr<Player> player)
 {
     player->send_message("dead\n");
-    _map[player->position[1]][player->position[0]].remove_specific_client(player->getId());
-    _gui_subject.Notify([player](Client *c) {
-        static_cast<Gui *>(c)->pdi(player);
-    });
     remove_client(player->get_fd());
 }
