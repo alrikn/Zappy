@@ -1,8 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://d3d6m15mfrdrj"]
 
-[ext_resource type="PackedScene" path="res://scenes/entities/player_entity.tscn" id="1_player"]
+[ext_resource type="PackedScene" uid="uid://db3evskx1tb2p" path="res://scenes/entities/players/skeleton_player/player_entity_skeleton.tscn" id="1_0f7dj"]
 [ext_resource type="PackedScene" path="res://scenes/entities/egg_entity.tscn" id="2_egg"]
 
-[node name="EntityManager" type="EntityManager"]
-player_entity_scene = ExtResource("1_player")
+[node name="EntityManager" type="EntityManager" unique_id=678298169]
+player_entity_scene = ExtResource("1_0f7dj")
 egg_entity_scene = ExtResource("2_egg")
