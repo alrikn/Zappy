@@ -19,9 +19,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Godot 4.6
+        run: |
+          GODOT_TAG="4.6-stable"
+          GODOT_TPLDIR="$HOME/.local/share/godot/export_templates/4.6.stable"
+
+          wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_TAG}/Godot_v${GODOT_TAG}_linux.x86_64.zip" -O godot.zip
+          unzip -q godot.zip
+          sudo mv "Godot_v${GODOT_TAG}_linux.x86_64" /usr/local/bin/godot
+          sudo chmod +x /usr/local/bin/godot
+
+          wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_TAG}/Godot_v${GODOT_TAG}_export_templates.tpz" -O templates.tpz
+          mkdir -p "$GODOT_TPLDIR"
+          unzip -q templates.tpz -d /tmp/godot_templates
+          mv /tmp/godot_templates/templates/* "$GODOT_TPLDIR/"
+
       - name: Compile project
         run: make
-        timeout-minutes: 2
+        timeout-minutes: 20
 
       - name: Verify executable
         run: |

@@ -1,0 +1,115 @@
+[gd_scene format=3]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_food"]
+albedo_color = Color(0.2, 0.8, 0.2, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_food"]
+material = SubResource("StandardMaterial3D_food")
+radius = 0.12
+height = 0.24
+
+[sub_resource type="MultiMesh" id="MultiMesh_food"]
+transform_format = 1
+use_colors = false
+mesh = SubResource("SphereMesh_food")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_linemate"]
+albedo_color = Color(0.85, 0.85, 0.85, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_linemate"]
+material = SubResource("StandardMaterial3D_linemate")
+radius = 0.12
+height = 0.24
+
+[sub_resource type="MultiMesh" id="MultiMesh_linemate"]
+transform_format = 1
+use_colors = false
+mesh = SubResource("SphereMesh_linemate")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_deraumere"]
+albedo_color = Color(0.8, 0.5, 0.15, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_deraumere"]
+material = SubResource("StandardMaterial3D_deraumere")
+radius = 0.12
+height = 0.24
+
+[sub_resource type="MultiMesh" id="MultiMesh_deraumere"]
+transform_format = 1
+use_colors = false
+mesh = SubResource("SphereMesh_deraumere")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_sibur"]
+albedo_color = Color(0.2, 0.5, 0.9, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_sibur"]
+material = SubResource("StandardMaterial3D_sibur")
+radius = 0.12
+height = 0.24
+
+[sub_resource type="MultiMesh" id="MultiMesh_sibur"]
+transform_format = 1
+use_colors = false
+mesh = SubResource("SphereMesh_sibur")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_mendiane"]
+albedo_color = Color(0.6, 0.25, 0.85, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_mendiane"]
+material = SubResource("StandardMaterial3D_mendiane")
+radius = 0.12
+height = 0.24
+
+[sub_resource type="MultiMesh" id="MultiMesh_mendiane"]
+transform_format = 1
+use_colors = false
+mesh = SubResource("SphereMesh_mendiane")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_phiras"]
+albedo_color = Color(0.85, 0.2, 0.2, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_phiras"]
+material = SubResource("StandardMaterial3D_phiras")
+radius = 0.12
+height = 0.24
+
+[sub_resource type="MultiMesh" id="MultiMesh_phiras"]
+transform_format = 1
+use_colors = false
+mesh = SubResource("SphereMesh_phiras")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_thystame"]
+albedo_color = Color(0.95, 0.85, 0.1, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_thystame"]
+material = SubResource("StandardMaterial3D_thystame")
+radius = 0.12
+height = 0.24
+
+[sub_resource type="MultiMesh" id="MultiMesh_thystame"]
+transform_format = 1
+use_colors = false
+mesh = SubResource("SphereMesh_thystame")
+
+[node name="TileMarkers" type="TileMarkers"]
+
+[node name="Food" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("MultiMesh_food")
+
+[node name="Linemate" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("MultiMesh_linemate")
+
+[node name="Deraumere" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("MultiMesh_deraumere")
+
+[node name="Sibur" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("MultiMesh_sibur")
+
+[node name="Mendiane" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("MultiMesh_mendiane")
+
+[node name="Phiras" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("MultiMesh_phiras")
+
+[node name="Thystame" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("MultiMesh_thystame")

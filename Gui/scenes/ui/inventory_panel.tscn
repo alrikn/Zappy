@@ -1,0 +1,34 @@
+[gd_scene format=3]
+
+[node name="InventoryPanel" type="InventoryPanel"]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -260.0
+offset_right = 260.0
+offset_bottom = -8.0
+grow_vertical = 0
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+
+[node name="PlayerList" type="ItemList" parent="Panel/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 100)
+
+[node name="InfoLabel" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = ""
+
+[node name="InventoryLabel" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = ""

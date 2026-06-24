@@ -1,0 +1,43 @@
+[gd_scene format=3 uid="uid://48st4xrlgw0l"]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/connect_dialog.tscn" id="1_connect"]
+[ext_resource type="PackedScene" path="res://scenes/ui/time_panel.tscn" id="2_time"]
+[ext_resource type="PackedScene" path="res://scenes/ui/team_panel.tscn" id="3_team"]
+[ext_resource type="PackedScene" path="res://scenes/ui/inventory_panel.tscn" id="4_inventory"]
+[ext_resource type="PackedScene" path="res://scenes/ui/broadcast_log.tscn" id="5_broadcast"]
+[ext_resource type="PackedScene" path="res://scenes/ui/end_game_overlay.tscn" id="6_endgame"]
+
+[node name="HudRoot" type="HudRoot" unique_id=1758597552]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ConnectDialog" parent="." unique_id=128239779 instance=ExtResource("1_connect")]
+layout_mode = 1
+world_path = NodePath("../../..")
+
+[node name="TimePanel" parent="." unique_id=2088867204 instance=ExtResource("2_time")]
+layout_mode = 0
+
+[node name="TeamPanel" parent="." unique_id=1649096623 instance=ExtResource("3_team")]
+layout_mode = 1
+offset_left = -174.0
+offset_bottom = 111.0
+
+[node name="InventoryPanel" parent="." unique_id=1788249930 instance=ExtResource("4_inventory")]
+layout_mode = 1
+offset_left = 3.0
+offset_top = -430.0
+offset_right = 255.0
+offset_bottom = -178.0
+
+[node name="BroadcastLog" parent="." unique_id=1864923325 instance=ExtResource("5_broadcast")]
+layout_mode = 0
+anchors_preset = 0
+
+[node name="EndGameOverlay" parent="." unique_id=2141326517 instance=ExtResource("6_endgame")]
+layout_mode = 0
+anchors_preset = 0
