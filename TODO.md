@@ -24,4 +24,14 @@
     - [x] FIX FUCK TIME TICKS LEGTG
     - [x] Observer should not have raw pointers
     - [x] make the tiles hold weak pointers maybe (to the players)
-    - [ ] circular buffer for client command parsing.
+    - [ ] circular buffer for client command parsing. IMPORTANT
+    - [ ] check on every single write the pollin and pollout
+    - [ ] check write output (just logging ok)
+    - [ ] rework parameters on the server
+GUI TODO LIST
+  - [ ] rendering better models
+  - [ ] animations required for actions.
+  - [ ] more info about the map (map size, num total resources)
+  - [ ] network layer is split in 2 basic networking utilities and protocol
+  - [ ] MUST: 1 interface is for network layer, and an interface for render layer
+  - [ ] 
