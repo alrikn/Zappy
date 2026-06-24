@@ -99,6 +99,9 @@ environment = SubResource("Environment_bq33v")
 
 [node name="HudRoot" parent="HudLayer" unique_id=830484198 instance=ExtResource("5_hudroot")]
 
+[node name="ConnectDialog" parent="HudLayer/HudRoot" index="0"]
+world_path = NodePath("../../..")
+
 [connection signal="broadcast" from="." to="HudLayer/HudRoot/BroadcastLog" method="on_broadcast"]
 [connection signal="connection_error" from="." to="HudLayer/HudRoot/ConnectDialog" method="on_connection_error"]
 [connection signal="egg_laid" from="." to="EntityManager" method="on_egg_laid"]
