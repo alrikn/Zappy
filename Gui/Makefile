@@ -52,17 +52,23 @@ $(PRESETS):
 ## GDExtensions" step on the very first scan (a one-time engine quirk on a
 ## truly empty .godot/, e.g. right after cloning) — hence the retry below,
 ## which succeeds because the first attempt leaves .godot/ populated.
+##
+## .godot/exported/ is cleared again before the retry too: the crashing
+## first attempt still bakes (broken) scene snapshots into it before it
+## dies, and Godot's export cache happily reuses those on the next attempt
+## since their source .tscn hasn't changed — so the retry would otherwise
+## "succeed" while silently shipping the same corrupted scenes.
 bin: $(HOST_BIN_TARGET)
 
 bin-linux: linux-debug linux-release
 	rm -rf .godot/exported
 	$(GODOT) --headless --path . --export-release "linux" \
-		|| $(GODOT) --headless --path . --export-release "linux"
+		|| (rm -rf .godot/exported && $(GODOT) --headless --path . --export-release "linux")
 
 bin-windows: windows-debug windows-release
 	rm -rf .godot/exported
 	$(GODOT) --headless --path . --export-release "windows" \
-		|| $(GODOT) --headless --path . --export-release "windows"
+		|| (rm -rf .godot/exported && $(GODOT) --headless --path . --export-release "windows")
 
 ## Doxygen HTML docs → docs/doxygen/html/index.html. Reuses the linux-debug
 ## build dir for configuration since the docs target isn't platform-specific.
