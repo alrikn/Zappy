@@ -10,6 +10,7 @@
 
 #include <unordered_map>
 #include <string>
+#include <vector>
 
 //Commands that the player can send to the server
 enum PlayerCommands {
@@ -97,5 +98,16 @@ const std::unordered_map<std::string, GuiCommands> GuiCommandMap = {
     {"sgt", SGT},
     {"sst", SST}
 };
+
+//struct to hold the server arguments
+struct ServerArgs {
+    int port = -1;
+    int width = -1;
+    int height = -1;
+    int clients = -1;
+    long long freq = 100;
+    std::vector<std::string> team_names;
+};
+
 
 #endif
