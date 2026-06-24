@@ -1,36 +1,37 @@
+# TODO LIST
 
-- Server TODO List
-    - [x] Implement GUI client handling in the server
-    - [x] Implement client disconnection handling in the server
-    - [ ] figure out which team won to send seg message to GUI clients
-    - [x] Fix the incantation actions alongside their delay
-    - [x] figure out how to deal with client dealy for a same command. (for example, if a player starts an incant, we send hime the incant start message, we wait 300 time units, then we send him the incant end message. problem is, this needs to be non blocking, so we need to figure out how to do this without blocking the server)
-    - [ ] send all gui notifications as result of an action
-      - [x] pex (player ejected)
-      - [x] pdr (player dropped resource)
-      - [x] pgt (player got resource)
-      - [x] pfk (player laid egg)
-      - [x] pbc (player broadcast)
-      - [x] pic (player incantation start)
-      - [x] pie (player incantation end)
-      - [x] pfk (player laying egg)
-      - [x] pdi (player died)
-      - [x] enw (new egg)
-      - [x] ebo (egg hatching)
-      - [ ] edi (egg died)
-      - [ ] seg (game ended)
-    - [ ] Separate server class in Game class and network class.
-    - [ ] if no egg was laid a a player tries to log in, make a bullshit egg with id -1 and send it to gui.
-    - [x] FIX time tick delay
-    - [x] Observer should not have raw pointers
-    - [x] make the tiles hold weak pointers maybe (to the players)
-    - [ ] circular buffer for client command parsing. IMPORTANT
-    - [ ] check on every single write the pollin and pollout
-    - [x] check write output (just logging ok)
-    - [ ] rework parameters on the server
-GUI TODO LIST
-  - [ ] rendering better models
-  - [ ] animations required for actions.
-  - [ ] more info about the map (map size, num total resources)
-  - [ ] network layer is split in 2 basic networking utilities and protocol
-  - [ ] MUST: 1 interface is for network layer, and an interface for render layer
+## Server TODO List
+- [x] Implement GUI client handling in the server
+- [x] Implement client disconnection handling in the server
+- [ ] figure out which team won to send seg message to GUI clients
+- [x] Fix the incantation actions alongside their delay
+- [x] figure out how to deal with client dealy for a same command. (for example, if a player starts an incant, we send hime the incant start message, we wait 300 time units, then we send him the incant end message. problem is, this needs to be non blocking, so we need to figure out how to do this without blocking the server)
+- [ ] send all gui notifications as result of an action
+  - [x] pex (player ejected)
+  - [x] pdr (player dropped resource)
+  - [x] pgt (player got resource)
+  - [x] pfk (player laid egg)
+  - [x] pbc (player broadcast)
+  - [x] pic (player incantation start)
+  - [x] pie (player incantation end)
+  - [x] pfk (player laying egg)
+  - [x] pdi (player died)
+  - [x] enw (new egg)
+  - [x] ebo (egg hatching)
+  - [ ] edi (egg died)
+  - [ ] seg (game ended)
+- [ ] Separate server class in Game class and network class.
+- [ ] if no egg was laid a a player tries to log in, make a bullshit egg with id -1 and send it to gui.
+- [x] FIX time tick delay
+- [x] Observer should not have raw pointers
+- [x] make the tiles hold weak pointers maybe (to the players)
+- [ ] circular buffer for client command parsing. IMPORTANT
+- [ ] check on every single write the pollin and pollout
+- [x] check write output (just logging ok)
+- [ ] rework parameters on the server
+## GUI TODO LIST
+- [ ] rendering better models
+- [ ] animations required for actions.
+- [ ] more info about the map (map size, num total resources)
+- [ ] network layer is split in 2 basic networking utilities and protocol
+- [ ] MUST: 1 interface is for network layer, and an interface for render layer
