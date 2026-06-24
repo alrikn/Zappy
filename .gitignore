@@ -22,6 +22,7 @@ build/
 .cache/
 
 *.json
+!CMakePresets.json
 
 #this one is for pr issue
 
