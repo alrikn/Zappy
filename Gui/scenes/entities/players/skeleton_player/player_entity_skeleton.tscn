@@ -14,7 +14,7 @@ death_animation = "skeleton_death/mixamo_com"
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -0.092587754, 0, 0)
 
 [node name="SelectionArea" type="Area3D" parent="." unique_id=1037812458]
-transform = Transform3D(1, 0, 0, 0, 1.4994702, 0, 0, 0, 1, 0, 0.46468848, 0)
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0.46468848, 0)
 collision_layer = 2
 collision_mask = 0
 

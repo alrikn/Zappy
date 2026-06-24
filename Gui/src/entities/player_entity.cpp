@@ -224,7 +224,9 @@ void PlayerEntity::update_position(const Vector3& world_pos, int grid_x, int gri
 
     if (!_hasPosition || wrapped || sameTile) {
         set_position(world_pos);
-        _play_clip(_idleAnimation);
+        if (!_isIncanting) {
+            _play_clip(_idleAnimation);
+        }
     } else {
         move_to(world_pos, 0.3f);
     }
@@ -246,7 +248,9 @@ void PlayerEntity::move_to(const Vector3& pos, float duration)
         _activeTween->kill();
     }
 
-    _play_clip(_walkAnimation, _walkAnimationSpeed);
+    if (!_isIncanting) {
+        _play_clip(_walkAnimation, _walkAnimationSpeed);
+    }
 
     _activeTween = create_tween();
     _activeTween->set_trans(Tween::TRANS_SINE);
@@ -257,15 +261,21 @@ void PlayerEntity::move_to(const Vector3& pos, float duration)
 
 void PlayerEntity::_on_move_finished()
 {
-    _play_clip(_idleAnimation);
+    if (!_isIncanting) {
+        _play_clip(_idleAnimation);
+    }
 }
 
 /**
  * @brief Toggle the emissive highlight shown while this player is incanting,
- *        and switch between incant_animation/idle_animation if set.
+ *        and switch between incant_animation/idle_animation if set. Also
+ *        records incanting state so movement-driven animation calls
+ *        (update_position/move_to) don't clobber the incant animation if a
+ *        position/orientation refresh for this player arrives while incanting.
  */
 void PlayerEntity::set_incanting(bool incanting)
 {
+    _isIncanting = incanting;
     _play_clip(incanting ? _incantAnimation : _idleAnimation);
 
     _bodyMaterial->set_feature(BaseMaterial3D::FEATURE_EMISSION, incanting);

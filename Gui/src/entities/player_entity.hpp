@@ -64,6 +64,8 @@ private:
     /// tile-to-tile tween duration without recompiling.
     float _walkAnimationSpeed = 1.0f;
 
+    bool _isIncanting = false; ///< True between set_incanting(true) and set_incanting(false).
+
     bool _hasPosition = false; ///< False until the first update_position() call.
     int  _gridX = 0;           ///< Tile column of the last update_position() call.
     int  _gridY = 0;           ///< Tile row of the last update_position() call.
