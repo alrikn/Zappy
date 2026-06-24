@@ -71,7 +71,7 @@ class Client:
             subprocess.Popen(
                 [sys.executable, main_py, "-p", str(self.port), "-n", self.team,
                  "-h", self.machine, "-i", str(self.client_num + 1)],
-                env=env, stdin=subprocess.DEVNULL, start_new_session=True)
+                env=env, stdin=subprocess.DEVNULL)
             print(f"[{self.client_num}] forked + spawned child #{self.client_num + 1}")
         except OSError as e:
             print(f"[{self.client_num}] spawn failed: {e}")
