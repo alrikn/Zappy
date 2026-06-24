@@ -43,32 +43,32 @@ $(PRESETS):
 ## NodePath exports) into the exported scenes — which crashes at runtime
 ## (e.g. on pressing Connect) instead of failing the build.
 ##
-## .godot/exported/ (Godot's cache of previously-baked scene snapshots) is
-## cleared before exporting — it's machine-local and gitignored, and was
-## observed reusing a stale bake after a .tscn source change instead of
-## re-converting it. Only that subdirectory is touched: wiping the rest of
-## .godot/ (class name cache, uid cache) instead removes the priming a
-## from-scratch project needs and reliably crashes Godot's "Verifying
-## GDExtensions" step on the very first scan (a one-time engine quirk on a
-## truly empty .godot/, e.g. right after cloning) — hence the retry below,
-## which succeeds because the first attempt leaves .godot/ populated.
+## A plain `godot --headless --path . --import` priming pass runs first.
+## On a project with no .godot/ yet (e.g. right after cloning — .godot/ is
+## machine-local and gitignored, so it never comes from git), Godot 4.6.3
+## hits an engine bug while registering GDExtension classes for the very
+## first time: it tries to register ConnectDialog twice, the second attempt
+## fails, every method/property bind for it then fails too ("for unexisting
+## class"), and the corrupted state segfaults Godot on shutdown. The bug
+## doesn't reproduce once .godot/'s class-name/uid caches already exist, so
+## priming an --import pass first absorbs it harmlessly (--import never
+## exports, so it never poisons .godot/exported/ with a bad bake) and the
+## real export below then always runs against an already-warm cache.
 ##
-## .godot/exported/ is cleared again before the retry too: the crashing
-## first attempt still bakes (broken) scene snapshots into it before it
-## dies, and Godot's export cache happily reuses those on the next attempt
-## since their source .tscn hasn't changed — so the retry would otherwise
-## "succeed" while silently shipping the same corrupted scenes.
+## .godot/exported/ (cached scene-to-.pck bakes) is cleared before exporting
+## regardless, since it was separately observed reusing a stale bake after a
+## .tscn source change instead of re-converting it.
 bin: $(HOST_BIN_TARGET)
 
 bin-linux: linux-debug linux-release
+	$(GODOT) --headless --editor --import --path . > /dev/null 2>&1 || true
 	rm -rf .godot/exported
-	$(GODOT) --headless --path . --export-release "linux" \
-		|| (rm -rf .godot/exported && $(GODOT) --headless --path . --export-release "linux")
+	$(GODOT) --headless --path . --export-release "linux"
 
 bin-windows: windows-debug windows-release
+	$(GODOT) --headless --editor --import --path . > /dev/null 2>&1 || true
 	rm -rf .godot/exported
-	$(GODOT) --headless --path . --export-release "windows" \
-		|| (rm -rf .godot/exported && $(GODOT) --headless --path . --export-release "windows")
+	$(GODOT) --headless --path . --export-release "windows"
 
 ## Doxygen HTML docs → docs/doxygen/html/index.html. Reuses the linux-debug
 ## build dir for configuration since the docs target isn't platform-specific.
