@@ -5,6 +5,7 @@
 ** Incantation
 */
 
+#include "Gui.hpp"
 #include "Parse.hpp"
 #include "Player.hpp"
 #include <memory>
@@ -216,6 +217,9 @@ void Player::incantation_end(Server &server)
     }
     server._gui_subject.Notify([self](Client* c) {
         static_cast<Gui*>(c)->pie(self->position[0], self->position[1], true);
+    });
+    server._gui_subject.Notify([self](Client* c) {
+        static_cast<Gui*>(c)->plv(self);
     });
 
     // win con: any team with >= 6 players at level 8
