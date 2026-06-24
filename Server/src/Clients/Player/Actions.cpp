@@ -35,7 +35,7 @@ void Player::inventory_handle(Server &server)
             response += ",";
     }
     response += " ]\n";
-    server.send_message_queue.add_message(server, control_fd, response);
+    server.send_message_queue.add_message(server, get_fd(), response);
 }
 
 void Player::set_down_resource(Server &server, std::vector<std::string> args)
@@ -44,8 +44,13 @@ void Player::set_down_resource(Server &server, std::vector<std::string> args)
         command_failed(server, SET);
         return;
     }
-
-    Resource resource = parse_resource(args[0]);
+    Resource resource;
+    try {
+        resource = parse_resource(args[0]);
+    } catch (const std::runtime_error &e) {
+        command_failed(server, SET);
+        return;
+    }
     if (inventory.resources[idx(resource)] <= 0) {
         command_failed(server, SET);
         return;
@@ -55,16 +60,19 @@ void Player::set_down_resource(Server &server, std::vector<std::string> args)
     auto &tile = server._map[position[1]][position[0]];
     tile.inventory.resources[idx(resource)]++;
     //notify the gui that a resource has been dropped on the tile
-    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[get_fd()]);
     if (!self) {
         command_failed(server, SET);
         return;
         return;
     }
-    server._gui_subject.Notify([self, resource](Client* c) {
-        static_cast<Gui*>(c)->pdr(self, idx(resource));
+    server._gui_subject.Notify([self, resource, &server](Client* c) {
+        auto gui = static_cast<Gui*>(c);
+        gui->pdr(self, idx(resource));
+        gui->pin(server, {std::to_string(self->getId())});
+        gui->bct(server, {std::to_string(self->getX()), std::to_string(self->getY())});
     });
-    server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(SET));
+    server.send_message_queue.add_message(server, get_fd(), "ok\n", ClientCommandDelayMap.at(SET));
 }
 
 void Player::take_resource(Server &server, std::vector<std::string> args)
@@ -74,7 +82,13 @@ void Player::take_resource(Server &server, std::vector<std::string> args)
         return;
     }
 
-    Resource resource = parse_resource(args[0]);
+    Resource resource;
+    try {
+        resource = parse_resource(args[0]);
+    } catch (const std::runtime_error &e) {
+        command_failed(server, TAKE);
+        return;
+    }
     auto &tile = server._map[position[1]][position[0]];
     if (tile.inventory.resources[idx(resource)] <= 0) {
         command_failed(server, TAKE);
@@ -84,24 +98,30 @@ void Player::take_resource(Server &server, std::vector<std::string> args)
     inventory.resources[idx(resource)]++;
     tile.inventory.resources[idx(resource)]--;
     //notify the gui that a resource has been taken from the tile
-    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[get_fd()]);
     if (!self) {
         command_failed(server, TAKE);
         return;
     }
-    server._gui_subject.Notify([self, resource](Client* c) {
-        static_cast<Gui*>(c)->pgt(self, idx(resource));
+    server._gui_subject.Notify([self, resource, &server](Client* c) {
+        auto gui = static_cast<Gui*>(c);
+        gui->pgt(self, idx(resource));
+        gui->pin(server, {std::to_string(self->getId())});
+        gui->bct(server, {std::to_string(self->getX()), std::to_string(self->getY())});
     });
-    server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(TAKE));
+    server.send_message_queue.add_message(server, get_fd(), "ok\n", ClientCommandDelayMap.at(TAKE));
 }
 
 void Player::eject(Server &server)
 {
     // snapshot: move_player modifies the tiles players vector mid iteration
     std::vector<std::shared_ptr<Player>> to_eject;
-    for (const auto &p : server._map[position[1]][position[0]].players)
-        if (p->getId() != player_id)
-            to_eject.push_back(p);
+    for (const auto &p : server._map[position[1]][position[0]].players) {
+        //since p is now a wak ptr, we have to lock it to get a shared ptr, and check if it is expired
+        if (auto sp = p.lock())
+            if (sp.get() != this)
+                to_eject.push_back(sp);
+        }
 
     // K is the diction from whic h the ejected player was pushed (opposite of ejectors facing)
     int k = (static_cast<int>(orientation) + 2) % 4 + 1;
@@ -115,9 +135,9 @@ void Player::eject(Server &server)
             case WEST:  nx = (nx - 1 + server.getMapWidth()) % server.getMapWidth();  break;
         }
         server.move_player(*p, nx, ny);
-        p->send_message("eject " + std::to_string(k) + "\n");
+        server.send_message_queue.add_message(server, p->get_fd(), "eject " + std::to_string(k) + "\n", ClientCommandDelayMap.at(EJECT));
     }
-    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[get_fd()]);
     if (!self) {
         command_failed(server, EJECT);
         return;
@@ -125,7 +145,7 @@ void Player::eject(Server &server)
     server._gui_subject.Notify([self](Client* c) {
         static_cast<Gui*>(c)->pex(self);
     });
-    server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(EJECT));
+    server.send_message_queue.add_message(server, get_fd(), "ok\n", ClientCommandDelayMap.at(EJECT));
 }
 
 // K (0-8): torus direction from receiver to sender in receiver's local frame
@@ -179,15 +199,15 @@ void Player::broadcast(Server &server, std::vector<std::string> args)
         int k = broadcast_dir(position[0], position[1],
                                p->position[0], p->position[1],
                                p->orientation, W, H);
-        p->send_message("message " + std::to_string(k) + ", " + text + "\n");
+        server.send_message_queue.add_message(server, p->get_fd(), "message " + std::to_string(k) + ", " + text + "\n");
     }
     //notify the gui that a broadcast has been sent
-    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[get_fd()]);
     if (!self) {
         command_failed(server, BROADCAST);
         return;
     }
-    server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(BROADCAST));
+    server.send_message_queue.add_message(server, get_fd(), "ok\n", ClientCommandDelayMap.at(BROADCAST));
     server._gui_subject.Notify([self, &args](Client* c) {
         static_cast<Gui*>(c)->pbc(self, args[0]);
     });
@@ -195,24 +215,37 @@ void Player::broadcast(Server &server, std::vector<std::string> args)
 
 void Player::fork(Server &server)
 {
+    std::shared_ptr<Egg> new_egg;
     for (auto &team : server.teams) {
         if (team->name != team_name) continue;
-        auto egg = std::make_shared<Egg>(team_name,
+        new_egg = std::make_shared<Egg>(team_name,
             std::vector<int>{position[0], position[1]});
-        team->eggs.push_back(egg);
+        new_egg->parent_player_id = player_id;
+        team->eggs.push_back(new_egg);
         team->spots_left++;
         break;
     }
-    //notify the gui that a new egg has been laid
-    auto self = std::dynamic_pointer_cast<Player>(server._clients[control_fd]);
+    auto self = std::dynamic_pointer_cast<Player>(server._clients[get_fd()]);
     if (!self) {
         command_failed(server, FORK);
         return;
     }
-    server._gui_subject.Notify([self](Client* c) {
-        static_cast<Gui*>(c)->pfk(self);
-    });
-    server.send_message_queue.add_message(server, control_fd, "ok\n", ClientCommandDelayMap.at(FORK));
+    if (new_egg) {
+        int egg_id = new_egg->getId();
+        int px = position[0];
+        int py = position[1];
+        int pid = player_id;
+        server._gui_subject.Notify([self, egg_id, px, py, pid](Client* c) {
+            auto gui = static_cast<Gui*>(c);
+            gui->pfk(self);
+            gui->enw(egg_id, pid, px, py);
+        });
+    } else {
+        server._gui_subject.Notify([self](Client* c) {
+            static_cast<Gui*>(c)->pfk(self);
+        });
+    }
+    server.send_message_queue.add_message(server, get_fd(), "ok\n", ClientCommandDelayMap.at(FORK));
 }
 
 void Player::connect_nbr(Server &server)
@@ -227,5 +260,5 @@ void Player::connect_nbr(Server &server)
         }
     }
     std::string response = std::to_string(slots_left) + "\n";
-    server.send_message_queue.add_message(server, control_fd, response, ClientCommandDelayMap.at(CONNECT_NBR));
+    server.send_message_queue.add_message(server, get_fd(), response, ClientCommandDelayMap.at(CONNECT_NBR));
 }

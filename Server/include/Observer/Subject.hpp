@@ -10,36 +10,45 @@
 
 #include "Client.hpp"
 #include "ISubject.hpp"
-#include <iostream>
+#include <functional>
 #include <list>
+#include <memory>
 
 class Subject : public ISubject
 {
     private:
-        std::list<Client *> _observers;
-        std::string _message = ""; //the message that will be sent to the observers when they are notified
+        std::list<std::weak_ptr<Client>> _observers;
+        std::string _message = "";
     protected:
     public:
         Subject() = default;
         ~Subject() = default;
 
-        void Attach(Client *observer) override {
-            _observers.push_back(observer);
+        void Attach(std::shared_ptr<Client> observer) override {
+            _observers.push_back(observer); //implicit conversion
         }
 
+        //note: we are comparing the raw pointer of the observer to remove it, this is because the observer might be expired and we dont want to compare expired weak_ptrs
         void Detach(Client *observer) override {
-            _observers.remove(observer);
+            _observers.remove_if([observer](const std::weak_ptr<Client>& w) {
+                auto s = w.lock(); //lock works by creating a shared_ptr from the weak_ptr, if the weak_ptr is expired it returns an empty shared_ptr
+                return (!s || s.get() == observer); //we remove both observer that we want as well as any expired weak_ptrs
+            });
         }
 
         void Notify() override {
-            for (auto observer : _observers) {
-                observer->Update(_message);
+            _observers.remove_if([](const std::weak_ptr<Client>& w) { return w.expired(); });
+            for (auto& w : _observers) {
+                if (auto obs = w.lock())
+                    obs->Update(_message);
             }
         }
 
         void Notify(std::function<void(Client *)> fn) override {
-            for (auto observer : _observers) {
-                fn(observer);
+            _observers.remove_if([](const std::weak_ptr<Client>& w) { return w.expired(); });
+            for (auto& w : _observers) {
+                if (auto obs = w.lock())
+                    fn(obs.get());
             }
         }
 
