@@ -135,7 +135,7 @@ struct MsgIncantationStart {
 /**
  * @brief Incantation ritual ended — "pie".
  * @details Protocol line: "pie X Y result"
- *          result is "ok" (true) or "ko" (false).
+ *          result is "1" (succeeded) or "0" (failed).
  */
 struct MsgIncantationEnd {
     uint32_t x;      ///< Tile column.

@@ -344,9 +344,9 @@ std::optional<ServerMessage> parse_line(std::string_view line)
         }
         m.x = *x;
         m.y = *y;
-        if (*result == "ok") {
+        if (*result == "1") {
             m.result = true;
-        } else if (*result == "ko") {
+        } else if (*result == "0") {
             m.result = false;
         } else {
             return std::nullopt;

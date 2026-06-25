@@ -5,6 +5,7 @@
 
 #include "entities/player_entity.hpp"
 
+#include <godot_cpp/classes/animation.hpp>
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/classes/property_tweener.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -92,6 +93,14 @@ void PlayerEntity::_ready()
 
     TypedArray<Node> animPlayers = _bodyRoot->find_children("*", "AnimationPlayer", true, false);
     _animationPlayer = animPlayers.is_empty() ? nullptr : Object::cast_to<AnimationPlayer>(animPlayers[0]);
+
+    // incant_animation is held for the whole ritual (set_incanting(true) plays it once,
+    // nothing re-triggers it afterwards), which can easily outlast the clip's own length.
+    // Imported clips default to LOOP_NONE, so without this the player freezes on the last
+    // frame as soon as the clip ends and looks like the animation never played at all.
+    if (_animationPlayer != nullptr && !_incantAnimation.is_empty() && _animationPlayer->has_animation(_incantAnimation)) {
+        _animationPlayer->get_animation(_incantAnimation)->set_loop_mode(Animation::LOOP_LINEAR);
+    }
 
     _bodyMaterial.instantiate();
     for (MeshInstance3D* mesh : _bodyMeshes) {
