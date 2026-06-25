@@ -1,6 +1,6 @@
 [gd_scene format=3]
 
-[node name="ConnectDialog" type="ConnectDialog"]
+[node name="ConnectDialog" type="ServerConnectDialog"]
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5

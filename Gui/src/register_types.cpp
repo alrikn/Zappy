@@ -39,7 +39,7 @@ void initialize_zappy_gui_module(ModuleInitializationLevel p_level)
     ClassDB::register_class<EggEntity>();
     ClassDB::register_class<EntityManager>();
     ClassDB::register_class<HudRoot>();
-    ClassDB::register_class<ConnectDialog>();
+    ClassDB::register_class<ServerConnectDialog>();
     ClassDB::register_class<TimePanel>();
     ClassDB::register_class<TeamPanel>();
     ClassDB::register_class<InventoryPanel>();

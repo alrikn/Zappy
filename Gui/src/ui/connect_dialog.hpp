@@ -28,8 +28,8 @@ class ZappyWorld;
 /// Host/port entry dialog: starts the connection via ZappyWorld::connect_to_server,
 /// hides once the connection is confirmed live (map_initialized), and reappears
 /// with an error message if the connection fails (connection_error).
-class ConnectDialog : public Control {
-    GDCLASS(ConnectDialog, Control)
+class ServerConnectDialog : public Control {
+    GDCLASS(ServerConnectDialog, Control)
 
 private:
     LineEdit* _hostEdit = nullptr;      ///< "Panel/VBox/HostEdit" child, fetched in _ready().
