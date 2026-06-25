@@ -35,7 +35,8 @@ class Client
         virtual ~Client() = default;
 
         int get_fd() const { return _net.fd; }
-        std::string &get_buffer() { return _net.buffer; }
+        bool write_to_buffer(const char *data, size_t n) { return _net.write_to_buffer(data, n); }
+        bool read_line(std::string &out) { return _net.read_line(out); }
 
         void send_message(const std::string &message) { _net.send(message); }
         std::string receive_message() { return _net.receive(); }
