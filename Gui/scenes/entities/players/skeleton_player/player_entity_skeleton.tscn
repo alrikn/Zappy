@@ -7,7 +7,7 @@
 [node name="PlayerEntity" type="PlayerEntity" unique_id=1228926770]
 idle_animation = "Global/skeleton-skeleton|idle"
 walk_animation = "Global/skeleton-skeleton|run"
-incant_animation = "skeleton_incant/mixamo_com"
+incant_animation = "skeleton_dance/mixamo_com"
 death_animation = "skeleton_death/mixamo_com"
 
 [node name="Body" parent="." unique_id=921015179 instance=ExtResource("1_vtwmb")]

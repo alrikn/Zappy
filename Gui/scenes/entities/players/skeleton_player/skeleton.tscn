@@ -2,6 +2,7 @@
 
 [ext_resource type="PackedScene" uid="uid://d38mpdwhb26v6" path="res://assets/models/skeleton_player/skeleton.fbx" id="1_bbauc"]
 [ext_resource type="AnimationLibrary" uid="uid://i77clka5cn12" path="res://assets/models/skeleton_player/skeleton_death.fbx" id="2_2fksc"]
+[ext_resource type="AnimationLibrary" uid="uid://b1tink1uwqxm" path="res://assets/models/skeleton_player/skeleton_dance.fbx" id="2_w8sf5"]
 [ext_resource type="AnimationLibrary" uid="uid://clqowvpea5t7h" path="res://assets/models/skeleton_player/skeleton_incant.fbx" id="3_w8sf5"]
 
 [sub_resource type="Animation" id="Animation_u0q15"]
@@ -1585,5 +1586,6 @@ bones/44/position = Vector3(-0.0014982754, -0.005221961, 0.0073466776)
 
 [node name="AnimationPlayer" parent="." index="1" unique_id=1523777708]
 libraries/Global = SubResource("AnimationLibrary_fbmnb")
+libraries/skeleton_dance = ExtResource("2_w8sf5")
 libraries/skeleton_death = ExtResource("2_2fksc")
 libraries/skeleton_incant = ExtResource("3_w8sf5")
