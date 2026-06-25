@@ -140,7 +140,6 @@ void NetworkServer::handle_client_event(int client_fd)
 {
     char buf[4096];
     ssize_t n = read(client_fd, buf, sizeof(buf));
-    size_t pos;
 
     if (n <= 0) {
         _on_disconnect(client_fd);
@@ -154,16 +153,13 @@ void NetworkServer::handle_client_event(int client_fd)
         return;
     }
     auto client = client_it->second;
-    client->get_buffer().append(buf, n);
-    pos = client->get_buffer().find('\n');
-    while (pos != std::string::npos) {
-        std::string command = client->get_buffer().substr(0, pos);
-        client->get_buffer().erase(0, pos + 1);
+    client->write_to_buffer(buf, n);
+    std::string command;
+    while (client->read_line(command)) { //command is now updated with next line
         _on_command(client_fd, command);
         //command handler may have removed the client (e.g. disconnect mid batch)
         if (_clients.find(client_fd) == _clients.end())
             return;
-        pos = client->get_buffer().find('\n');
     }
 }
 

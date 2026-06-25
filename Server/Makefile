@@ -8,6 +8,7 @@
 
 NAME = zappy_server
 SRC = main.cpp \
+	src/CircularBuffer.cpp \
 	src/Clients/Client.cpp \
 	src/Clients/NetworkClient.cpp \
 	src/Clients/Player/Player.cpp \
