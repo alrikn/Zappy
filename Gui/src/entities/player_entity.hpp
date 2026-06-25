@@ -42,7 +42,6 @@ private:
     std::vector<MeshInstance3D*> _bodyMeshes;      ///< Every MeshInstance3D found under _bodyRoot.
     AnimationPlayer* _animationPlayer = nullptr;   ///< First AnimationPlayer found under _bodyRoot, if any.
 
-    MeshInstance3D* _directionIndicator = nullptr; ///< "DirectionIndicator" child, fetched in _ready().
     Area3D* _selectionArea = nullptr;            ///< "SelectionArea" child, fetched in _ready().
 
     Ref<StandardMaterial3D> _bodyMaterial; ///< Per-instance team-color material applied to every body mesh.

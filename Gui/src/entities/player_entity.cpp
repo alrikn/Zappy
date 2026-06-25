@@ -73,7 +73,6 @@ void PlayerEntity::_bind_methods()
 void PlayerEntity::_ready()
 {
     _bodyRoot = get_node<Node3D>(NodePath("Body"));
-    _directionIndicator = get_node<MeshInstance3D>(NodePath("DirectionIndicator"));
     _selectionArea = get_node<Area3D>(NodePath("SelectionArea"));
 
     if (_bodyRoot == nullptr) {
