@@ -64,7 +64,17 @@ private:
     /// tile-to-tile tween duration without recompiling.
     float _walkAnimationSpeed = 1.0f;
 
-    bool _isIncanting = false; ///< True between set_incanting(true) and set_incanting(false).
+    /// What this entity is doing right now, for animation purposes. This is the single
+    /// source of truth for which clip should be playing: every public method that can
+    /// change it (update_position, move_to, set_incanting) just updates this and calls
+    /// _refresh_animation() — no method decides "should I play idle/walk/incant?" on its
+    /// own, so there's exactly one place a future state needs to be added to.
+    enum class AnimState {
+        Idle,
+        Walking,
+        Incanting,
+    };
+    AnimState _animState = AnimState::Idle;
 
     bool _hasPosition = false; ///< False until the first update_position() call.
     int  _gridX = 0;           ///< Tile column of the last update_position() call.
@@ -73,7 +83,9 @@ private:
     /// Play animation_name on _animationPlayer at the given speed if both are set
     /// and it isn't already playing. No-op otherwise.
     void _play_clip(const String& animation_name, float speed = 1.0f);
-    /// Tween-finished callback: returns to the idle animation after a move_to() completes.
+    /// Play whichever clip matches _animState. The only place that maps state to a clip.
+    void _refresh_animation();
+    /// Tween-finished callback: returns to the idle/incant animation after a move_to() completes.
     void _on_move_finished();
     /// AnimationPlayer-finished callback: frees this node once the death animation completes.
     void _on_death_animation_finished(const StringName& animation_name);

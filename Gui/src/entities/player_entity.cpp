@@ -194,6 +194,34 @@ void PlayerEntity::_play_clip(const String& animation_name, float speed)
 }
 
 /**
+ * @brief Play whichever clip matches _animState.
+ * @details The only function that maps "what is this entity doing" to "which clip should
+ *          play". Every state-changing entry point (update_position, move_to,
+ *          _on_move_finished, set_incanting) just sets _animState and calls this — none of
+ *          them decide animation names themselves. That used to be scattered as
+ *          `if (!_isIncanting) _play_clip(...)` guards in three different methods, which is
+ *          exactly the kind of duplication that let a state desync (incanting flag stuck
+ *          true forever if the matching "incantation ended" event never arrives) silently
+ *          freeze a player's animation for good: every one of those guards would keep
+ *          skipping idle/walk forever, with no single place to look to understand why.
+ */
+void PlayerEntity::_refresh_animation()
+{
+    switch (_animState) {
+        case AnimState::Incanting:
+            _play_clip(_incantAnimation);
+            break;
+        case AnimState::Walking:
+            _play_clip(_walkAnimation, _walkAnimationSpeed);
+            break;
+        case AnimState::Idle:
+        default:
+            _play_clip(_idleAnimation);
+            break;
+    }
+}
+
+/**
  * @brief Set this node's Y rotation from a protocol orientation.
  * @details North=0, East=-pi/2, South=-pi, West=-3pi/2, matching tile_to_world's
  *          X=East/Z=South axes and Godot's default -Z forward.
@@ -233,8 +261,9 @@ void PlayerEntity::update_position(const Vector3& world_pos, int grid_x, int gri
 
     if (!_hasPosition || wrapped || sameTile) {
         set_position(world_pos);
-        if (!_isIncanting) {
-            _play_clip(_idleAnimation);
+        if (_animState != AnimState::Incanting) {
+            _animState = AnimState::Idle;
+            _refresh_animation();
         }
     } else {
         move_to(world_pos, 0.3f);
@@ -257,8 +286,9 @@ void PlayerEntity::move_to(const Vector3& pos, float duration)
         _activeTween->kill();
     }
 
-    if (!_isIncanting) {
-        _play_clip(_walkAnimation, _walkAnimationSpeed);
+    if (_animState != AnimState::Incanting) {
+        _animState = AnimState::Walking;
+        _refresh_animation();
     }
 
     _activeTween = create_tween();
@@ -270,22 +300,22 @@ void PlayerEntity::move_to(const Vector3& pos, float duration)
 
 void PlayerEntity::_on_move_finished()
 {
-    if (!_isIncanting) {
-        _play_clip(_idleAnimation);
+    if (_animState != AnimState::Incanting) {
+        _animState = AnimState::Idle;
+        _refresh_animation();
     }
 }
 
 /**
- * @brief Toggle the emissive highlight shown while this player is incanting,
- *        and switch between incant_animation/idle_animation if set. Also
- *        records incanting state so movement-driven animation calls
- *        (update_position/move_to) don't clobber the incant animation if a
- *        position/orientation refresh for this player arrives while incanting.
+ * @brief Toggle the emissive highlight shown while this player is incanting, and switch
+ *        _animState to/from Incanting so movement-driven animation calls
+ *        (update_position/move_to/_on_move_finished) don't clobber the incant animation if
+ *        a position/orientation refresh for this player arrives mid-ritual.
  */
 void PlayerEntity::set_incanting(bool incanting)
 {
-    _isIncanting = incanting;
-    _play_clip(incanting ? _incantAnimation : _idleAnimation);
+    _animState = incanting ? AnimState::Incanting : AnimState::Idle;
+    _refresh_animation();
 
     _bodyMaterial->set_feature(BaseMaterial3D::FEATURE_EMISSION, incanting);
     if (incanting) {
