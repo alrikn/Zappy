@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://xdhwwu0tindg"
-path.s3tc="res://.godot/imported/SimplePolygon_MultiColorPalette.png-b72ed04558fa6cab35f040c460b86c54.s3tc.ctex"
+path.s3tc="res://.godot/imported/SimplePolygon_MultiColorPalette.png-72df6d10541ec647ed94148cc66f28e5.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/models/resources/textures/SimplePolygon_MultiColorPalette.png"
-dest_files=["res://.godot/imported/SimplePolygon_MultiColorPalette.png-b72ed04558fa6cab35f040c460b86c54.s3tc.ctex"]
+source_file="res://assets/models/resources/Textures/SimplePolygon_MultiColorPalette.png"
+dest_files=["res://.godot/imported/SimplePolygon_MultiColorPalette.png-72df6d10541ec647ed94148cc66f28e5.s3tc.ctex"]
 
 [params]
 
