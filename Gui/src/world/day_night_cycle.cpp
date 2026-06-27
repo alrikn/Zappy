@@ -32,8 +32,8 @@ void DayNightCycle::_bind_methods()
 
 /**
  * @brief Pick a daytime starting angle and apply the initial rotation.
- * @details Starting a quarter-turn in puts the sun high in the sky at launch,
- *          so the scene opens in daylight rather than at night.
+ * @details Starting at a half-turn puts the sun overhead (noon) at launch, so
+ *          the scene opens in daylight rather than at night.
  */
 void DayNightCycle::_ready()
 {
@@ -41,7 +41,7 @@ void DayNightCycle::_ready()
         return;
     }
 
-    _dayAngle = (float)(Math_PI * 0.5);
+    _dayAngle = (float)Math_PI;
     apply_rotation();
 }
 
@@ -67,16 +67,22 @@ void DayNightCycle::_process(double delta)
 
 /**
  * @brief Rebuild the light's Transform3D from _dayAngle and _tiltDegrees.
- * @details The inner rotation about X sweeps the light direction's elevation
- *          (LIGHT0_DIRECTION.y) up and down, which the sky shader uses to blend
- *          day/night. The outer tilt about Z banks the whole arc so the sun is
- *          not straight overhead. The original (0, 10, 10) position is preserved.
+ * @details The daily sweep is a rotation about the world Z axis, so the sun's
+ *          arc lies in the world X-Y plane: it rises on one horizon (+X), climbs
+ *          overhead and sets on the opposite horizon (-X), traversing the world
+ *          horizontally rather than along the camera's view axis. The fixed +90
+ *          degree pre-rotation about X aims the light's forward into the X-Y
+ *          plane so the Z sweep actually moves it (rotating the default -Z
+ *          forward about Z alone would be a no-op). The outer tilt about X banks
+ *          the arc so the sun is not straight overhead. The original (0, 10, 10)
+ *          position is preserved.
  */
 void DayNightCycle::apply_rotation()
 {
     double tilt_rad = Math::deg_to_rad((double)_tiltDegrees);
-    Basis basis = Basis(Vector3(0.0f, 0.0f, 1.0f), tilt_rad)
-                * Basis(Vector3(1.0f, 0.0f, 0.0f), (double)_dayAngle);
+    Basis basis = Basis(Vector3(1.0f, 0.0f, 0.0f), tilt_rad)
+                * Basis(Vector3(0.0f, 0.0f, 1.0f), (double)_dayAngle)
+                * Basis(Vector3(1.0f, 0.0f, 0.0f), Math_PI * 0.5);
 
     set_transform(Transform3D(basis, Vector3(0.0f, 10.0f, 10.0f)));
 }

@@ -18,6 +18,7 @@
 #include "ui/inventory_panel.hpp"
 #include "ui/team_panel.hpp"
 #include "ui/time_panel.hpp"
+#include "ui/world_status_panel.hpp"
 #include "vfx/broadcast_ripple_vfx.hpp"
 #include "world/day_night_cycle.hpp"
 #include "world/map_terrain.hpp"
@@ -48,6 +49,7 @@ void initialize_zappy_gui_module(ModuleInitializationLevel p_level)
     ClassDB::register_class<InventoryPanel>();
     ClassDB::register_class<BroadcastLog>();
     ClassDB::register_class<EndGameOverlay>();
+    ClassDB::register_class<WorldStatusPanel>();
     ClassDB::register_class<RtsCamera>();
     ClassDB::register_class<SelectionController>();
     ClassDB::register_class<BroadcastRippleVfx>();

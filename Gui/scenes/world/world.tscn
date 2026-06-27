@@ -2,7 +2,7 @@
 
 [ext_resource type="Shader" uid="uid://dy2ck7wj6gmv1" path="res://scenes/world/terrain.gdshader" id="1_dphjl"]
 [ext_resource type="PackedScene" path="res://scenes/world/tile_markers.tscn" id="2_tilemarkers"]
-[ext_resource type="PackedScene" path="res://scenes/world/entity_manager.tscn" id="3_entitymanager"]
+[ext_resource type="PackedScene" uid="uid://d3d6m15mfrdrj" path="res://scenes/world/entity_manager.tscn" id="3_entitymanager"]
 [ext_resource type="Shader" uid="uid://kgjsu8n7pyom" path="res://scenes/world/sky/main.gdshader" id="4_6m72w"]
 [ext_resource type="PackedScene" uid="uid://48st4xrlgw0l" path="res://scenes/ui/hud_root.tscn" id="5_hudroot"]
 
@@ -99,11 +99,8 @@ environment = SubResource("Environment_bq33v")
 
 [node name="HudRoot" parent="HudLayer" unique_id=830484198 instance=ExtResource("5_hudroot")]
 
-[node name="ConnectDialog" parent="HudLayer/HudRoot" index="0"]
-world_path = NodePath("../../..")
-
-[connection signal="broadcast" from="." to="HudLayer/HudRoot/BroadcastLog" method="on_broadcast"]
 [connection signal="broadcast" from="." to="EntityManager" method="on_broadcast"]
+[connection signal="broadcast" from="." to="HudLayer/HudRoot/BroadcastLog" method="on_broadcast"]
 [connection signal="connection_error" from="." to="HudLayer/HudRoot/ConnectDialog" method="on_connection_error"]
 [connection signal="egg_laid" from="." to="EntityManager" method="on_egg_laid"]
 [connection signal="egg_removed" from="." to="EntityManager" method="on_egg_removed"]
@@ -114,6 +111,7 @@ world_path = NodePath("../../..")
 [connection signal="map_initialized" from="." to="TileMarkers" method="initialize"]
 [connection signal="map_initialized" from="." to="RtsCamera" method="on_map_initialized"]
 [connection signal="map_initialized" from="." to="HudLayer/HudRoot/ConnectDialog" method="on_connected"]
+[connection signal="map_initialized" from="." to="HudLayer/HudRoot/WorldStatusPanel" method="on_map_initialized"]
 [connection signal="player_died" from="." to="EntityManager" method="on_player_died"]
 [connection signal="player_died" from="." to="HudLayer/HudRoot/TeamPanel" method="on_player_died"]
 [connection signal="player_died" from="." to="HudLayer/HudRoot/InventoryPanel" method="on_player_died"]
@@ -130,7 +128,9 @@ world_path = NodePath("../../..")
 [connection signal="team_registered" from="." to="EntityManager" method="on_team_registered"]
 [connection signal="team_registered" from="." to="HudLayer/HudRoot/TeamPanel" method="on_team_registered"]
 [connection signal="tile_updated" from="." to="TileMarkers" method="update_tile"]
+[connection signal="tile_updated" from="." to="HudLayer/HudRoot/WorldStatusPanel" method="on_tile_updated"]
 [connection signal="time_updated" from="." to="HudLayer/HudRoot/TimePanel" method="on_time_updated"]
 [connection signal="world_reset" from="." to="MapTerrain" method="randomize_seed"]
 [connection signal="world_reset" from="." to="EntityManager" method="clear_all"]
+[connection signal="world_reset" from="." to="HudLayer/HudRoot/WorldStatusPanel" method="on_world_reset"]
 [connection signal="player_selected" from="SelectionController" to="HudLayer/HudRoot/InventoryPanel" method="select_player"]

@@ -84,6 +84,7 @@ add_library(zappy_gui SHARED
     src/ui/inventory_panel.cpp
     src/ui/broadcast_log.cpp
     src/ui/end_game_overlay.cpp
+    src/ui/world_status_panel.cpp
     src/camera/rts_camera.cpp
     src/camera/selection_controller.cpp
     src/vfx/broadcast_ripple_vfx.cpp)
