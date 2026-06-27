@@ -15,7 +15,7 @@ To test the AI with the reference server, open **3 separate terminals** and run:
 **Terminal 2 — GUI:**
 
 ```bash
-./zappy_ref-v3.0.1/linux/zappy_gui.AppImage -p 4242 -h localhost
+./zappy_gui
 ```
 
 **Terminal 3 — AI** (launch ONE, it self-replicates to a full team of 6 via forking):
@@ -24,11 +24,6 @@ To test the AI with the reference server, open **3 separate terminals** and run:
 ./Ai/zappy_ai -p 4242 -n team1 -h localhost 2>&1
 ```
 
-to kill the process
-
-```bash
-pkill -f "heuristic_ai/main.py"; pkill -f "zappy_ref-v3.0.1/linux/zappy_server"
-```
 
 the server auto starts, the GUI visualizes the game, and the single AI forks itself
 into 6 players that gather resources and elevate together
