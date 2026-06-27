@@ -82,10 +82,11 @@ class VisionMixin:
             return ["Take " + obj + "\n"]
         cmds = []
         if row < 8:
+            cmds.extend(["Forward\n"] * depth)
             cmds.append("Left\n")
             cmds.extend(["Forward\n"] * (8 - row))
         elif row > 8:
-            cmds.extend(["Forward\n"] * (row - 8))
+            cmds.extend(["Forward\n"] * depth)
             cmds.append("Right\n")
             cmds.extend(["Forward\n"] * (row - 8))
         else:  # row == 8, depth > 0: object is straight ahead
