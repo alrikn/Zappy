@@ -65,42 +65,25 @@ class VisionMixin:
 
     def parse_look(self, data: str, obj: str) -> list:
         import re
-        data1 = data.split(",")
-        liste = []
-        for i in range(len(data1)):
-            liste.append(' '.join(re.split(r'\W+', data1[i])[1:]))
-        data = liste
+        tiles = [' '.join(re.split(r'\W+', cell)[1:]) for cell in data.split(",")]
         mp = self.generate_empty_map()
-        mp = self.fill_map(mp, data)
+        mp = self.fill_map(mp, tiles)
         coord = self.find_object(mp, obj)
-        res = []
         if coord is None:
-            res.append(random.choice(["Forward\n", "Right\n", "Left\n"]))
-            res.append(random.choice(["Forward\n", "Right\n", "Left\n"]))
-            res.append(random.choice(["Forward\n", "Right\n", "Left\n"]))
-            return res
-        elif coord[0] == 8 and coord[1] == 0:
+            return [random.choice(["Forward\n", "Right\n", "Left\n"]) for _ in range(3)]
+        row, depth = coord
+        if row == 8 and depth == 0:
             return ["Take " + obj + "\n"]
-        else:
-            for _ in range(int(coord[0]) - 8):
-                res.append("Forward\n")
-            if coord[0] == 8:
-                for _ in range(int(coord[1])):
-                    res.append("Forward\n")
-                res.append("Take " + obj + "\n")
-                res.append("Inventory\n")
-            if coord[1] == 0:
-                res.append("Take " + obj + "\n")
-            if int(coord[0]) < 8:
-                res.append("Left\n")
-                for _ in range(8 - int(coord[0])):
-                    res.append("Forward\n")
-                res.append("Take " + obj + "\n")
-                res.append("Inventory\n")
-            if int(coord[0]) > 8:
-                res.append("Right\n")
-                for _ in range(int(coord[0]) - 8):
-                    res.append("Forward\n")
-                res.append("Take " + obj + "\n")
-                res.append("Inventory\n")
-        return res
+        cmds = []
+        if row < 8:
+            cmds.append("Left\n")
+            cmds.extend(["Forward\n"] * (8 - row))
+        elif row > 8:
+            cmds.extend(["Forward\n"] * (row - 8))
+            cmds.append("Right\n")
+            cmds.extend(["Forward\n"] * (row - 8))
+        else:  # row == 8, depth > 0: object is straight ahead
+            cmds.extend(["Forward\n"] * depth)
+        cmds.append("Take " + obj + "\n")
+        cmds.append("Inventory\n")
+        return cmds

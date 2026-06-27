@@ -11,48 +11,34 @@ from constants import LVLS
 class RitualMixin:
     """dropping stones for the ritual + firing it once everything is present"""
 
+    def _tile_deficit(self) -> dict:
+        """missing stone counts for the current tile vs the level requirement"""
+        tile = self.look.split(",")[0]
+        while tile and not tile[0].isalpha():
+            tile = tile[1:]
+        items = tile.split()
+        deficit = LVLS[self.level].copy()
+        for stone in deficit:
+            deficit[stone] -= items.count(stone)
+        return deficit
+
     def drop_object_incantation(self):
         """drop my contribution of the required stones onto the current tile"""
         if self.commands_list:
             return
-        data = self.look.split(",")[0]
-        while True:
-            if len(data) == 0 or data[0].isalpha():
-                break
-            data = data[1:]
-        data = data.split(" ")
-        required = LVLS[self.level].copy()
-        for k in required:
-            for j in data:
-                if j == k:
-                    required[k] -= 1
-        for k in required:
-            if required[k] < 1:
+        for stone, needed in self._tile_deficit().items():
+            if needed < 1:
                 continue
-            if k in self.inventory and self.inventory[k] != 0:
-                self.commands_list = ["Set " + k + "\n"]
-                self.commands_list.append("Look\n")
-                self.inventory[k] -= 1
+            if self.inventory.get(stone, 0) > 0:
+                self.commands_list = ["Set " + stone + "\n", "Look\n"]
+                self.inventory[stone] -= 1
                 return
         self.step = 7
         self.data_to_write = ""
-        return
 
     def start_incantation(self):
         """all stones present on the tile -> fire the ritual"""
-        data = self.look.split(",")[0]
-        while True:
-            if len(data) == 0 or data[0].isalpha():
-                break
-            data = data[1:]
-        data = data.split(" ")
-        required = LVLS[self.level].copy()
-        for k in required:
-            for j in data:
-                if j == k:
-                    required[k] -= 1
-        for k in required:
-            if required[k] > 0:
-                return
+        if any(v > 0 for v in self._tile_deficit().values()):
+            return
         self.data_to_write = "Incantation\n"
         self.step += 1

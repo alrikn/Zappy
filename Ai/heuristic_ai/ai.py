@@ -52,112 +52,133 @@ class AI(InventoryMixin, VisionMixin, CommsMixin, RitualMixin):
         self.clear_broadcast = 0
         self.fork = 1
         self.current_master = 0
+        self._steps = {
+            -2: self._step_connect,
+            -1: self._step_fork_or_look,
+             0: self._step_drain_commands,
+             1: self._step_broadcast_or_escalate,
+             2: self._step_look,
+             3: self._step_decide_target,
+             4: self._step_homing,
+             5: self._step_pre_ritual_look,
+             6: self._step_ritual_drop,
+             7: self._step_ritual_wait,
+             8: self._step_frozen,
+             9: self._step_post_incantation_inventory,
+            10: self._step_broadcast_inventory,
+        }
 
     # ---- the main step machine ----
 
     def algorithm(self):
-        if self.step == -2:
-            self.data_to_write = "Connect_nbr\n"
-            self.step += 1
-        elif self.step == -1:
-            if self.client_num < TEAM_SIZE and self.useless_slot == 0:
-                self.data_to_write = "Fork\n"
-                self.fork = 1
-            else:
-                self.data_to_write = "Look\n"
-            self.step += 1
-        elif self.step == 0:
-            if self.commands_list:
-                self.data_to_write = self.commands_list[0]
-                self.commands_list = self.commands_list[1:]
-            else:
-                self.data_to_write = "Inventory\n"
-                self.step += 1
-        elif self.step == 1:
-            if self.new_object:
-                if not self.check_incantation():
-                    body = ("inventory" + str(self.client_num) + ";" +
-                            str(self.level) + ";" + json.dumps(self.inventory))
-                    self.data_to_write = self._bcast(body)
-                else:
-                    body = str(self.client_num) + ";incantation;" + str(self.level)
-                    self.data_to_write = self._bcast(body)
-                    self.master_incantation = 1
-                    self.step = 4
-                    self.incantation = 1
-                    self.new_object = False
-                    print(f"[{self.client_num}] MASTER calling lvl{self.level} incantation")
-                    return
-                self.new_object = False
-            else:
-                self.step += 1
-                self.algorithm()
-                return
-            self.step += 1
-        elif self.step == 2:
+        handler = self._steps.get(self.step)
+        if handler:
+            handler()
+
+    # ---- step handlers ----
+
+    def _step_connect(self):
+        self.data_to_write = "Connect_nbr\n"
+        self.step += 1
+
+    def _step_fork_or_look(self):
+        if self.client_num < TEAM_SIZE and self.useless_slot == 0:
+            self.data_to_write = "Fork\n"
+            self.fork = 1
+        else:
             self.data_to_write = "Look\n"
-            self.step += 1
-        elif self.step == 3:
-            if "food" in self.inventory and self.inventory["food"] < FOOD_FLOOR:
-                self.commands_list = self.parse_look(self.look, "food")
-                self.step = 0
-            else:
-                self.to_search = self.search_good_ressources()
-                self.commands_list = self.parse_look(self.look, self.to_search)
-                self.step = 0
-        elif self.step == 4:
-            if self.incantation == 0:
-                body = str(self.client_num) + " on my way"
-                self.data_to_write = self._bcast(body)
-                self.incantation = 1
-                return
-            if self.master_incantation >= TEAM_SIZE:
-                self.step += 1
-                return
-            if self.master_incantation >= 1:
-                pass
-            elif self.commands_list and not self.ready_for_incantation:
-                self.data_to_write = self.commands_list[0]
-                self.commands_list = self.commands_list[1:]
-                self.clear_broadcast = 1
-                if not self.commands_list:
-                    self.clear_read = 1
-            elif self.ready_for_incantation and "Broadcast" in self.data_to_write:
-                self.step += 1
-            else:
-                self.data_to_write = ""
-        elif self.step == 5:
-            self.clear_broadcast = 0
-            self.data_to_write = "Look\n"
-            self.step += 1
-        elif self.step == 6:
-            self.clear_broadcast = 0
-            if self.master_incantation >= TEAM_SIZE:
-                self.start_incantation()
-            if self.step != 7:
-                self.drop_object_incantation()
-                if self.commands_list:
-                    self.data_to_write = self.commands_list[0]
-                    self.commands_list = self.commands_list[1:]
-                else:
-                    self.data_to_write = "Inventory\n"
-        elif self.step == 7:
-            if self.master_incantation < TEAM_SIZE:
-                self.data_to_write = "Connect_nbr\n"
-                return
-            if self.commands_list:
-                self.data_to_write = self.commands_list[0]
-                self.commands_list = self.commands_list[1:]
-            else:
-                self.commands_list = ["Look\n"]
-                self.step = 6  # retry start_incantation after fresh look
-        elif self.step == 8:
-            self.data_to_write = ""  # frozen during the elevation
-        elif self.step == 9:
+        self.step += 1
+
+    def _step_drain_commands(self):
+        if self.commands_list:
+            self.data_to_write = self.commands_list.pop(0)
+        else:
             self.data_to_write = "Inventory\n"
             self.step += 1
-        elif self.step == 10:
-            body = ("inventory" + str(self.client_num) + ";" +
-                    str(self.level) + ";" + json.dumps(self.inventory))
+
+    def _step_broadcast_or_escalate(self):
+        if not self.new_object:
+            self.step += 1
+            self.algorithm()
+            return
+        self.new_object = False
+        if self.check_incantation():
+            body = str(self.client_num) + ";incantation;" + str(self.level)
             self.data_to_write = self._bcast(body)
-            self.step = 0
+            self.master_incantation = 1
+            self.step = 4
+            self.incantation = 1
+            print(f"[{self.client_num}] MASTER calling lvl{self.level} incantation")
+            return
+        body = ("inventory" + str(self.client_num) + ";" +
+                str(self.level) + ";" + json.dumps(self.inventory))
+        self.data_to_write = self._bcast(body)
+        self.step += 1
+
+    def _step_look(self):
+        self.data_to_write = "Look\n"
+        self.step += 1
+
+    def _step_decide_target(self):
+        if self.inventory.get("food", 0) < FOOD_FLOOR:
+            self.commands_list = self.parse_look(self.look, "food")
+        else:
+            self.to_search = self.search_good_ressources()
+            self.commands_list = self.parse_look(self.look, self.to_search)
+        self.step = 0
+
+    def _step_homing(self):
+        if self.incantation == 0:
+            self.data_to_write = self._bcast(str(self.client_num) + " on my way")
+            self.incantation = 1
+            return
+        if self.master_incantation >= TEAM_SIZE:
+            self.step += 1
+            return
+        if self.master_incantation >= 1:
+            return  # master: wait for all followers to arrive
+        if self.commands_list and not self.ready_for_incantation:
+            self.data_to_write = self.commands_list.pop(0)
+            self.clear_broadcast = 1
+            if not self.commands_list:
+                self.clear_read = 1
+        elif self.ready_for_incantation and "Broadcast" in self.data_to_write:
+            self.step += 1
+        else:
+            self.data_to_write = ""
+
+    def _step_pre_ritual_look(self):
+        self.clear_broadcast = 0
+        self.data_to_write = "Look\n"
+        self.step += 1
+
+    def _step_ritual_drop(self):
+        self.clear_broadcast = 0
+        if self.master_incantation >= TEAM_SIZE:
+            self.start_incantation()
+        if self.step != 7:
+            self.drop_object_incantation()
+            self.data_to_write = self.commands_list.pop(0) if self.commands_list else "Inventory\n"
+
+    def _step_ritual_wait(self):
+        if self.master_incantation < TEAM_SIZE:
+            self.data_to_write = "Connect_nbr\n"
+            return
+        if self.commands_list:
+            self.data_to_write = self.commands_list.pop(0)
+        else:
+            self.commands_list = ["Look\n"]
+            self.step = 6  # retry start_incantation after fresh look
+
+    def _step_frozen(self):
+        self.data_to_write = ""  # frozen during the elevation
+
+    def _step_post_incantation_inventory(self):
+        self.data_to_write = "Inventory\n"
+        self.step += 1
+
+    def _step_broadcast_inventory(self):
+        body = ("inventory" + str(self.client_num) + ";" +
+                str(self.level) + ";" + json.dumps(self.inventory))
+        self.data_to_write = self._bcast(body)
+        self.step = 0
