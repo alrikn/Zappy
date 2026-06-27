@@ -12,3 +12,4 @@
 - **Food model** (meat) — [3D Foods for Games](https://vikingtabern.itch.io/3d-foods-for-games) by [To.ony](https://vikingtabern.itch.io/)
   - Distributed as "name your own price" (pay-what-you-want, free option available). No generative AI was used.
   - The pack page states no explicit license text; credited here in good faith. Contact the author for clarification on commercial/redistribution terms before production use.
+- **Terrain wall texture** (dirt) — [Tiny Texture Pack 2](https://screamingbrainstudios.itch.io/tiny-texture-pack-2?download) by [Screaming Brain Studios](https://screamingbrainstudios.itch.io/) (CC0 1.0 Universal — free for personal, educational and commercial use, no attribution required)
