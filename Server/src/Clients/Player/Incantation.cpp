@@ -218,9 +218,11 @@ void Player::incantation_end(Server &server)
     server._gui_subject.Notify([self](Client* c) {
         static_cast<Gui*>(c)->pie(self->position[0], self->position[1], true);
     });
-    server._gui_subject.Notify([self](Client* c) {
-        static_cast<Gui*>(c)->plv(self);
-    });
+    for (const auto &p : participants) {
+        server._gui_subject.Notify([p](Client* c) {
+            static_cast<Gui*>(c)->plv(p);
+        });
+    }
 
     // win con: any team with >= 6 players at level 8
     if (new_level == 8) {
