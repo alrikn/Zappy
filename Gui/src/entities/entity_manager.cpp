@@ -38,6 +38,11 @@ void EntityManager::_bind_methods()
     ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "egg_entity_scene", PROPERTY_HINT_RESOURCE_TYPE, "PackedScene"),
                   "set_egg_entity_scene", "get_egg_entity_scene");
 
+    ClassDB::bind_method(D_METHOD("set_incantation_vfx_scene", "scene"), &EntityManager::set_incantation_vfx_scene);
+    ClassDB::bind_method(D_METHOD("get_incantation_vfx_scene"), &EntityManager::get_incantation_vfx_scene);
+    ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "incantation_vfx_scene", PROPERTY_HINT_RESOURCE_TYPE, "PackedScene"),
+                  "set_incantation_vfx_scene", "get_incantation_vfx_scene");
+
     ClassDB::bind_method(D_METHOD("on_team_registered", "name"), &EntityManager::on_team_registered);
     ClassDB::bind_method(D_METHOD("clear_all"), &EntityManager::clear_all);
 
@@ -106,6 +111,16 @@ Ref<PackedScene> EntityManager::get_egg_entity_scene() const
     return _eggEntityScene;
 }
 
+void EntityManager::set_incantation_vfx_scene(const Ref<PackedScene>& scene)
+{
+    _incantationVfxScene = scene;
+}
+
+Ref<PackedScene> EntityManager::get_incantation_vfx_scene() const
+{
+    return _incantationVfxScene;
+}
+
 /**
  * @brief Find-or-append team in the first-seen team list and return its palette color.
  * @details Teams beyond the 8-entry palette wrap around (index % 8).
@@ -145,6 +160,13 @@ void EntityManager::clear_all()
         pair.second->queue_free();
     }
     _eggs.clear();
+
+    for (auto& pair : _incantationVfxByTile) {
+        pair.second->queue_free();
+    }
+    _incantationVfxByTile.clear();
+
+    _incantingByTile.clear();
 
     _teamNames.clear();
 }
@@ -243,6 +265,26 @@ void EntityManager::on_incantation_started(int x, int y, int, const PackedInt32A
         }
     }
     _incantingByTile[tile_key(x, y)] = std::move(incantingIds);
+
+    if (_incantationVfxScene.is_valid()) {
+        const int64_t key = tile_key(x, y);
+        // Defensive: if a VFX somehow already exists for this tile, free it first to avoid a leak.
+        auto existing = _incantationVfxByTile.find(key);
+        if (existing != _incantationVfxByTile.end()) {
+            existing->second->queue_free();
+        }
+        Node3D* vfx = Object::cast_to<Node3D>(_incantationVfxScene->instantiate());
+        add_child(vfx);
+        // Lift above the terrain surface — the VFX is additive (writes no depth), so at
+        // ground level its bright core is occluded by the opaque terrain. Scale it up and
+        // boost emission/light so it reads clearly from the zoomed-out top-down camera
+        // against the bright daytime scene (gl_compatibility has no glow bloom to help).
+        vfx->set_position(_mapTerrain->tile_to_world(x, y) + Vector3(0.0f, 0.5f, 0.0f));
+        vfx->set_scale(Vector3(3.0f, 3.0f, 3.0f));
+        vfx->set("emission", 8.0);
+        vfx->set("light_energy", 8.0);
+        _incantationVfxByTile[key] = vfx;
+    }
 }
 
 /// Clear the incantation highlight for exactly the players recorded by the
@@ -261,4 +303,10 @@ void EntityManager::on_incantation_ended(int x, int y, bool)
         }
     }
     _incantingByTile.erase(it);
+
+    auto vfxIt = _incantationVfxByTile.find(tile_key(x, y));
+    if (vfxIt != _incantationVfxByTile.end()) {
+        vfxIt->second->queue_free();
+        _incantationVfxByTile.erase(vfxIt);
+    }
 }

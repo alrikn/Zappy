@@ -42,6 +42,10 @@ private:
     /// set_incanting(false) for exactly those players, instead of re-deriving membership
     /// from each player's current tracked grid position (which can drift out of sync).
     std::unordered_map<int64_t, std::vector<int>> _incantingByTile;
+    /// Live incantation VFX nodes, keyed by tile (same packing as _incantingByTile).
+    /// Created in on_incantation_started, freed in on_incantation_ended, so each effect
+    /// lasts exactly as long as the ritual on its tile.
+    std::unordered_map<int64_t, Node3D*> _incantationVfxByTile;
     std::vector<String> _teamNames;                   ///< Teams in first-seen order, indexes into _palette.
     std::array<Color, 8> _palette;                    ///< Fixed team-color palette.
 
@@ -50,6 +54,7 @@ private:
 
     Ref<PackedScene> _playerEntityScene; ///< Exported property: scene instantiated per player.
     Ref<PackedScene> _eggEntityScene;    ///< Exported property: scene instantiated per egg.
+    Ref<PackedScene> _incantationVfxScene; ///< Exported property: VFX instanced on the tile during an incantation.
 
 protected:
     /// Bind methods, properties and the fixed team-color palette.
@@ -75,6 +80,11 @@ public:
     void set_egg_entity_scene(const Ref<PackedScene>& scene);
     /// Get the exported egg_entity_scene property.
     Ref<PackedScene> get_egg_entity_scene() const;
+
+    /// Set the exported incantation_vfx_scene property.
+    void set_incantation_vfx_scene(const Ref<PackedScene>& scene);
+    /// Get the exported incantation_vfx_scene property.
+    Ref<PackedScene> get_incantation_vfx_scene() const;
 
     /// Find-or-append team in _teamNames and return its palette color.
     Color team_color(const String& team);

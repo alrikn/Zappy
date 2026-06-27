@@ -394,15 +394,18 @@ std::optional<ServerMessage> parse_line(std::string_view line)
     // ── Egg laid at position ─────────────────────────────────────────────────
     if (cmd == "enw") {
         MsgEggLaid m{};
-        const auto eggId    = next_id(tok);
-        const auto playerId = next_id(tok);
-        const auto x        = next_uint<uint32_t>(tok);
-        const auto y        = next_uint<uint32_t>(tok);
-        if (!eggId || !playerId || !x || !y) {
+        const auto eggId     = next_id(tok);
+        const auto parentTok = tok.next();
+        const auto x         = next_uint<uint32_t>(tok);
+        const auto y         = next_uint<uint32_t>(tok);
+        if (!eggId || !parentTok || !x || !y) {
             return std::nullopt;
         }
+        // The laying-player id is "#-1" for eggs the server places at game start
+        // (no parent). read_id rejects the non-numeric "-1"; treat any unparseable
+        // parent as "no player" (UINT32_MAX) rather than dropping the whole egg.
         m.eggId    = *eggId;
-        m.playerId = *playerId;
+        m.playerId = read_id(*parentTok).value_or(std::numeric_limits<uint32_t>::max());
         m.x        = *x;
         m.y        = *y;
         return m;

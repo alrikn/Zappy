@@ -3,6 +3,7 @@
 ## Assets
 
 - **Sky shader** — [Godot Skies](https://binbun3d.itch.io/godot-skies) by [Binbun](https://binbun3d.itch.io/) (CC0 1.0 Universal)
+- **Incantation VFX** — [Loot VFX - Godot 3D](https://binbun3d.itch.io/loot-vfx) by [Binbun](https://binbun3d.itch.io/) (CC0 1.0 Universal — free for personal, educational and commercial use, no attribution required)
 - **Skeleton player model** — [Animated Low Poly Skeleton Pack (1.0)](https://overactiongamestudio.com/) by [Overaction Game Studio](http://overactiongamestudio.com/) (CC0 1.0 Universal — see [`assets/models/skeleton_player/License.txt`](assets/models/skeleton_player/License.txt))
 - **Mineral models** (linemate, deraumere, sibur, mendiane, phiras, thystame) — [Lowpoly Minerals & Gems](https://simplepolygon.itch.io/lowpoly-minerals) by [SimplePolygon](https://simplepolygon.itch.io/)
   - 3D Assets made by SimplePolygon
