@@ -19,6 +19,7 @@
 #include "ui/team_panel.hpp"
 #include "ui/time_panel.hpp"
 #include "vfx/broadcast_ripple_vfx.hpp"
+#include "world/day_night_cycle.hpp"
 #include "world/map_terrain.hpp"
 #include "world/tile_markers.hpp"
 
@@ -36,6 +37,7 @@ void initialize_zappy_gui_module(ModuleInitializationLevel p_level)
     ClassDB::register_class<ZappyWorld>();
     ClassDB::register_class<MapTerrain>();
     ClassDB::register_class<TileMarkers>();
+    ClassDB::register_class<DayNightCycle>();
     ClassDB::register_class<PlayerEntity>();
     ClassDB::register_class<EggEntity>();
     ClassDB::register_class<EntityManager>();

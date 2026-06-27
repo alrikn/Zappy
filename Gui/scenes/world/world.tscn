@@ -89,7 +89,7 @@ current = true
 [node name="SelectionController" type="SelectionController" parent="." unique_id=2021026758]
 camera_path = NodePath("../RtsCamera")
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=435059553]
+[node name="DirectionalLight3D" type="DayNightCycle" parent="." unique_id=435059553]
 transform = Transform3D(0.97537935, 0.07678662, -0.20673437, 0.1753736, 0.29831126, 0.9382188, 0.13371383, -0.9513749, 0.2775002, 0, 10, 10)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="DirectionalLight3D" unique_id=709063444]
