@@ -36,6 +36,7 @@ class InventoryMixin:
         return random.choice(liste)
 
     def parse_inventory(self, data: str):
+        """parse the server's inventory response and update self.inventory in place"""
         for char in "[]":
             data = data.replace(char, "")
         data = data.split(",")
@@ -59,6 +60,7 @@ class InventoryMixin:
         self.shared_inventory["total"] = dict(c)
 
     def update_shared_inventory(self):
+        """recompute the pooled team total after our own inventory changed"""
         self.shared_inventory[self.client_num] = self.inventory
         c = Counter()
         for d in self.shared_inventory:
