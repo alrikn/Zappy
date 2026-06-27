@@ -15,6 +15,7 @@
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 
 #include <algorithm>
+#include <cmath>
 
 using namespace godot;
 
@@ -154,6 +155,28 @@ Vector3 MapTerrain::tile_to_world(int x, int y) const
     double worldX = (x + 0.5 - _gridWidth / 2.0) * TILE_SIZE;
     double worldZ = (y + 0.5 - _gridHeight / 2.0) * TILE_SIZE;
     return Vector3((float)worldX, (float)sample_height(worldX, worldZ), (float)worldZ);
+}
+
+/**
+ * @brief World-space terrain surface height (Y) at world coordinates (x, z).
+ * @param world_x World-space X coordinate.
+ * @param world_z World-space Z coordinate.
+ * @return Terrain height at (x, z), or 0 when no noise resource is set.
+ */
+double MapTerrain::get_height_at(double world_x, double world_z) const
+{
+    return sample_height(world_x, world_z);
+}
+
+/**
+ * @brief World-space length of the map's diagonal.
+ * @return sqrt((gridWidth*TILE)^2 + (gridHeight*TILE)^2) in world units.
+ */
+double MapTerrain::get_world_diagonal() const
+{
+    double w = _gridWidth * TILE_SIZE;
+    double h = _gridHeight * TILE_SIZE;
+    return std::sqrt(w * w + h * h);
 }
 
 /**

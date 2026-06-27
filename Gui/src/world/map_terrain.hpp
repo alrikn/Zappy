@@ -53,6 +53,15 @@ public:
     /// World-space position of the center of tile (x, y), sitting on the hills.
     Vector3 tile_to_world(int x, int y) const;
 
+    /// World-space terrain surface height (Y) at world coordinates (x, z);
+    /// returns 0 when the terrain is flat (no noise). Lets ground-hugging
+    /// effects (e.g. the broadcast ripple) conform to the hills.
+    double get_height_at(double world_x, double world_z) const;
+
+    /// World-space length of the map's diagonal (sqrt(w^2 + h^2) in world units).
+    /// A ripple using this as its max radius reaches every corner from any tile.
+    double get_world_diagonal() const;
+
     /// Set the noise resource used to displace the terrain and rebuild the mesh.
     void set_noise(const Ref<FastNoiseLite> &p_noise);
     /// Get the noise resource used to displace the terrain.

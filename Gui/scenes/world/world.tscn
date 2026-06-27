@@ -103,6 +103,7 @@ environment = SubResource("Environment_bq33v")
 world_path = NodePath("../../..")
 
 [connection signal="broadcast" from="." to="HudLayer/HudRoot/BroadcastLog" method="on_broadcast"]
+[connection signal="broadcast" from="." to="EntityManager" method="on_broadcast"]
 [connection signal="connection_error" from="." to="HudLayer/HudRoot/ConnectDialog" method="on_connection_error"]
 [connection signal="egg_laid" from="." to="EntityManager" method="on_egg_laid"]
 [connection signal="egg_removed" from="." to="EntityManager" method="on_egg_removed"]

@@ -3,8 +3,10 @@
 [ext_resource type="PackedScene" uid="uid://db3evskx1tb2p" path="res://scenes/entities/players/skeleton_player/player_entity_skeleton.tscn" id="1_0f7dj"]
 [ext_resource type="PackedScene" path="res://scenes/entities/egg_entity.tscn" id="2_egg"]
 [ext_resource type="PackedScene" uid="uid://ctki11tpgv2s6" path="res://scenes/entities/vfx/ground_loot_vfx_mythic.tscn" id="3_vfx"]
+[ext_resource type="PackedScene" uid="uid://dn4brdcstrpl01" path="res://scenes/entities/vfx/broadcast_ripple_vfx.tscn" id="4_bvfx"]
 
 [node name="EntityManager" type="EntityManager" unique_id=678298169]
 player_entity_scene = ExtResource("1_0f7dj")
 egg_entity_scene = ExtResource("2_egg")
 incantation_vfx_scene = ExtResource("3_vfx")
+broadcast_vfx_scene = ExtResource("4_bvfx")
