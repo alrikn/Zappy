@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://db3evskx1tb2p"]
+
+[ext_resource type="PackedScene" uid="uid://dpru22nb80wv7" path="res://scenes/entities/players/skeleton_player/skeleton.tscn" id="1_vtwmb"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_vtwmb"]
+
+[node name="PlayerEntity" type="PlayerEntity" unique_id=1228926770]
+idle_animation = "Global/skeleton-skeleton|idle"
+walk_animation = "Global/skeleton-skeleton|run"
+incant_animation = "skeleton_incant/mixamo_com"
+death_animation = "skeleton_death/mixamo_com"
+
+[node name="Body" parent="." unique_id=921015179 instance=ExtResource("1_vtwmb")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -0.092587754, 0, 0)
+
+[node name="SelectionArea" type="Area3D" parent="." unique_id=1037812458]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0.46468848, 0)
+collision_layer = 2
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SelectionArea" unique_id=1868159903]
+shape = SubResource("SphereShape3D_vtwmb")

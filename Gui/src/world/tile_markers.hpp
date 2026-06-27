@@ -46,9 +46,15 @@ private:
     /// (food) at the tile center, indices 1-6 arranged in a hexagon at radius ~0.6.
     static Vector3 resource_offset(int index);
 
-    /// Map a resource quantity to a marker scale: 0 (hidden) for quantity <= 0,
-    /// otherwise 0.15 + 0.05*quantity, clamped to 0.65.
-    static float quantity_to_scale(int quantity);
+    /// Fixed display scale for resource `index`, chosen per model so each renders
+    /// at a similar on-tile size (the food model is ~5x larger than the mineral
+    /// crystals natively). Markers are shown/hidden by quantity, not resized.
+    static float resource_scale(int index);
+
+    /// Deterministic horizontal (Y-axis) facing angle in radians for the food
+    /// marker on tile (x, y), so each tile's food points a stable pseudo-random
+    /// direction instead of all facing the same way. Hashed from the coordinates.
+    static float food_yaw(int x, int y);
 
 protected:
     /// Bind methods and properties exposed to Godot/GDScript.

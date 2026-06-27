@@ -10,8 +10,8 @@
 #include <godot_cpp/variant/basis.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
 
-#include <algorithm>
 #include <cmath>
+#include <cstdint>
 
 using namespace godot;
 
@@ -74,15 +74,31 @@ Vector3 TileMarkers::resource_offset(int index)
 }
 
 /**
- * @brief Map a resource quantity to a marker scale.
- * @return 0 (hidden) for quantity <= 0, otherwise 0.15 + 0.05*quantity clamped to 0.65.
+ * @brief Fixed display scale for resource `index`.
+ * @details Each model is multiplied so its largest dimension lands near ~0.5
+ *          world units (a quarter of a TILE_SIZE tile). The food model is ~5x
+ *          larger than the mineral crystals natively, hence the separate factor.
+ *          Markers are shown or hidden by quantity, not resized by it.
  */
-float TileMarkers::quantity_to_scale(int quantity)
+float TileMarkers::resource_scale(int index)
 {
-    if (quantity <= 0) {
-        return 0.0f;
-    }
-    return std::min(0.15f + 0.05f * (float)quantity, 0.65f);
+    // Index 0 = food (native max-dim ~0.131), indices 1-6 = minerals (~0.024).
+    return index == 0 ? 4.0f : 21.0f;
+}
+
+/**
+ * @brief Deterministic horizontal facing angle (radians) for food on tile (x, y).
+ * @details Hashes the tile coordinates so each tile's food faces a stable
+ *          pseudo-random direction (no flicker across tile updates). Only the
+ *          Y-axis (yaw) is varied; the model's baked tilt is left intact.
+ */
+float TileMarkers::food_yaw(int x, int y)
+{
+    uint32_t h = (uint32_t)(x * 73856093) ^ (uint32_t)(y * 19349663);
+    h ^= h >> 13;
+    h *= 0x5bd1e995u;
+    h ^= h >> 15;
+    return (float)(h & 0xffffffu) / (float)0x1000000u * (2.0f * (float)Math_PI);
 }
 
 /**
@@ -125,9 +141,16 @@ void TileMarkers::update_tile(int x, int y, int q0, int q1, int q2, int q3, int 
     Vector3 base = _mapTerrain->tile_to_world(x, y);
 
     for (int i = 0; i < RESOURCE_COUNT; i++) {
-        float scale = quantity_to_scale(quantities[i]);
+        float scale = quantities[i] > 0 ? resource_scale(i) : 0.0f;
         Vector3 origin = base + resource_offset(i) + Vector3(0.0f, 0.1f, 0.0f);
-        Transform3D transform(Basis::from_scale(Vector3(scale, scale, scale)), origin);
+
+        Basis basis = Basis::from_scale(Vector3(scale, scale, scale));
+        if (i == 0) {
+            // Food faces a stable pseudo-random horizontal direction per tile.
+            basis = Basis(Vector3(0.0f, 1.0f, 0.0f), food_yaw(x, y)) * basis;
+        }
+
+        Transform3D transform(basis, origin);
         _multimeshes[i]->set_instance_transform(idx, transform);
     }
 }

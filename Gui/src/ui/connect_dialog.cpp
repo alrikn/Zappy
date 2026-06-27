@@ -13,14 +13,14 @@
 
 using namespace godot;
 
-void ConnectDialog::_bind_methods()
+void ServerConnectDialog::_bind_methods()
 {
-    ClassDB::bind_method(D_METHOD("on_connect_pressed"), &ConnectDialog::on_connect_pressed);
-    ClassDB::bind_method(D_METHOD("on_connected", "width", "height"), &ConnectDialog::on_connected);
-    ClassDB::bind_method(D_METHOD("on_connection_error", "message"), &ConnectDialog::on_connection_error);
+    ClassDB::bind_method(D_METHOD("on_connect_pressed"), &ServerConnectDialog::on_connect_pressed);
+    ClassDB::bind_method(D_METHOD("on_connected", "width", "height"), &ServerConnectDialog::on_connected);
+    ClassDB::bind_method(D_METHOD("on_connection_error", "message"), &ServerConnectDialog::on_connection_error);
 
-    ClassDB::bind_method(D_METHOD("set_world_path", "path"), &ConnectDialog::set_world_path);
-    ClassDB::bind_method(D_METHOD("get_world_path"), &ConnectDialog::get_world_path);
+    ClassDB::bind_method(D_METHOD("set_world_path", "path"), &ServerConnectDialog::set_world_path);
+    ClassDB::bind_method(D_METHOD("get_world_path"), &ServerConnectDialog::get_world_path);
     ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "world_path"), "set_world_path", "get_world_path");
 }
 
@@ -31,7 +31,7 @@ void ConnectDialog::_bind_methods()
  *          signal to its own handler, the same pattern MapTerrain uses for its
  *          noise resource's "changed" signal.
  */
-void ConnectDialog::_ready()
+void ServerConnectDialog::_ready()
 {
     _hostEdit = get_node<LineEdit>(NodePath("Panel/VBox/HostEdit"));
     _portEdit = get_node<LineEdit>(NodePath("Panel/VBox/PortEdit"));
@@ -40,15 +40,15 @@ void ConnectDialog::_ready()
 
     _world = get_node<ZappyWorld>(_worldPath);
 
-    _connectButton->connect("pressed", callable_mp(this, &ConnectDialog::on_connect_pressed));
+    _connectButton->connect("pressed", callable_mp(this, &ServerConnectDialog::on_connect_pressed));
 }
 
-void ConnectDialog::set_world_path(const NodePath& path)
+void ServerConnectDialog::set_world_path(const NodePath& path)
 {
     _worldPath = path;
 }
 
-NodePath ConnectDialog::get_world_path() const
+NodePath ServerConnectDialog::get_world_path() const
 {
     return _worldPath;
 }
@@ -58,7 +58,7 @@ NodePath ConnectDialog::get_world_path() const
  * @details An empty or non-numeric port falls back to 4242 rather than
  *          calling connect_to_server with port 0.
  */
-void ConnectDialog::on_connect_pressed()
+void ServerConnectDialog::on_connect_pressed()
 {
     String host = _hostEdit->get_text();
     if (host.is_empty()) {
@@ -74,12 +74,12 @@ void ConnectDialog::on_connect_pressed()
     _world->connect_to_server(host, port);
 }
 
-void ConnectDialog::on_connected(int, int)
+void ServerConnectDialog::on_connected(int, int)
 {
     hide();
 }
 
-void ConnectDialog::on_connection_error(const String& message)
+void ServerConnectDialog::on_connection_error(const String& message)
 {
     show();
     _statusLabel->set_text(message);

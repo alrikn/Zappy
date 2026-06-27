@@ -1,0 +1,303 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Mesh" path="res://scenes/entities/resources/food.res" id="1_food"]
+[ext_resource type="Mesh" path="res://scenes/entities/resources/linemate.res" id="2_linemate"]
+[ext_resource type="Mesh" path="res://scenes/entities/resources/deraumere.res" id="3_deraumere"]
+[ext_resource type="Mesh" path="res://scenes/entities/resources/sibur.res" id="4_sibur"]
+[ext_resource type="Mesh" path="res://scenes/entities/resources/mendiane.res" id="5_mendiane"]
+[ext_resource type="Mesh" path="res://scenes/entities/resources/phiras.res" id="6_phiras"]
+[ext_resource type="Mesh" path="res://scenes/entities/resources/thystame.res" id="7_thystame"]
+
+[node name="WorldStatusPanel" type="WorldStatusPanel"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -190.0
+offset_top = 150.0
+offset_right = -8.0
+offset_bottom = 482.0
+grow_horizontal = 0
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+
+[node name="RowFood" type="HBoxContainer" parent="Panel/VBox"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+
+[node name="Icon" type="SubViewportContainer" parent="Panel/VBox/RowFood"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="Panel/VBox/RowFood/Icon"]
+own_world_3d = true
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(40, 40)
+render_target_update_mode = 4
+
+[node name="Camera3D" type="Camera3D" parent="Panel/VBox/RowFood/Icon/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.8)
+fov = 35.0
+
+[node name="Light" type="DirectionalLight3D" parent="Panel/VBox/RowFood/Icon/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 0, 0)
+light_energy = 1.4
+
+[node name="Model" type="MeshInstance3D" parent="Panel/VBox/RowFood/Icon/SubViewport"]
+transform = Transform3D(6.5, 0, 0, 0, 6.5, 0, 0, 0, 6.5, 0, 0, 0)
+mesh = ExtResource("1_food")
+
+[node name="Count" type="Label" parent="Panel/VBox/RowFood"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+horizontal_alignment = 0
+vertical_alignment = 1
+text = "0"
+
+[node name="RowLinemate" type="HBoxContainer" parent="Panel/VBox"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+
+[node name="Icon" type="SubViewportContainer" parent="Panel/VBox/RowLinemate"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="Panel/VBox/RowLinemate/Icon"]
+own_world_3d = true
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(40, 40)
+render_target_update_mode = 4
+
+[node name="Camera3D" type="Camera3D" parent="Panel/VBox/RowLinemate/Icon/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.8)
+fov = 35.0
+
+[node name="Light" type="DirectionalLight3D" parent="Panel/VBox/RowLinemate/Icon/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 0, 0)
+light_energy = 1.4
+
+[node name="Model" type="MeshInstance3D" parent="Panel/VBox/RowLinemate/Icon/SubViewport"]
+transform = Transform3D(34, 0, 0, 0, 34, 0, 0, 0, 34, 0, 0, 0)
+mesh = ExtResource("2_linemate")
+
+[node name="Count" type="Label" parent="Panel/VBox/RowLinemate"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+horizontal_alignment = 0
+vertical_alignment = 1
+text = "0"
+
+[node name="RowDeraumere" type="HBoxContainer" parent="Panel/VBox"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+
+[node name="Icon" type="SubViewportContainer" parent="Panel/VBox/RowDeraumere"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="Panel/VBox/RowDeraumere/Icon"]
+own_world_3d = true
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(40, 40)
+render_target_update_mode = 4
+
+[node name="Camera3D" type="Camera3D" parent="Panel/VBox/RowDeraumere/Icon/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.8)
+fov = 35.0
+
+[node name="Light" type="DirectionalLight3D" parent="Panel/VBox/RowDeraumere/Icon/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 0, 0)
+light_energy = 1.4
+
+[node name="Model" type="MeshInstance3D" parent="Panel/VBox/RowDeraumere/Icon/SubViewport"]
+transform = Transform3D(34, 0, 0, 0, 34, 0, 0, 0, 34, 0, 0, 0)
+mesh = ExtResource("3_deraumere")
+
+[node name="Count" type="Label" parent="Panel/VBox/RowDeraumere"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+horizontal_alignment = 0
+vertical_alignment = 1
+text = "0"
+
+[node name="RowSibur" type="HBoxContainer" parent="Panel/VBox"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+
+[node name="Icon" type="SubViewportContainer" parent="Panel/VBox/RowSibur"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="Panel/VBox/RowSibur/Icon"]
+own_world_3d = true
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(40, 40)
+render_target_update_mode = 4
+
+[node name="Camera3D" type="Camera3D" parent="Panel/VBox/RowSibur/Icon/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.8)
+fov = 35.0
+
+[node name="Light" type="DirectionalLight3D" parent="Panel/VBox/RowSibur/Icon/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 0, 0)
+light_energy = 1.4
+
+[node name="Model" type="MeshInstance3D" parent="Panel/VBox/RowSibur/Icon/SubViewport"]
+transform = Transform3D(34, 0, 0, 0, 34, 0, 0, 0, 34, 0, 0, 0)
+mesh = ExtResource("4_sibur")
+
+[node name="Count" type="Label" parent="Panel/VBox/RowSibur"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+horizontal_alignment = 0
+vertical_alignment = 1
+text = "0"
+
+[node name="RowMendiane" type="HBoxContainer" parent="Panel/VBox"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+
+[node name="Icon" type="SubViewportContainer" parent="Panel/VBox/RowMendiane"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="Panel/VBox/RowMendiane/Icon"]
+own_world_3d = true
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(40, 40)
+render_target_update_mode = 4
+
+[node name="Camera3D" type="Camera3D" parent="Panel/VBox/RowMendiane/Icon/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.8)
+fov = 35.0
+
+[node name="Light" type="DirectionalLight3D" parent="Panel/VBox/RowMendiane/Icon/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 0, 0)
+light_energy = 1.4
+
+[node name="Model" type="MeshInstance3D" parent="Panel/VBox/RowMendiane/Icon/SubViewport"]
+transform = Transform3D(34, 0, 0, 0, 34, 0, 0, 0, 34, 0, 0, 0)
+mesh = ExtResource("5_mendiane")
+
+[node name="Count" type="Label" parent="Panel/VBox/RowMendiane"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+horizontal_alignment = 0
+vertical_alignment = 1
+text = "0"
+
+[node name="RowPhiras" type="HBoxContainer" parent="Panel/VBox"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+
+[node name="Icon" type="SubViewportContainer" parent="Panel/VBox/RowPhiras"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="Panel/VBox/RowPhiras/Icon"]
+own_world_3d = true
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(40, 40)
+render_target_update_mode = 4
+
+[node name="Camera3D" type="Camera3D" parent="Panel/VBox/RowPhiras/Icon/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.8)
+fov = 35.0
+
+[node name="Light" type="DirectionalLight3D" parent="Panel/VBox/RowPhiras/Icon/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 0, 0)
+light_energy = 1.4
+
+[node name="Model" type="MeshInstance3D" parent="Panel/VBox/RowPhiras/Icon/SubViewport"]
+transform = Transform3D(34, 0, 0, 0, 34, 0, 0, 0, 34, 0, 0, 0)
+mesh = ExtResource("6_phiras")
+
+[node name="Count" type="Label" parent="Panel/VBox/RowPhiras"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+horizontal_alignment = 0
+vertical_alignment = 1
+text = "0"
+
+[node name="RowThystame" type="HBoxContainer" parent="Panel/VBox"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+
+[node name="Icon" type="SubViewportContainer" parent="Panel/VBox/RowThystame"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="Panel/VBox/RowThystame/Icon"]
+own_world_3d = true
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(40, 40)
+render_target_update_mode = 4
+
+[node name="Camera3D" type="Camera3D" parent="Panel/VBox/RowThystame/Icon/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.8)
+fov = 35.0
+
+[node name="Light" type="DirectionalLight3D" parent="Panel/VBox/RowThystame/Icon/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 0, 0)
+light_energy = 1.4
+
+[node name="Model" type="MeshInstance3D" parent="Panel/VBox/RowThystame/Icon/SubViewport"]
+transform = Transform3D(34, 0, 0, 0, 34, 0, 0, 0, 34, 0, 0, 0)
+mesh = ExtResource("7_thystame")
+
+[node name="Count" type="Label" parent="Panel/VBox/RowThystame"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+horizontal_alignment = 0
+vertical_alignment = 1
+text = "0"

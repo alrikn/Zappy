@@ -29,7 +29,8 @@ all:
 	cp Server/zappy_server .
 	cp Gui/$(GUI_BIN) .
 	cp Gui/zappy_gui.pck .
-	cp Gui/$(GUI_LIB) .
+	mkdir -p bin
+	cp Gui/$(GUI_LIB) bin/
 	cp Ai/zappy_ai .
 
 

@@ -22,6 +22,7 @@
 #include <godot_cpp/variant/vector3.hpp>
 
 #include <array>
+#include <cstdint>
 #include <unordered_map>
 #include <vector>
 
@@ -37,6 +38,18 @@ class EntityManager : public Node3D {
 private:
     std::unordered_map<int, PlayerEntity*> _players; ///< Live players, keyed by id.
     std::unordered_map<int, EggEntity*> _eggs;        ///< Live eggs, keyed by id.
+    /// Last time (ms since startup) a broadcast ripple was spawned for each player,
+    /// used to throttle the frequent pbc broadcasts to one ripple per cooldown.
+    std::unordered_map<int, uint64_t> _lastBroadcastMs;
+    /// Player ids currently incanting, keyed by tile (packed as (x << 32) | (uint32)y).
+    /// Recorded from on_incantation_started's id list so on_incantation_ended can clear
+    /// set_incanting(false) for exactly those players, instead of re-deriving membership
+    /// from each player's current tracked grid position (which can drift out of sync).
+    std::unordered_map<int64_t, std::vector<int>> _incantingByTile;
+    /// Live incantation VFX nodes, keyed by tile (same packing as _incantingByTile).
+    /// Created in on_incantation_started, freed in on_incantation_ended, so each effect
+    /// lasts exactly as long as the ritual on its tile.
+    std::unordered_map<int64_t, Node3D*> _incantationVfxByTile;
     std::vector<String> _teamNames;                   ///< Teams in first-seen order, indexes into _palette.
     std::array<Color, 8> _palette;                    ///< Fixed team-color palette.
 
@@ -45,6 +58,8 @@ private:
 
     Ref<PackedScene> _playerEntityScene; ///< Exported property: scene instantiated per player.
     Ref<PackedScene> _eggEntityScene;    ///< Exported property: scene instantiated per egg.
+    Ref<PackedScene> _incantationVfxScene; ///< Exported property: VFX instanced on the tile during an incantation.
+    Ref<PackedScene> _broadcastVfxScene;   ///< Exported property: one-shot ripple spawned when a player broadcasts.
 
 protected:
     /// Bind methods, properties and the fixed team-color palette.
@@ -70,6 +85,16 @@ public:
     void set_egg_entity_scene(const Ref<PackedScene>& scene);
     /// Get the exported egg_entity_scene property.
     Ref<PackedScene> get_egg_entity_scene() const;
+
+    /// Set the exported incantation_vfx_scene property.
+    void set_incantation_vfx_scene(const Ref<PackedScene>& scene);
+    /// Get the exported incantation_vfx_scene property.
+    Ref<PackedScene> get_incantation_vfx_scene() const;
+
+    /// Set the exported broadcast_vfx_scene property.
+    void set_broadcast_vfx_scene(const Ref<PackedScene>& scene);
+    /// Get the exported broadcast_vfx_scene property.
+    Ref<PackedScene> get_broadcast_vfx_scene() const;
 
     /// Find-or-append team in _teamNames and return its palette color.
     Color team_color(const String& team);
@@ -104,6 +129,10 @@ public:
     void on_incantation_started(int x, int y, int level, const PackedInt32Array& ids);
     /// Clear the incantation highlight for all players on tile (x, y).
     void on_incantation_ended(int x, int y, bool result);
+
+    /// Spawn a team-colored ground ripple at the broadcasting player's tile.
+    /// Connected to World's broadcast signal; the message text is unused here.
+    void on_broadcast(int id, const String& message);
 };
 
 } // namespace godot
