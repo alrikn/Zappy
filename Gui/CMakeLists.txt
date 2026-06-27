@@ -73,6 +73,7 @@ add_library(zappy_gui SHARED
     src/world/world_state.cpp
     src/world/map_terrain.cpp
     src/world/tile_markers.cpp
+    src/world/day_night_cycle.cpp
     src/entities/player_entity.cpp
     src/entities/egg_entity.cpp
     src/entities/entity_manager.cpp
@@ -83,8 +84,10 @@ add_library(zappy_gui SHARED
     src/ui/inventory_panel.cpp
     src/ui/broadcast_log.cpp
     src/ui/end_game_overlay.cpp
+    src/ui/world_status_panel.cpp
     src/camera/rts_camera.cpp
-    src/camera/selection_controller.cpp)
+    src/camera/selection_controller.cpp
+    src/vfx/broadcast_ripple_vfx.cpp)
 
 target_include_directories(zappy_gui PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src)

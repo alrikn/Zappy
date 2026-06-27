@@ -2,8 +2,7 @@
  * @file ui/time_panel.hpp
  * @brief HUD panel showing the current server time unit.
  * @details TimePanel is a thin logic layer over a scene
- *          (scenes/ui/time_panel.tscn) that provides a single Label. Read-only:
- *          it never sends commands back to the server.
+ *          (scenes/ui/time_panel.tscn) that provides a single Label.
  */
 
 #pragma once

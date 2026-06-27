@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/inventory_panel.tscn" id="4_inventory"]
 [ext_resource type="PackedScene" path="res://scenes/ui/broadcast_log.tscn" id="5_broadcast"]
 [ext_resource type="PackedScene" path="res://scenes/ui/end_game_overlay.tscn" id="6_endgame"]
+[ext_resource type="PackedScene" path="res://scenes/ui/world_status_panel.tscn" id="7_worldstatus"]
 
 [node name="HudRoot" type="HudRoot" unique_id=1758597552]
 anchors_preset = 15
@@ -52,3 +53,7 @@ offset_left = 1.0
 offset_top = -122.0
 offset_right = 1.0
 offset_bottom = -2.0
+
+[node name="WorldStatusPanel" parent="." unique_id=965923812 instance=ExtResource("7_worldstatus")]
+layout_mode = 1
+offset_left = -109.0
