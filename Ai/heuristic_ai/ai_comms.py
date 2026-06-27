@@ -11,6 +11,7 @@ class CommsMixin:
     players parse it (the server delivers every team's broadcast to everyone)"""
 
     def _bcast(self, body: str) -> str:
+        """encode a team-prefixed message as hex and wrap it in a Broadcast command"""
         # the servers broadcast takes the text as one whitespace free token, but our
         # bodies contain spaces (json inventory, "on my way") so we hex encode the whole
         # payload (team prefix + body), this is what the ref ai did via xor hex, we keep
@@ -20,6 +21,7 @@ class CommsMixin:
         return "Broadcast " + payload + "\n"
 
     def parse_broadcast(self, raw: str):
+        """decode an incoming server broadcast line and route it to the right handler"""
         # raw is the full server line: "message K, <hex>"
         try:
             direction = int(raw[8])
@@ -44,6 +46,7 @@ class CommsMixin:
             self.master_incantation += 1
 
     def _handle_incantation_call(self, direction: int, message: str):
+        """react to a master's incantation broadcast: yield if outranked, otherwise home in"""
         if self.clear_broadcast:
             self.clear_broadcast = 0
             return

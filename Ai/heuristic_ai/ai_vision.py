@@ -13,6 +13,7 @@ class VisionMixin:
     """look parsing / navigation toward a visible object"""
 
     def size_look(self, array: list) -> int:
+        """return the number of non-empty depth slots in a single column of the map"""
         nb = 0
         for elem in array:
             if elem == []:
@@ -21,6 +22,7 @@ class VisionMixin:
         return nb
 
     def find_object(self, mp: list, obj: str):
+        """scan the map outward from the player's position and return [row, depth] of obj"""
         v = 8
         h = 0
         while h < self.size_look(mp[v]):
@@ -42,9 +44,11 @@ class VisionMixin:
         return None
 
     def get_nb_of_lines(self, data: list) -> int:
+        """derive the vision radius from the total number of tiles in a look response"""
         return int(math.sqrt(len(data)))
 
     def fill_map(self, mp: list, data: list) -> list:
+        """place look response tiles into the 17x9 grid in diamond order"""
         nb = 1
         v = 8
         h = 0
@@ -61,9 +65,11 @@ class VisionMixin:
         return mp
 
     def generate_empty_map(self) -> list:
+        """allocate a blank 17-wide x 9-deep grid to hold the look response"""
         return [[[] for _ in range(9)] for _ in range(17)]
 
     def parse_look(self, data: str, obj: str) -> list:
+        """parse a look response and return a command list that navigates to obj"""
         import re
         tiles = [' '.join(re.split(r'\W+', cell)[1:]) for cell in data.split(",")]
         mp = self.generate_empty_map()
