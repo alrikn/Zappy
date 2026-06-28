@@ -6,6 +6,7 @@
 */
 
 #include "Gui.hpp"
+#include "Parse.hpp"
 #include "Player.hpp"
 #include "Server.hpp"
 #include "Struct.hpp"
@@ -33,12 +34,9 @@ void Player::move_forward(Server &server)
             new_x = (position[0] - 1 + server.getMapWidth()) % server.getMapWidth();
             break;
     }
-    server.move_player(*this, new_x, new_y);
-    auto self_fwd = std::dynamic_pointer_cast<Player>(server._clients[get_fd()]);
-    if (self_fwd) {
-        server._gui_subject.Notify([self_fwd](Client* c) {
-            static_cast<Gui*>(c)->ppo(self_fwd);
-        });
+    if (!server.move_player(*this, new_x, new_y)) {
+        command_failed(server, FORWARD);
+        return;
     }
     server.send_message_queue.add_message(server, get_fd(), "ok\n", ClientCommandDelayMap.at(FORWARD));
 }

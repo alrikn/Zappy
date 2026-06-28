@@ -69,7 +69,7 @@ class Server
 
         void run();
 
-        void move_player(Player &player, int x, int y);
+        bool move_player(Player &player, int x, int y);
 
         int getMapWidth() const { return _map[0].size(); }
         int getMapHeight() const { return _map.size(); }

@@ -14,15 +14,25 @@
 
 
 
-void Server::move_player(Player &player, int new_x, int new_y)
+bool Server::move_player(Player &player, int new_x, int new_y)
 {
     _map[player.position[1]][player.position[0]].remove_specific_client(player.getId());
     player.set_position(new_x, new_y);
     // push the real shared_ptr (look it up by fd), not a copy
     auto it = _clients.find(player.get_fd());
-    if (it != _clients.end())
+    auto self = std::dynamic_pointer_cast<Player>(it->second);
+    if (it != _clients.end() && self)  // sanity check
         _map[new_y][new_x].players.push_back(
             std::dynamic_pointer_cast<Player>(it->second));
+    else
+        return false;  // player not found in _clients, should not happen
+    //notify gui of the move
+    if (self) {
+        _gui_subject.Notify([self](Client* c) {
+            static_cast<Gui*>(c)->ppo(self);
+        });
+    }
+    return true;
 }
 
 Resource parse_resource(const std::string& name)

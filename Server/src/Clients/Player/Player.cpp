@@ -9,6 +9,7 @@
 #include "Server.hpp"
 #include "Parse.hpp"
 #include "Struct.hpp"
+#include <iostream>
 #include <sstream>
 #include <vector>
 
@@ -88,6 +89,8 @@ void Player::parse_command(const std::string raw, Server &server)
     }
     std::vector<std::string> args; //we want everything except the first word to be in this vector, so we can easily access it when we need to
     std::string arg;
+
+    std::cout << "Player " << player_id << " command: " << verb << std::endl;
 
     while (ss >> arg) {
         args.push_back(arg);

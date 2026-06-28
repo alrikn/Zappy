@@ -76,6 +76,7 @@ class AI(InventoryMixin, VisionMixin, CommsMixin, RitualMixin):
         handler = self._steps.get(self.step)
         if handler:
             handler()
+        #print(f"Player {self.client_num} step {self.step} food: {self.inventory['food']}")
 
     # ---- step handlers ----
 
@@ -130,6 +131,8 @@ class AI(InventoryMixin, VisionMixin, CommsMixin, RitualMixin):
     def _step_decide_target(self):
         """pick food or the most needed stone and queue movement commands toward it"""
         if self.inventory.get("food", 0) < FOOD_FLOOR:
+            print(f"[{self.client_num}] deciding target: food {self.inventory.get('food', 0)}")
+
             self.commands_list = self.parse_look(self.look, "food")
         else:
             self.to_search = self.search_good_ressources()
@@ -146,7 +149,7 @@ class AI(InventoryMixin, VisionMixin, CommsMixin, RitualMixin):
             self.step += 1
             return
         if self.master_incantation >= 1:
-            return  # master: wait for all followers to arrive
+            return  # master: wait for all followers; data_to_write stays as the incantation broadcast so followers can keep homing
         if self.commands_list and not self.ready_for_incantation:
             self.data_to_write = self.commands_list.pop(0)
             self.clear_broadcast = 1
@@ -175,7 +178,7 @@ class AI(InventoryMixin, VisionMixin, CommsMixin, RitualMixin):
     def _step_ritual_wait(self):
         """master polls for the full team; retries a fresh look/drop cycle if still incomplete"""
         if self.master_incantation < TEAM_SIZE:
-            self.data_to_write = "Connect_nbr\n"
+            self.data_to_write = "Inventory\n"  # keep food counter live while waiting
             return
         if self.commands_list:
             self.data_to_write = self.commands_list.pop(0)
