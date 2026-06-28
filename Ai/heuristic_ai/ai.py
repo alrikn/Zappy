@@ -131,7 +131,6 @@ class AI(InventoryMixin, VisionMixin, CommsMixin, RitualMixin):
     def _step_decide_target(self):
         """pick food or the most needed stone and queue movement commands toward it"""
         if self.inventory.get("food", 0) < FOOD_FLOOR:
-            print(f"[{self.client_num}] deciding target: food {self.inventory.get('food', 0)}")
 
             self.commands_list = self.parse_look(self.look, "food")
         else:

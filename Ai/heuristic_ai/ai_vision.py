@@ -72,7 +72,6 @@ class VisionMixin:
         if coord is None:
             return [random.choice(["Forward\n", "Right\n", "Left\n"]) for _ in range(3)]
         row, depth = coord
-        print(f"[{self.client_num}] found {obj} at row {row}, depth {depth}: data: {data}")
         if row == 8 and depth == 0:
             return ["Take " + obj + "\n"]
         cmds = []
