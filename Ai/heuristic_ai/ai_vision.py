@@ -22,25 +22,17 @@ class VisionMixin:
         return nb
 
     def find_object(self, mp: list, obj: str):
-        """scan the map outward from the player's position and return [row, depth] of obj"""
+        """scan the map outward from the player's position and return [row, depth] of obj.
+        depth >= 1 tiles are checked before depth 0 so the player moves toward food on
+        other tiles rather than staying put on a crowded post-incantation tile."""
         v = 8
-        h = 0
-        while h < self.size_look(mp[v]):
-            if mp[v][h] != [] and obj in mp[v][h][0]:
-                return [v, h]
-            else:
-                h += 1
-            tv = v
-            while tv >= v - h:
-                if mp[v][h] != [] and obj in mp[tv][h][0]:
+        max_depth = self.size_look(mp[v])
+        for h in range(1, max_depth):
+            for tv in range(v - h, v + h + 1):
+                if 0 <= tv < len(mp) and mp[tv][h] != [] and obj in mp[tv][h][0]:
                     return [tv, h]
-                tv -= 1
-            tv = v
-            while tv <= v + h:
-                if mp[v][h] != [] and obj in mp[tv][h][0]:
-                    return [tv, h]
-                tv += 1
-            h += 1
+        if mp[v][0] != [] and obj in mp[v][0][0]:
+            return [v, 0]
         return None
 
     def get_nb_of_lines(self, data: list) -> int:
@@ -71,6 +63,8 @@ class VisionMixin:
     def parse_look(self, data: str, obj: str) -> list:
         """parse a look response and return a command list that navigates to obj"""
         import re
+        if not data or data.startswith("[ food"):
+            return []
         tiles = [' '.join(re.split(r'\W+', cell)[1:]) for cell in data.split(",")]
         mp = self.generate_empty_map()
         mp = self.fill_map(mp, tiles)
@@ -78,14 +72,16 @@ class VisionMixin:
         if coord is None:
             return [random.choice(["Forward\n", "Right\n", "Left\n"]) for _ in range(3)]
         row, depth = coord
+        print(f"[{self.client_num}] found {obj} at row {row}, depth {depth}: data: {data}")
         if row == 8 and depth == 0:
             return ["Take " + obj + "\n"]
         cmds = []
         if row < 8:
+            cmds.extend(["Forward\n"] * depth)
             cmds.append("Left\n")
             cmds.extend(["Forward\n"] * (8 - row))
         elif row > 8:
-            cmds.extend(["Forward\n"] * (row - 8))
+            cmds.extend(["Forward\n"] * depth)
             cmds.append("Right\n")
             cmds.extend(["Forward\n"] * (row - 8))
         else:  # row == 8, depth > 0: object is straight ahead
