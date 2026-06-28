@@ -152,5 +152,6 @@ void Player::look(Server &server)
         }
     }
     final_response += "]\n";
+    //std::cout << "Player " << getId() << " look response: " << final_response << std::endl;
     server.send_message_queue.add_message(server, get_fd(), final_response, ClientCommandDelayMap.at(LOOK));
 }

@@ -131,7 +131,7 @@ class Client:
                           and "food" not in self.ai.data_to_write and elem == "ok"):
                         self.ai.update_shared_inventory()
                         self.ai.new_object = True
-                    elif self.ai.data_to_write == "Inventory\n":
+                    elif self.ai.data_to_write == "Inventory\n" or elem.startswith("[ food"):
                         try:
                             self.ai.parse_inventory(elem)
                         except ValueError:
