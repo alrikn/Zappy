@@ -1,10 +1,14 @@
 # Zappy
 
-Epitech project about making a server, a gui, and ai.
+Zappy is a network-based survival game where teams of AI-controlled players compete on a shared map, gathering resources and coordinating rituals to level up. It's an Epitech school project made up of three parts: a game server, a graphical client, and an AI client.
 
-## Quick Start — Testing with Reference Server
+- **Server** — hosts the game world, manages players, resources, and rules.
+- **GUI** — visualizes the game in real time.
+- **AI** — connects to the server and plays the game autonomously, forking itself into a full team.
 
-To test the AI with the reference server, open **3 separate terminals** and run:
+## Quick Start
+
+Open **3 separate terminals** and run:
 
 **Terminal 1 — Server:**
 
@@ -24,13 +28,4 @@ To test the AI with the reference server, open **3 separate terminals** and run:
 ./Ai/zappy_ai -p 4242 -n team1 -h localhost 2>&1
 ```
 
-
-the server auto starts, the GUI visualizes the game, and the single AI forks itself
-into 6 players that gather resources and elevate together
-
-# AI part (jad):
-
-fully heuristic, idk how we could make it real ai, maybe reinforcement learning algo in the wander func where, we handle connection with tcp with the server, Ai/zappy_ai is the shell script that calls main.py
-strategy: the whole 6 player team converges on a single tile for
-every incantation, so one ritual elevates the entire team at once and they advance
-in lockstep, reaches levle 6 sometimes 30% of the time, not eprfect not psosible but reaches 2 to 6
+The server starts the game, the GUI visualizes it, and the single AI process forks itself into 6 players that gather resources and elevate together.
