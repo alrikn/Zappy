@@ -1,6 +1,6 @@
 # Zappy
 
-Zappy is a network-based survival game where teams of AI-controlled players compete on a shared map, gathering resources and coordinating rituals to level up. It's an Epitech school project made up of three parts: a game server, a graphical client, and an AI client.
+Zappy is a network-based survival game where teams of AI-controlled players compete on a shared map, gathering resources and coordinating rituals to level up. It's a project made up of three parts: a game server, a graphical client, and an AI client.
 
 - **Server** — hosts the game world, manages players, resources, and rules.
 - **GUI** — visualizes the game in real time.
