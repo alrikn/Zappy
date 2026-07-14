@@ -8,6 +8,7 @@
 #include "Gui.hpp"
 #include "Player.hpp"
 #include "Server.hpp"
+#include "Team.hpp"
 #include "Tiles.hpp"
 
 #include <algorithm>
@@ -134,4 +135,31 @@ void Server::kill_player(std::shared_ptr<Player> player)
 {
     player->send_message("dead\n");
     remove_client(player->get_fd());
+}
+
+//team wins by having 6 players at level 8
+std::shared_ptr<Team> Server::getWinningTeam() const
+{
+    std::shared_ptr<Team> winning_team = nullptr;
+    int max_score = 0;
+
+    for (const auto& team : teams) {
+        max_score = 0;
+        for (const auto& [fd, client] : _clients) {
+            if (client->get_type() != client_type::PLAYER)
+                continue;
+            auto player = std::dynamic_pointer_cast<Player>(client);
+            if (player && player->team_name == team->name && player->level == 8) {
+                max_score++;
+                if (max_score >= 6) {
+                    winning_team = team;
+                    break;
+                }
+            }
+        }
+        if (winning_team)
+            break;
+    }
+
+    return winning_team;
 }

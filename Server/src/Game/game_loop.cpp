@@ -124,6 +124,17 @@ void Server::step_player_action(std::shared_ptr<Player> player)
     }
 }
 
+void Server::check_game_end_conditions()
+{
+    auto winning_team = getWinningTeam();
+    if (winning_team) {
+        _gui_subject.Notify([this](Client* c) {
+            static_cast<Gui*>(c)->seg(*this);
+        });
+        running = false;
+    }
+}
+
 void Server::advance_game()
 {
     respawn_resources();
@@ -145,6 +156,8 @@ void Server::advance_game()
 
     for (auto &dead : to_kill)
         kill_player(dead);
+    //check if any team has won the game
+    check_game_end_conditions();
 }
 
 void Server::run()
