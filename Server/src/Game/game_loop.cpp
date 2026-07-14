@@ -126,7 +126,7 @@ void Server::step_player_action(std::shared_ptr<Player> player)
 
 void Server::check_game_end_conditions()
 {
-    auto winning_team = getwinningTeam();
+    auto winning_team = getWinningTeam();
     if (winning_team) {
         _gui_subject.Notify([this](Client* c) {
             static_cast<Gui*>(c)->seg(*this);

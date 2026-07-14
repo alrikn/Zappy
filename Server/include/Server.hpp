@@ -77,7 +77,7 @@ class Server
         std::vector<std::shared_ptr<Team>> getTeams() const { return teams; }
         long long getTimeUnit() const { return time_unit; }
         long long getFreq() const { return _freq; }
-        std::shared_ptr<Team> getwinningTeam() const;
+        std::shared_ptr<Team> getWinningTeam() const;
 };
 
 #endif

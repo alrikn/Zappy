@@ -138,7 +138,7 @@ void Server::kill_player(std::shared_ptr<Player> player)
 }
 
 //team wins by having 6 players at level 8
-std::shared_ptr<Team> Server::getwinningTeam() const
+std::shared_ptr<Team> Server::getWinningTeam() const
 {
     std::shared_ptr<Team> winning_team = nullptr;
     int max_score = 0;
@@ -157,6 +157,8 @@ std::shared_ptr<Team> Server::getwinningTeam() const
                 }
             }
         }
+        if (winning_team)
+            break;
     }
 
     return winning_team;

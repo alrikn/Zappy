@@ -192,15 +192,15 @@ void Gui::edi(int egg_id)
     send_message(result);
 }
 
+//end of game
 void Gui::seg(Server &server)
 {
     std::string result = "seg";
-    std::shared_ptr<Team> winning_team = server.getwinningTeam();
+    std::shared_ptr<Team> winning_team = server.getWinningTeam();
 
     if (!winning_team) {
         return;
     }
-    //TODO: figure out which is winning team
     result += " " + winning_team->name;
     result += "\n";
     send_message(result);
