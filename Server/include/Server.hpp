@@ -39,6 +39,7 @@ class Server
             std::vector<std::shared_ptr<Player>> &to_kill);
         void step_player_action(std::shared_ptr<Player> player);
         void kill_player(std::shared_ptr<Player> player);
+        void check_game_end_conditions();
 
     public:
         Server(int port_number,
